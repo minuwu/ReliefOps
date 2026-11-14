@@ -25,6 +25,7 @@ ENV/
 *.key
 
 # Build outputs
+*.tsbuildinfo
 dist/
 build/
 out/
