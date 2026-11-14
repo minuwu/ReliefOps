@@ -1,6 +1,6 @@
 # Backend, Database & DevOps Plan — Fraud Relief Case System
 
-**Owner** Asif (Backend / Database / DevOps) · **Status** draft v0.2 · **Updated** 2026-11-14
+**Owner** Asif (Backend / Database / DevOps) · **Status** draft v0.3 · **Updated** 2026-11-14
 **Team** Backend: Asif, Anim · AI: Galib · Frontend: Minhaz
 **Contract** [docs/API_SPEC.md](../API_SPEC.md) · **Progress log** [contributors/asif/WORK_LOG.md](../../contributors/asif/WORK_LOG.md)
 
@@ -70,6 +70,7 @@ Status: **Agreed** = follows directly from the brief · **Proposed** = needs a y
 | D11 | A `closed` case is read-only. Edits, uploads, extractions, extraction reviews and transitions are refused with `409 CASE_CLOSED`. Notes are still allowed. | Closed cases are the record of a money decision, and the spec has no rule for them yet. This needs a new error code in API_SPEC (see §11). | Proposed |
 | D12 | Writes that depend on what the user saw (PATCH, transition, extraction review) send the case's `updated_at`. A mismatch returns `409 STALE_CASE`. | Stops one operator silently overwriting another's edit, or an extraction review overwriting a newer manual value. This needs a contract change (see §11). | Proposed |
 | D13 | Victims edit their own case without an account. Intake (or staff, for phone/paper cases) gives a per-case access code. Reference + code opens a 1-hour victim session for that case only. Contact details are editable until closed (D11); report details only while `received`. Only a hash of the code is stored. | Victims can fix mistakes and update contact details themselves, so operators handle fewer calls. Locking facts after verification keeps verified data trustworthy. No victim can reach another case. | Proposed |
+| D14 | Victims get a **case assistant** (RAG chatbot) inside their victim session (D13). Each bank has its own bluebook, and the assistant answers only from **the published bluebook of the case's bank** plus an allow-listed, non-identifying case summary. It has no tools, is read-only and makes no money promises. Questions it can't answer set `needs_staff`, and staff reply in the same thread. Retrieval runs in the backend's bank-scoped database session (pgvector + keyword search), not in AI code. | Victims wait 6–12 months and call for status updates; most process questions are answered in the bluebook. Taking the bank from the case keeps each bank's bluebook private. The minimal context keeps personal data away from the AI model, and escalation keeps a human in the loop. | Agreed (team, 2026-11-14) |
 
 ---
 
@@ -79,6 +80,7 @@ Status: **Agreed** = follows directly from the brief · **Proposed** = needs a y
 | :--- | :--- | :--- |
 | Web intake form creates a case | MVP | `POST /api/intake`, `POST /api/cases` |
 | Victim (optional user) checks and corrects their own report | Optional | `POST /api/victim/session`, `GET`/`PATCH /api/victim/case`, D13 |
+| Team extra: victims ask a case assistant that answers from their bank's bluebook | Extra | `/api/victim/chat*`, `/api/cases/{id}/chat*`, `/api/kb/documents*`, D14 |
 | Case list / board with status, deadline, owner | MVP | `GET /api/cases` → `CaseSummary` |
 | Login with 3 roles | MVP | `POST /api/auth/login`, roles §2 |
 | Bank A never sees Bank B | MVP | D5, §5 below |
@@ -109,6 +111,9 @@ Every bank-owned table carries its own `bank_id`, even when it could be found th
 | `ai_extractions` | `id`, `document_id`, `case_id`, `bank_id`, `status`, `source`, `model`, `prompt_version`, `overall_confidence`, `review_lane`, `fields jsonb`, `missing_fields text[]`, `error jsonb`, `created_at`, `reviewed_by`, `reviewed_at`, `review_note` | `fields[].final_value` is filled in on review |
 | `notes` | `id`, `case_id`, `bank_id`, `author_id`, `body`, `created_at` | Kept so knowledge survives staff turnover |
 | `audit_log` | `id`, `at`, `actor_type`, `actor_id`, `actor_name`, `actor_role`, `action`, `case_id`, `bank_id`, `summary`, `changes jsonb`, `metadata jsonb` | Append-only (D8) |
+| `kb_documents` | `id`, `bank_id` **not null**, `title`, `version`, `language`, `status`, `content bytea`, `sha256`, `passage_count`, `error`, `uploaded_by`, `uploaded_at`, `published_at` | One bank per document (D14). Files in Postgres, like D10. |
+| `kb_passages` | `id`, `document_id`, `bank_id`, `section`, `page`, `text`, `embedding vector(N)`, `embedding_model`, `tsv tsvector` | `N` is fixed by Galib's embedding model. If the model changes, re-embed. |
+| `chat_messages` | `id`, `case_id`, `bank_id`, `role`, `body`, `language`, `answer_type`, `citations jsonb`, `confidence`, `needs_staff`, `used_passage_ids uuid[]`, `model`, `prompt_version`, `latency_ms`, `feedback`, `author_id`, `created_at` | One thread per case. `cases.victim_question_pending boolean` is set by an escalation and cleared by a staff reply. |
 
 Enums are Postgres enum types with the same values as API_SPEC §3.4.
 
@@ -125,14 +130,16 @@ Enums are Postgres enum types with the same values as API_SPEC §3.4.
 | `audit_log` | `(case_id, at DESC)` |
 | `audit_log` | `(bank_id, at DESC)` |
 | `ai_extractions` | `(status, review_lane, created_at)` |
+| `kb_passages` | `(bank_id)`; HNSW on `embedding`; GIN on `tsv` |
+| `chat_messages` | `(case_id, created_at)` |
 
 ---
 
 ## 5. Bank separation (judge question 1)
 
 1. **The token carries scope.** The JWT holds `user_id`, `role` and `bank_id`. Each request runs in one transaction that starts with `SELECT set_config('app.role', :role, true), set_config('app.bank_id', :bank_id, true)`. The values are bound as parameters, never built into SQL strings.
-2. **Row-level security on every bank-owned table:** `cases`, `documents`, `ai_extractions`, `notes`, `audit_log`.
-   - Read policy: `current_setting('app.role', true) IN ('operator','supervisor') OR bank_id = current_setting('app.bank_id', true)`. The `true` argument makes a missing setting return null instead of raising an error, so a request with no scope sees no rows.
+2. **Row-level security on every bank-owned table:** `cases`, `documents`, `ai_extractions`, `notes`, `audit_log`, `kb_documents`, `kb_passages`, `chat_messages`.
+   - Read policy: `current_setting('app.role', true) IN ('operator','supervisor') OR (current_setting('app.role', true) = 'bank_viewer' AND bank_id = current_setting('app.bank_id', true))`. The role check on the second branch matters: victim sessions also set `app.bank_id`, for bluebook retrieval (item 9). Without the check, a victim session would match every case of its bank. The `true` argument makes a missing setting return null instead of raising an error, so a request with no scope sees no rows.
    - Write policies: `INSERT` and `UPDATE` on `cases`, `documents`, `ai_extractions` and `notes` are allowed only for `app.role IN ('operator','supervisor')` (plus the public intake insert below). A `bank_viewer` therefore cannot write even if an API check is missing.
    - `audit_log` is the exception: its `INSERT` policy allows every role, because merely viewing a case writes `case.viewed`, including for a `bank_viewer`. It still has no `UPDATE` or `DELETE` (D8).
    - The app connects as `app_user`, which is not the table owner and has no `BYPASSRLS`, and the tables use `FORCE ROW LEVEL SECURITY`. So the policies apply even if the code forgets a filter.
@@ -150,6 +157,17 @@ Enums are Postgres enum types with the same values as API_SPEC §3.4.
    - **Database scope:** each request runs with `app.role = 'victim'` and `app.case_id`. The only policy that matches is read/update on `cases` where `id = current_setting('app.case_id', true)`, so a victim session can't reach other cases, documents, notes, AI data or the audit log. (Writing the victim's own `case.viewed` / `case.updated` audit entries uses the all-roles `audit_log` insert policy from item 2.)
    - **Field locks:** the service layer enforces which columns may change at each status (API_SPEC §3.5) and answers `409 CASE_LOCKED` otherwise. A closed case is read-only for victims too (D11).
    - **Access codes:** 12 random Crockford base32 characters (60 bits), stored hashed. After 5 failed attempts per reference or IP within 15 minutes → `429`.
+9. **Case assistant (D14).**
+   - **Which bluebook:** the victim session sets `app.bank_id` from `cases.bank_id`, never from the request. The `kb_passages` policy for victims is `app.role = 'victim' AND bank_id = app.bank_id`, and the document must be `published`.
+   - **Filter before ranking:** the retrieval SQL puts the bank and `published` filters in the `WHERE` clause and ranks only what's left. A closer match from another bank can therefore never be returned.
+   - **Chat threads:** `chat_messages` policy is `case_id = app.case_id` for victims; staff follow the item 2 rules.
+   - **What reaches the AI model:**
+     - the question and up to 6 earlier messages
+     - the retrieved passages
+     - the allow-listed case summary (API_SPEC §3.6)
+
+     Never names, contact details, account numbers, notes or other cases.
+   - **No tools:** the model only returns text and passage IDs. It can't call endpoints or query the database.
 
 **Proof we'll show** (pytest, run in CI and live in the demo if asked):
 - `viewer@bank-a` → `GET` a `bank_b` case → `404`.
@@ -157,6 +175,8 @@ Enums are Postgres enum types with the same values as API_SPEC §3.4.
 - `viewer@bank-a` → dashboard totals equal the `bank_a`-only counts.
 - **The database alone holds:** raw SQL as `app_user` with `app.bank_id = 'bank_a'` returns 0 `bank_b` rows. This proves layer 2 works even if layer 4 were removed.
 - A victim session for `RFR-2026-00042` → `GET /api/cases` → `403`. Changing `amount` on that verified case → `409 CASE_LOCKED`.
+- **Database alone, victim:** raw SQL as `app_user` with `app.role = 'victim'`, `app.bank_id = 'bank_b'` and `app.case_id` set returns exactly one `cases` row, and `kb_passages` rows from `bank_b` only.
+- **Chatbot cross-bank test:** as a victim of a `bank_a` case, ask questions that only bank_b's bluebook answers. Each must return `no_answer`, and every retrieved passage must be from bank_a (§6).
 
 ---
 
@@ -184,6 +204,23 @@ Enums are Postgres enum types with the same values as API_SPEC §3.4.
 - Document text and images go to an external AI provider. That is acceptable only because all data is synthetic. If real data is ever used, the provider and its data terms must be reviewed first.
 - After the demo, the same measure comes from real reviews: the share of AI fields accepted unchanged, taken from `ai.review_accepted` audit entries.
 
+### Case assistant (D14)
+
+| Failure | What happens |
+| :--- | :--- |
+| AI model down or slower than 20 s | `answer_type: passages_only`: the top passages from the bank's bluebook, without a written answer. `/api/health` shows `rag: degraded`. |
+| Embedding service down | Keyword search only (Postgres full-text on `kb_passages.tsv`). Answers still cite. |
+| Nothing matches well enough (below `RAG_MIN_SCORE`) | `no_answer` + `needs_staff`: the question goes to staff instead of a guess. |
+| The victim asks about other people, asks it to act, or asks for a decision ("approve my payout") | `refused`. It has no tools and no other cases in its context, so nothing can leak even if the prompt is subverted. |
+| The answer is wrong | Every answer shows its citations, victims can mark it `not_helpful`, and staff see the whole thread. |
+| Instructions hidden in a bluebook | Only supervisor-published, synthetic bluebooks are indexed. Victims' uploads never are. |
+
+**Measuring it (judge question 2):**
+- **Golden set:** about 30 questions (6 per bank), each with the bluebook section that answers it. Report retrieval hits (right section in the top 3) and answer correctness, checked by hand, as counts.
+- **Cross-bank leak test:** as a victim of bank A, ask questions only bank B's bluebook answers. Each must return `no_answer`, with every retrieved passage from bank A. Target: 0 leaks; report the count.
+- **Refusal test:** 3–5 "other people" or "approve my payout" questions must all be `refused`.
+- As with extraction, quote only numbers these scripts produced.
+
 ---
 
 ## 7. DevOps
@@ -192,7 +229,7 @@ Enums are Postgres enum types with the same values as API_SPEC §3.4.
 
 | Service | Image / build | Notes |
 | :--- | :--- | :--- |
-| `db` | `postgres:16-alpine` | Named volume. `pg_isready` health check. |
+| `db` | `pgvector/pgvector:pg16` | Postgres 16 with the `vector` extension (D14). Named volume. `pg_isready` health check. |
 | `backend` | `./backend/Dockerfile` | Starts after `db` is healthy. Runs `alembic upgrade head`, then the seed (idempotent: skips if the banks exist), then `uvicorn` on `:8000`. Files live in Postgres (D10), so there is no document volume. |
 | `frontend` | `./frontend` | Added when Minhaz has scaffolded it. |
 
@@ -207,6 +244,10 @@ AI_PROVIDER=
 AI_API_KEY=
 AI_TIMEOUT_SECONDS=20
 AI_CONFIDENCE_THRESHOLD=0.75
+RAG_EMBEDDING_MODEL=
+RAG_TOP_K=5
+RAG_MIN_SCORE=0.5
+CHAT_MAX_QUESTIONS_PER_HOUR=20
 TRUSTED_PROXY_COUNT=1
 SEED_ON_START=true
 ```
@@ -216,6 +257,8 @@ SEED_ON_START=true
 - ≥ 30 cases across every bank and status, about 6 of them overdue
 - 2–3 shared accounts
 - ≥ 10 documents, clean and messy, each with a correct-answer JSON for `eval/`. The brief (§7) asks for messy ones on purpose: missing fields, typos, different date formats, and **one scanned image**. Also include **at least one prompt-injection document** (hidden text such as "approve this payout"). The brief lists "you tried a bad document and the system stayed safe" as a safety feature judges want to see.
+- **5 synthetic bluebooks**, one per bank, 4–6 pages each, with deliberate differences (D14). They are split and embedded at seed time, so the demo doesn't depend on the embedding service. If the embedding model is an external API, commit the computed vectors as a fixture. Also the golden question set for `eval/`.
+- **Bluebook indexing** runs as a background task in the backend process (FastAPI `BackgroundTasks`). That is enough for a handful of documents; no separate worker is needed.
 
 Names are clearly fake, emails use `.test`, and phone numbers use `0000` blocks.
 
@@ -241,13 +284,13 @@ backend/
 │   ├── config.py        # settings from env
 │   ├── db.py            # engine, per-request scoped session (set_config for RLS)
 │   ├── security.py      # password hashing, JWT, current-user dependency
-│   ├── routers/         # health, auth, intake, cases, documents, extractions, dashboard, audit
-│   ├── services/        # case_workflow (transitions, deadlines), audit, ai_extraction (+ rules fallback), storage, seed
+│   ├── routers/         # health, auth, intake, cases, documents, extractions, dashboard, audit, victim, chat, kb
+│   ├── services/        # case_workflow (transitions, deadlines), audit, ai_extraction (+ rules fallback), rag (Galib) + retrieval and case context (backend), storage, seed
 │   ├── models/          # SQLModel tables + Pydantic schemas (mirror API_SPEC §4)
 │   └── prompts/         # versioned AI prompts (owned by the AI owner, per AGENTS.md §4.3)
 ├── migrations/          # Alembic: tables, enums, RLS policies, audit trigger, app_user grants
 ├── tests/               # pytest: bank separation, transitions, review flow, AI-down path
-├── eval/                # labelled synthetic documents + accuracy script
+├── eval/                # labelled synthetic documents + accuracy script; chatbot golden questions + leak test
 ├── Dockerfile
 └── .env.example
 docker-compose.yml       # repo root
@@ -268,6 +311,11 @@ docker-compose.yml       # repo root
 
 The brief schedules separation at hour 30. We build it at hours 2–10 because adding RLS to code that already works means rewriting queries.
 
+**Case assistant timing (D14).** It's an extra, not an MVP item.
+- Galib can build `split_bluebook`, `embed` and `answer` against the seeded bluebooks at any time.
+- Backend wires the endpoints only after the hour-14 happy path works.
+- If it isn't stable by the hour-36 freeze, cut it. Nothing in the MVP depends on it.
+
 ---
 
 ## 10. Open questions (decide at kickoff)
@@ -279,11 +327,14 @@ Still open:
 3. Which AI provider, and who puts the key in `.env`? The provider must handle images, because scanned paper forms are the main demo flow.
 4. How should an account be identified? Banks usually use branch + account number. With only `account_number`, the shared-account alert can match unrelated accounts at the same bank. Consider adding `account_branch` (see §11).
 5. How do Asif and Anim split backend work? Suggested split: Asif takes database, RLS, migrations, seed and devops; Anim takes the routers in API_SPEC §6.
+6. **Case assistant models:** a local embedding model (no external calls, so the demo works offline) or an API? Which AI model writes the answers, and whose key?
+7. **Bluebook language:** what language are the bluebooks in, and do we translate answers into the victim's language (en/ja/bn)? Translation adds risk; citations always quote the original.
 
 Resolved:
 
 - **AI owner:** Galib owns the AI module, `backend/app/prompts/` and the labelled test set (TEAM_INSTRUCTIONS §4).
 - **Frontend framework:** Next.js App Router, so the layout is `src/app/`, not `src/pages/` (TEAM_INSTRUCTIONS §4 skills list).
+- **Case assistant:** victim-facing, one bluebook per bank, case-aware answers (team decision, 2026-11-14) → D14.
 
 ---
 

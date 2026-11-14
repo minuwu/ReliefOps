@@ -4,6 +4,35 @@ Owner: Asif (`MdAsif-Hossain`) — Role: Backend / Services / Database — Branc
 
 Use this log to share progress, planned work, and dependencies with the team. Update it after each work session, keep the newest entry first, and use Bangladesh time (UTC+6). Link to relevant issues, commits, or pull requests when available.
 
+## 2026-11-14 (session 4)
+
+### Completed
+- Pulled `main` and merged it into `asif/api-contract`. Resolved the `backend-plan.md` conflict with Minhaz's hardening by keeping both sides:
+  - my victim decision became D13
+  - S8 (login rate limit) is marked done
+- Team decisions for the RAG chatbot: **victim-facing, one bluebook per bank, case-aware answers**. Recorded as D14.
+- Contract v0.3.0 (API_SPEC + openapi.yaml), additive only:
+  - victim chat: `GET /api/victim/chat`, `POST /api/victim/chat/messages`, `.../feedback`
+  - staff side: `GET /api/cases/{id}/chat`, `POST /api/cases/{id}/chat/reply`
+  - bluebooks per bank: list, upload, publish, archive (`/api/kb/documents*`)
+  - rules in §3.6: the bank comes from the case; an allow-listed case summary only; no tools; no money promises
+  - answer types: `grounded`, `passages_only`, `no_answer`, `refused`
+  - escalation to staff through `flags.victim_question_pending`
+  - AI interface in §7.2: `split_bluebook`, `embed`, `answer`. Retrieval stays in the backend so bank scoping is enforced by our database rules.
+- `redocly lint`: the description is valid, with the same 5 expected warnings. Mock check: 401 with no token; the grounded, no_answer, passages_only and refused examples; 422 on a too-long question; staff thread and reply; bluebook list; 409 on publishing a document that isn't ready.
+- backend-plan: D14; `kb_documents`, `kb_passages` (pgvector) and `chat_messages`; the pgvector image; RAG env vars; seed bluebooks; the chatbot failure table and measurement (golden set, cross-bank leak test, refusal test); timing (cut at the freeze if not stable).
+- **Found and fixed a security hole in the planned database rules:** the case read rule matched `bank_id = app.bank_id` for any role. Victim sessions now set `app.bank_id` for retrieval, so they would have seen every case of their bank. The rule now requires `role = 'bank_viewer'` on that branch.
+
+### Next
+- Open questions 6–7 with Galib: the embedding and AI models for the assistant, and the bluebook language and translation.
+- Minhaz's contract fixes S1–S7 and S9–S11 (plan §11) are still not applied.
+
+### Blockers / handoff
+- **Galib:** API_SPEC §7.2 (three functions) and backend-plan §6 (golden set and leak test). Write 5 synthetic bluebooks that differ on purpose.
+- **Minhaz:** a victim chat UI on the mock. Use `Prefer: example=no_answer`, `passages_only` and `refused` for the edge cases, and show `victim_question_pending` on the staff board.
+
+---
+
 ## 2026-11-14 (session 3)
 
 ### Completed
