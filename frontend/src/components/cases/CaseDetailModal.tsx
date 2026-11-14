@@ -19,6 +19,8 @@ import {
   Building2,
   Clock,
   Sparkles,
+  Copy,
+  Check,
 } from 'lucide-react';
 
 interface CaseDetailModalProps {
@@ -41,6 +43,7 @@ export function CaseDetailModal({
   const [isSubmittingNote, setIsSubmittingNote] = useState(false);
   const [issuedCode, setIssuedCode] = useState<string | null>(null);
   const [isIssuingCode, setIsIssuingCode] = useState(false);
+  const [hasCopiedCode, setHasCopiedCode] = useState(false);
 
   // Transition confirmation dialog state
   const [targetStatus, setTargetStatus] = useState<CaseStatus | null>(null);
@@ -188,8 +191,23 @@ export function CaseDetailModal({
                 Share this secure one-time code with the victim to unlock case self-service & assistant.
               </p>
             </div>
-            <div className="flex items-center gap-2 bg-background px-3 py-1.5 rounded-md border border-amber-500/40 font-mono font-bold text-sm tracking-widest text-foreground">
-              {issuedCode}
+            <div className="flex items-center gap-2">
+              <div className="bg-background px-3 py-1.5 rounded-md border border-amber-500/40 font-mono font-bold text-sm tracking-widest text-foreground">
+                {issuedCode}
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  navigator.clipboard.writeText(issuedCode);
+                  setHasCopiedCode(true);
+                  setTimeout(() => setHasCopiedCode(false), 2000);
+                }}
+                className="text-xs h-8 px-2.5 gap-1"
+              >
+                {hasCopiedCode ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                {hasCopiedCode ? 'Copied' : 'Copy'}
+              </Button>
             </div>
           </div>
         )}

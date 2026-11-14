@@ -61,9 +61,18 @@ export function VictimPortalPage() {
     }
   };
 
-  const handleQuickDemoFill = (ref: string, code: string) => {
+  const handleQuickDemoFill = async (ref: string, code: string) => {
     setRefInput(ref);
     setCodeInput(code);
+    setIsLoggingIn(true);
+    setLoginError(null);
+    try {
+      await authenticate(ref.trim(), code.trim());
+    } catch (err: any) {
+      setLoginError(err.message || 'Authentication failed');
+    } finally {
+      setIsLoggingIn(false);
+    }
   };
 
   const handleSendChat = async (e: React.FormEvent) => {

@@ -87,19 +87,22 @@ export function Navbar({ currentTab, onSelectTab }: NavbarProps) {
                 )}
               </button>
 
-              {user?.role !== 'operator' && (
-                <button
-                  onClick={() => onSelectTab('dashboard')}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
-                    currentTab === 'dashboard'
-                      ? 'bg-primary/10 text-primary font-bold'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
-                  }`}
-                >
-                  <BarChart3 className="w-4 h-4" />
-                  Supervisor KPI
-                </button>
-              )}
+              <button
+                onClick={() => onSelectTab('dashboard')}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
+                  currentTab === 'dashboard'
+                    ? 'bg-primary/10 text-primary font-bold'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+                }`}
+              >
+                <BarChart3 className="w-4 h-4" />
+                Supervisor KPI
+                {user?.role === 'operator' && (
+                  <span className="text-[9px] px-1 py-0.2 rounded bg-muted text-muted-foreground border border-border">
+                    demo view
+                  </span>
+                )}
+              </button>
 
               <button
                 onClick={() => onSelectTab('audit')}
