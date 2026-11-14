@@ -229,6 +229,7 @@ Rules:
 | :--- | :--- | :--- | :--- | :--- |
 | **Minhaz** | `minuwu` | Frontend / Full-Stack / Architecture | `minhaz/*` | [contributors/minhaz/WORK_LOG.md](contributors/minhaz/WORK_LOG.md) |
 | **Asif** | `MdAsif-Hossain` | Backend / Services / Database | `asif/*` | [contributors/asif/WORK_LOG.md](contributors/asif/WORK_LOG.md) |
+| **Anim** | `anim710` | Backend / Services / Database | `anim/*` | [contributors/anim/WORK_LOG.md](contributors/anim/WORK_LOG.md) |
 | *(Next Teammate)* | *TBD* | *Assigned Role* | `<name>/*` | `contributors/<name>/WORK_LOG.md` |
 
 Per-person setup checklists are in [TEAM_INSTRUCTIONS.md](TEAM_INSTRUCTIONS.md).
@@ -243,7 +244,12 @@ Per-person setup checklists are in [TEAM_INSTRUCTIONS.md](TEAM_INSTRUCTIONS.md).
 - **Branches**: `asif/<topic>`; PR to `main`. No direct pushes to `main`.
 - **Agent instructions in Asif's workspace**: fulfil `XREQ`s where `To: Backend` or `To: Asif`; load Backend skills (4.2); keep Swagger `/docs` and `docs/API_SPEC.md` in sync before committing.
 
-### 5.4 Onboarding a New Contributor (2 minutes)
+### 5.4 Anim
+- **Role**: Backend engineering alongside Asif: services, data models, API integrations.
+- **Branches**: `anim/<topic>`; PR to `main`. No direct pushes to `main`.
+- **Agent instructions in Anim's workspace**: fulfil `XREQ`s where `To: Backend` or `To: Anim`; load Backend skills (4.2); coordinate with Asif on shared `backend/` files and keep `docs/API_SPEC.md` in sync before committing.
+
+### 5.5 Onboarding a New Contributor (2 minutes)
 1. Add a row to 5.1 and a short 5.x section (role, branch prefix, agent instructions).
 2. `cp -r contributors/_template contributors/<name>` and fill the header.
 3. Run `scripts/setup.sh` (or `scripts/setup.ps1` on Windows).

@@ -14,7 +14,7 @@ Use this log to share progress, planned work, and dependencies with the team. Up
 - 13 skills installed into `.claude/skills/` (pinned in `skills-lock.json`); catalog + routing in `docs/SKILLS.md`.
 - `docs/API_SPEC.md` made self-consistent (every endpoint uses the envelope; status legend added).
 - `.gitignore` fixed (no longer ignores `lib/`; graphify machine-specific files excluded), `.gitattributes` added (LF for hooks/scripts).
-- Pre-push hook hardened: refuses dirty tree, blocks direct push to `main`, clearer re-push message.
+- Pre-push hook hardened: decides per pushed ref (stdin), blocks any push to `main`, refuses dirty tree, re-pushes only merged branches.
 - `scripts/setup.sh` / `scripts/setup.ps1` one-shot onboarding; `TEAM_INSTRUCTIONS.md` now a real human guide with per-person checklists.
 - Knowledge graph built with graphify (`graphify-out/`), committed for agent use.
 
