@@ -1,10 +1,12 @@
 # Backend, Database & DevOps Plan — Fraud Relief Case System
 
-**Owner** Asif (Backend / Database / DevOps) · **Status** draft v0.3 · **Updated** 2026-11-14
+**Owner** Asif (Backend / Database / DevOps) · **Status** draft v0.4 · **Updated** 2026-11-14
 **Team** Backend: Asif, Anim · AI: Galib · Frontend: Minhaz
 **Contract** [docs/API_SPEC.md](../API_SPEC.md) · **Progress log** [contributors/asif/WORK_LOG.md](../../contributors/asif/WORK_LOG.md)
 
 This file explains *why* the backend is built the way it is. The API contract shows *what* it exposes. When the two disagree, fix one of them in the same PR.
+
+> **v0.4:** where this plan and [backend-development-guide.md](backend-development-guide.md) disagree, **the guide wins**.
 
 ---
 
@@ -62,15 +64,17 @@ Status: **Agreed** = follows directly from the brief · **Proposed** = needs a y
 | D3 | The AI only suggests. Output goes to `ai_extractions`, and only a person's "accept" copies values onto the case. | Brief: "a human decides". | Agreed |
 | D4 | Closing a case as `paid_out` or `rejected` is supervisor-only. | A second person on every money decision. | Proposed |
 | D5 | Bank separation is enforced in three layers: token-scoped API queries, Postgres row-level security (RLS), and 404 (not 403) for cross-bank access. IDs are UUIDs. | Even a missing filter in code can't leak another bank's data. It's the answer to judge question 1. | Agreed |
-| D6 | Stack: FastAPI, Postgres 16, SQLModel (built on SQLAlchemy 2, as the repo's `fastapi` skill recommends), Alembic, our own JWT login with seeded users, and Docker Compose. | Fits the committed skills. One command runs everything. We control RLS directly. Supabase would add a heavy local stack. | Proposed |
+| D6 | Stack: FastAPI, Postgres 16, SQLModel (built on SQLAlchemy 2, as the repo's `fastapi` skill recommends), Alembic, our own login with opaque session tokens (D15), and Docker Compose. | Fits the committed skills. One command runs everything. We control RLS directly. Supabase would add a heavy local stack. | Proposed |
 | D7 | The AI call is synchronous with a 20 s timeout. On failure: rule-based fallback, then `failed`. An AI failure is never an HTTP error. | The demo can't hang, and there is always a manual path. | Agreed |
 | D8 | The audit log is append-only. The app's DB role can only `INSERT` and `SELECT` it, and a trigger blocks `UPDATE` and `DELETE`. | "Who did what and when" has to be trustworthy. | Agreed |
 | D9 | One history trail: `audit_log`. `cases` also stores `status_changed_at` and `closed_at` so metrics are fast. | No second history table to keep in sync. | Agreed |
-| D10 | Uploaded files are stored in Postgres (`documents.content bytea`, 10 MB cap). Files are served only through the logged-in download endpoint. | Free hosting tiers (e.g. Render) may have no persistent disk, so a file on a volume could vanish on redeploy. In the database, files also get the same RLS bank separation and are covered by the `pg_dump` backup. Verify the host's disk and database limits before the first deploy. | Proposed |
+| D10 | Uploaded files are stored in Postgres in a separate `document_contents` table (1:1 with `documents`), loaded only by the download endpoint. | Free tiers may have no persistent disk; the database also gives RLS and backups. | Agreed |
 | D11 | A `closed` case is read-only. Edits, uploads, extractions, extraction reviews and transitions are refused with `409 CASE_CLOSED`. Notes are still allowed. | Closed cases are the record of a money decision, and the spec has no rule for them yet. This needs a new error code in API_SPEC (see §11). | Proposed |
-| D12 | Writes that depend on what the user saw (PATCH, transition, extraction review) send the case's `updated_at`. A mismatch returns `409 STALE_CASE`. | Stops one operator silently overwriting another's edit, or an extraction review overwriting a newer manual value. This needs a contract change (see §11). | Proposed |
-| D13 | Victims edit their own case without an account. Intake (or staff, for phone/paper cases) gives a per-case access code. Reference + code opens a 1-hour victim session for that case only. Contact details are editable until closed (D11); report details only while `received`. Only a hash of the code is stored. | Victims can fix mistakes and update contact details themselves, so operators handle fewer calls. Locking facts after verification keeps verified data trustworthy. No victim can reach another case. | Proposed |
-| D14 | Victims get a **case assistant** (RAG chatbot) inside their victim session (D13). Each bank has its own bluebook, and the assistant answers only from **the published bluebook of the case's bank** plus an allow-listed, non-identifying case summary. It has no tools, is read-only and makes no money promises. Questions it can't answer set `needs_staff`, and staff reply in the same thread. Retrieval runs in the backend's bank-scoped database session (pgvector + keyword search), not in AI code. | Victims wait 6–12 months and call for status updates; most process questions are answered in the bluebook. Taking the bank from the case keeps each bank's bluebook private. The minimal context keeps personal data away from the AI model, and escalation keeps a human in the loop. | Agreed (team, 2026-11-14) |
+| D12 | Every write to a case sends `expected_version`; SQLAlchemy optimistic locking (`version_id_col`) makes the check atomic → `409 STALE_CASE`. | Stops silent overwrites. Integers survive JSON round-trips; timestamps lose precision in JavaScript. | Agreed |
+| D13 | ~~Victim access codes~~, **replaced by D15**. | — | Replaced |
+| D14 | Victims get a **case assistant** (RAG chatbot) inside their account (D15). Each bank has its own bluebook, and the assistant answers only from **the published bluebook of the case's bank** plus an allow-listed, non-identifying case summary. It has no tools, is read-only and makes no money promises. Questions it can't answer set `needs_staff`, and staff reply in the same thread. Retrieval runs in the backend's bank-scoped database session (pgvector + keyword search), not in AI code. | Victims wait 6–12 months and call for status updates; most process questions are answered in the bluebook. Taking the bank from the case keeps each bank's bluebook private. The minimal context keeps personal data away from the AI model, and escalation keeps a human in the loop. | Agreed (team, 2026-11-14) |
+| D15 | Everyone has an account. Victims sign up and verify their email; staff and bank viewers are invited by a supervisor, who sets role and bank. Opaque session tokens in a `sessions` table give logout and instant revocation. Forgot/reset password by emailed one-time link. | Replaces access codes with one login for all; sign-up can never pick a privileged role. | Agreed (team, 2026-11-14) |
+| D16 | Email costs nothing: `EMAIL_MODE=console` prints emails in development and tests; a free SMTP tier sends them in the live demo. | $0 budget. | Agreed (provider: open) |
 
 ---
 
@@ -105,9 +109,9 @@ Every bank-owned table carries its own `bank_id`, even when it could be found th
 | Table | Key columns | Notes |
 | :--- | :--- | :--- |
 | `banks` | `id text pk` (`bank_a`…`bank_e`), `name` | Seeded, never changes |
-| `users` | `id uuid`, `email unique`, `name`, `password_hash`, `role`, `bank_id → banks null` | Check: `bank_id` is set exactly when `role = 'bank_viewer'` |
-| `cases` | `id uuid`, `reference unique`, `bank_id`, `status`, `status_changed_at`, `deadline`, `assigned_operator_id`, `victim_name/phone/email/address`, `preferred_language`, `amount numeric(14,2)`, `currency char(3)`, `transfer_date`, `account_number`, `account_holder_name`, `scam_type`, `description`, `channel`, `reported_date`, `consent_at timestamptz null`, `victim_access_hash`, `victim_access_version int`, `closure_reason`, `created_at`, `updated_at`, `closed_at` | Check: `closed_at`/`closure_reason` are set exactly when `status = 'closed'`. `consent_at` is set for every `web_form` case, from the intake form's `consent: true`. `victim_access_hash` holds a hash of the victim's access code, never the code itself; `victim_access_version` is incremented on reissue so old victim tokens stop working (D13). |
-| `documents` | `id`, `case_id`, `bank_id`, `filename`, `doc_type`, `mime_type`, `size_bytes`, `sha256`, `content bytea`, `uploaded_by`, `uploaded_at` | `content` is never returned by list or case endpoints, only by the download endpoint (D10). The file type is checked from the file's first bytes, not just its extension. |
+| `users` | `id uuid`, `email unique` (lower-case), `name`, `password_hash` (argon2id), `role` (`operator`/`supervisor`/`bank_viewer`/`victim`), `bank_id → banks null`, `email_verified_at`, `is_active` | Check: `bank_id` is set exactly when `role = 'bank_viewer'`. Auth tables `sessions`, `auth_tokens`, `invitations` store token hashes only (guide §5). |
+| `cases` | `id uuid`, `reference unique`, `bank_id`, `status`, `status_changed_at`, `deadline`, `assigned_operator_id`, `victim_name/phone/email/address`, `preferred_language`, `amount numeric(14,2)`, `currency char(3)`, `transfer_date`, `account_number`, `account_holder_name`, `scam_type`, `description`, `channel`, `reported_date`, `consent_at timestamptz null`, `victim_user_id → users null`, `version int`, `payout_amount`, `document_count`, `pending_extraction_count`, `closure_reason`, `created_at`, `updated_at`, `closed_at` | Check: `closed_at`/`closure_reason` are set exactly when `status = 'closed'`. `consent_at` is set for every `web_form` case, from the intake form's `consent: true`. `victim_user_id` links the case to the account of the victim (D15); `version` is the optimistic-lock counter (D12). |
+| `documents` | `id`, `case_id`, `bank_id`, `filename`, `doc_type`, `mime_type`, `size_bytes`, `sha256`, `uploaded_by`, `uploaded_at` | File bytes live in `document_contents` (D10). The file type is checked from its first bytes. |
 | `ai_extractions` | `id`, `document_id`, `case_id`, `bank_id`, `status`, `source`, `model`, `prompt_version`, `overall_confidence`, `review_lane`, `fields jsonb`, `missing_fields text[]`, `error jsonb`, `created_at`, `reviewed_by`, `reviewed_at`, `review_note` | `fields[].final_value` is filled in on review |
 | `notes` | `id`, `case_id`, `bank_id`, `author_id`, `body`, `created_at` | Kept so knowledge survives staff turnover |
 | `audit_log` | `id`, `at`, `actor_type`, `actor_id`, `actor_name`, `actor_role`, `action`, `case_id`, `bank_id`, `summary`, `changes jsonb`, `metadata jsonb` | Append-only (D8) |
@@ -115,7 +119,7 @@ Every bank-owned table carries its own `bank_id`, even when it could be found th
 | `kb_passages` | `id`, `document_id`, `bank_id`, `section`, `page`, `text`, `embedding vector(N)`, `embedding_model`, `tsv tsvector` | `N` is fixed by Galib's embedding model. If the model changes, re-embed. |
 | `chat_messages` | `id`, `case_id`, `bank_id`, `role`, `body`, `language`, `answer_type`, `citations jsonb`, `confidence`, `needs_staff`, `used_passage_ids uuid[]`, `model`, `prompt_version`, `latency_ms`, `feedback`, `author_id`, `created_at` | One thread per case. `cases.victim_question_pending boolean` is set by an escalation and cleared by a staff reply. |
 
-Enums are Postgres enum types with the same values as API_SPEC §3.4.
+Enums are `text` columns with `CHECK` constraints (same values as API_SPEC §3.4); no Postgres enum types.
 
 **Case references** come from a Postgres sequence through a `SECURITY DEFINER` function `next_case_reference()` that returns e.g. `RFR-2026-00042`. The function runs before the insert, so the intake endpoint never needs `INSERT ... RETURNING` (see §5.3).
 
@@ -130,16 +134,16 @@ Enums are Postgres enum types with the same values as API_SPEC §3.4.
 | `audit_log` | `(case_id, at DESC)` |
 | `audit_log` | `(bank_id, at DESC)` |
 | `ai_extractions` | `(status, review_lane, created_at)` |
-| `kb_passages` | `(bank_id)`; HNSW on `embedding`; GIN on `tsv` |
+| `kb_passages` | `(bank_id)`; GIN on `tsv`; exact vector search, no HNSW below ~1,000 passages |
 | `chat_messages` | `(case_id, created_at)` |
 
 ---
 
 ## 5. Bank separation (judge question 1)
 
-1. **The token carries scope.** The JWT holds `user_id`, `role` and `bank_id`. Each request runs in one transaction that starts with `SELECT set_config('app.role', :role, true), set_config('app.bank_id', :bank_id, true)`. The values are bound as parameters, never built into SQL strings.
+1. **Scope on every transaction.** Each request looks up its opaque session token (hashed in `sessions`) and loads the user. A SQLAlchemy `after_begin` hook runs `set_config('app.role' / 'app.user_id' / 'app.bank_id', ..., true)` at the start of every transaction, including after a commit (guide §4.2). Values are bound parameters.
 2. **Row-level security on every bank-owned table:** `cases`, `documents`, `ai_extractions`, `notes`, `audit_log`, `kb_documents`, `kb_passages`, `chat_messages`.
-   - Read policy: `current_setting('app.role', true) IN ('operator','supervisor') OR (current_setting('app.role', true) = 'bank_viewer' AND bank_id = current_setting('app.bank_id', true))`. The role check on the second branch matters: victim sessions also set `app.bank_id`, for bluebook retrieval (item 9). Without the check, a victim session would match every case of its bank. The `true` argument makes a missing setting return null instead of raising an error, so a request with no scope sees no rows.
+   - Read policy: `current_setting('app.role', true) IN ('operator','supervisor') OR (current_setting('app.role', true) = 'bank_viewer' AND bank_id = current_setting('app.bank_id', true))`. The role check on the second branch matters: victim requests also set `app.bank_id`, for bluebook retrieval (item 9). Without the check, a victim session would match every case of its bank. The `true` argument makes a missing setting return null instead of raising an error, so a request with no scope sees no rows.
    - Write policies: `INSERT` and `UPDATE` on `cases`, `documents`, `ai_extractions` and `notes` are allowed only for `app.role IN ('operator','supervisor')` (plus the public intake insert below). A `bank_viewer` therefore cannot write even if an API check is missing.
    - `audit_log` is the exception: its `INSERT` policy allows every role, because merely viewing a case writes `case.viewed`, including for a `bank_viewer`. It still has no `UPDATE` or `DELETE` (D8).
    - The app connects as `app_user`, which is not the table owner and has no `BYPASSRLS`, and the tables use `FORCE ROW LEVEL SECURITY`. So the policies apply even if the code forgets a filter.
@@ -150,15 +154,11 @@ Enums are Postgres enum types with the same values as API_SPEC §3.4.
    - Rate-limit `POST /api/intake` per IP (`429 RATE_LIMITED`) and `POST /api/auth/login` per IP and per email (a short lockout after repeated failures). Failed logins are audited.
    - Behind Render, Railway or Vercel the client IP arrives in `X-Forwarded-For`. Read it only from the trusted proxy, or every visitor shares one limit.
    - The same applies to uploads: reject by the file's first bytes, not the filename, and keep the 10 MB cap.
-   - Tokens are HS256 JWTs; decoding checks the algorithm, expiry, issuer and audience. CORS origins come from `CORS_ORIGINS` and are never credentialed (bearer tokens only, no cookies). These follow ECC's `python/fastapi.md` security rules.
+   - Session tokens are opaque random strings stored as SHA-256 hashes; every request checks that the session is not revoked and the user is active. CORS origins come from `CORS_ORIGINS` and are never credentialed (bearer tokens only, no cookies). These follow ECC's `python/fastapi.md` security rules.
 7. **Demo accounts.** The seeded logins share a known password (`Demo@1234`, API_SPEC §8). A public deployment may hold synthetic data only. Never load real victim data into it, and change or remove the seeded accounts before any real use.
-8. **Victim sessions (D13).**
-   - **Token:** claims `typ: victim`, `case_id` and `access_version`; expires after 1 hour.
-   - **Database scope:** each request runs with `app.role = 'victim'` and `app.case_id`. The only policy that matches is read/update on `cases` where `id = current_setting('app.case_id', true)`, so a victim session can't reach other cases, documents, notes, AI data or the audit log. (Writing the victim's own `case.viewed` / `case.updated` audit entries uses the all-roles `audit_log` insert policy from item 2.)
-   - **Field locks:** the service layer enforces which columns may change at each status (API_SPEC §3.5) and answers `409 CASE_LOCKED` otherwise. A closed case is read-only for victims too (D11).
-   - **Access codes:** 12 random Crockford base32 characters (60 bits), stored hashed. After 5 failed attempts per reference or IP within 15 minutes → `429`.
+8. **Victim accounts (D15).** A victim logs in like staff. Their scope is `app.role = 'victim'` and `app.user_id`; the only matching case policy is `victim_user_id = current_setting('app.user_id', true)`. Field locks (API_SPEC §3.5, `409 CASE_LOCKED`) are enforced in the service; closed cases are read-only (D11).
 9. **Case assistant (D14).**
-   - **Which bluebook:** the victim session sets `app.bank_id` from `cases.bank_id`, never from the request. The `kb_passages` policy for victims is `app.role = 'victim' AND bank_id = app.bank_id`, and the document must be `published`.
+   - **Which bluebook:** a victim request sets `app.bank_id` from `cases.bank_id`, never from the request. The `kb_passages` policy for victims is `app.role = 'victim' AND bank_id = app.bank_id`, and the document must be `published`.
    - **Filter before ranking:** the retrieval SQL puts the bank and `published` filters in the `WHERE` clause and ranks only what's left. A closer match from another bank can therefore never be returned.
    - **Chat threads:** `chat_messages` policy is `case_id = app.case_id` for victims; staff follow the item 2 rules.
    - **What reaches the AI model:**
@@ -174,7 +174,7 @@ Enums are Postgres enum types with the same values as API_SPEC §3.4.
 - `viewer@bank-a` → `GET /api/cases` → every row is `bank_a`.
 - `viewer@bank-a` → dashboard totals equal the `bank_a`-only counts.
 - **The database alone holds:** raw SQL as `app_user` with `app.bank_id = 'bank_a'` returns 0 `bank_b` rows. This proves layer 2 works even if layer 4 were removed.
-- A victim session for `RFR-2026-00042` → `GET /api/cases` → `403`. Changing `amount` on that verified case → `409 CASE_LOCKED`.
+- victim1 (owner of `RFR-2026-00042`) → `GET /api/cases` → `403`. Changing `amount` on that verified case → `409 CASE_LOCKED`.
 - **Database alone, victim:** raw SQL as `app_user` with `app.role = 'victim'`, `app.bank_id = 'bank_b'` and `app.case_id` set returns exactly one `cases` row, and `kb_passages` rows from `bank_b` only.
 - **Chatbot cross-bank test:** as a victim of a `bank_a` case, ask questions that only bank_b's bluebook answers. Each must return `no_answer`, and every retrieved passage must be from bank_a (§6).
 
@@ -230,15 +230,16 @@ Enums are Postgres enum types with the same values as API_SPEC §3.4.
 | Service | Image / build | Notes |
 | :--- | :--- | :--- |
 | `db` | `pgvector/pgvector:pg16` | Postgres 16 with the `vector` extension (D14). Named volume. `pg_isready` health check. |
-| `backend` | `./backend/Dockerfile` | Starts after `db` is healthy. Runs `alembic upgrade head`, then the seed (idempotent: skips if the banks exist), then `uvicorn` on `:8000`. Files live in Postgres (D10), so there is no document volume. |
+| `backend` | `./backend/Dockerfile` | Starts after `db` is healthy. Runs `alembic upgrade head` and the seed as `migrator` (idempotent: skips if the banks exist), then `uvicorn` on `:8000`. Files live in Postgres (D10), so there is no document volume. |
 | `frontend` | `./frontend` | Added when Minhaz has scaffolded it. |
 
 **`backend/.env.example`** (committed; `.env` never is):
 
 ```
 DATABASE_URL=postgresql+psycopg://app_user:app_password@db:5432/fraud_relief
-JWT_SECRET=change-me
-JWT_EXPIRE_HOURS=8
+MIGRATIONS_DATABASE_URL=postgresql+psycopg://migrator:migrator_password@db:5432/fraud_relief
+SESSION_HOURS=8
+EMAIL_MODE=console
 CORS_ORIGINS=http://localhost:3000,http://localhost:5173
 AI_PROVIDER=
 AI_API_KEY=
@@ -283,7 +284,7 @@ backend/
 │   ├── main.py          # FastAPI app, CORS, response envelope, error handlers
 │   ├── config.py        # settings from env
 │   ├── db.py            # engine, per-request scoped session (set_config for RLS)
-│   ├── security.py      # password hashing, JWT, current-user dependency
+│   ├── security.py      # password hashing, session tokens, current-user dependency
 │   ├── routers/         # health, auth, intake, cases, documents, extractions, dashboard, audit, victim, chat, kb
 │   ├── services/        # case_workflow (transitions, deadlines), audit, ai_extraction (+ rules fallback), rag (Galib) + retrieval and case context (backend), storage, seed
 │   ├── models/          # SQLModel tables + Pydantic schemas (mirror API_SPEC §4)
@@ -329,6 +330,8 @@ Still open:
 5. How do Asif and Anim split backend work? Suggested split: Asif takes database, RLS, migrations, seed and devops; Anim takes the routers in API_SPEC §6.
 6. **Case assistant models:** a local embedding model (no external calls, so the demo works offline) or an API? Which AI model writes the answers, and whose key?
 7. **Bluebook language:** what language are the bluebooks in, and do we translate answers into the victim's language (en/ja/bn)? Translation adds risk; citations always quote the original.
+8. **Reporting needs a verified account (D15)?** v0.4.0 says yes. Alternative: anonymous reports plus a later claim.
+9. **Free SMTP provider** for the live demo (D16).
 
 Resolved:
 

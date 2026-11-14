@@ -1,14 +1,22 @@
 # Backend Development Guide
 
-**Team** Asif (lead), Anim · **Status** v1.1 (revised after review) · **Updated** 2026-11-14
-**Contract** [API_SPEC.md](../API_SPEC.md) + [openapi.yaml](../openapi.yaml) · **Why** [backend-plan.md](backend-plan.md) · **AI side** [Galib's suggestions](../../contributors/galib/suggested_by_backend_team.md)
+**Team** Asif (lead), Anim · **Version** v2 (simplified) · **Updated** 2026-11-14
+**Contract** [API_SPEC.md](../API_SPEC.md) + [openapi.yaml](../openapi.yaml) (v0.4.0) · **Why** [backend-plan.md](backend-plan.md) · **Review** [backend-design-review.md](backend-design-review.md) · **AI side** [Galib's suggestions](../../contributors/galib/suggested_by_backend_team.md)
 
-How we build and test the backend. The contract says **what** the API does, the plan says **why**, and this guide says **how**. Devops (deployment, the full Docker setup) comes after the backend; only the dev database and one early hello-world deploy are covered here.
+How we build and test the backend. The contract says **what** the API does, the plan says **why**, and this guide says **how**. **Where the plan and this guide disagree, this guide wins.**
+
+**Status: no backend code exists yet.** Every endpoint in the contract is `PLANNED`. The mock at `localhost:4010` only replays contract examples (API_SPEC §9.1). An endpoint becomes `LIVE` when it passes §9 of this guide.
+
+**Principles:**
+- **One FastAPI service and one PostgreSQL database.** No queues, caches or extra services.
+- **The smallest reliable solution.** Add a layer, tool or table only when a real problem needs it.
+- **Security lives in the database too** (row-level security), not only in Python.
+- **Contract first.** The code matches API_SPEC and `openapi.yaml`, never the other way round silently.
+- **$0 budget.** Only free tools and free tiers (§3.2).
 
 **Before writing code, both developers and their coding agents:**
-- read §1–§5;
-- load the skills `fastapi`, `python-testing-patterns`, `supabase-postgres-best-practices` and `openapi-spec-generation` (AGENTS.md §3.3);
-- follow ECC's `python/*` rules where this guide doesn't say otherwise.
+- read §1–§6;
+- load the skills `fastapi`, `python-testing-patterns` and `supabase-postgres-best-practices` (AGENTS.md §3.3).
 
 ---
 
@@ -18,118 +26,37 @@ How we build and test the backend. The contract says **what** the API does, the 
 
 | | **Asif** | **Anim** |
 | :--- | :--- | :--- |
-| **Owns** | Database (migrations, RLS, triggers), request scoping (`db.py`), audit, documents and AI, victim side, contract changes | App framework (`create_app`, errors, response envelope, middleware), security and login (`security.py` + auth endpoints), seed data, cases domain, dashboard, staff chat, bluebook management, smoke script |
-| **Endpoints** (API_SPEC §5) | 6.4 history and audit log · 6.5 documents, extraction, review, review queue · 6.3 victim access code · 6.7 victim session, victim case, victim chat | 6.1 login · 6.2 health, banks, users · 6.3 intake, cases list/create/get/patch, transition, assign, notes · 6.6 dashboard, alerts · 6.8 staff chat, bluebooks |
-| **Count** | 15 endpoints + database foundation | 21 endpoints + app framework |
+| **Owns** | Database (migrations, RLS, constraints), `db.py` (scoped sessions), audit, documents and AI extraction, victim cases and victim chat, the contract and its Prism check | App framework (`create_app`, errors, envelope, logging, rate limits), **accounts and authentication** (sign-up, email verification, login/logout, password reset, invitations, deactivation, email sending), seed data, cases domain, dashboard, staff chat, bluebooks, smoke script |
+| **Endpoints** (API_SPEC §5) | 6.4 history, audit log · 6.5 documents, extraction, review, review queue · 6.7 victim cases, claims, victim chat · 6.3 victim invite | 6.1 auth and invitations · 6.2 health, banks, users · 6.3 cases, transition, assign, notes · 6.6 dashboard, alerts · 6.8 staff chat, bluebooks |
 
-### 1.2 Files (who may edit what)
+### 1.2 Files
 
 | Path | Owner | Rule for the other person |
 | :--- | :--- | :--- |
-| `backend/migrations/**`, `app/db.py` | Asif | **Only Asif writes migrations.** Need a column? Message Asif or open an `XREQ`. Two people writing migrations at once creates two Alembic "heads". |
-| `app/services/audit.py`, `app/services/victim_access.py`, `app/services/extraction.py`, `app/services/retrieval.py` | Asif | Call them; don't change them. |
-| `app/main.py`, `app/errors.py`, `app/responses.py`, `app/middleware/**`, `app/config.py` | Anim | Asif adds router lines to `main.py` through small PRs. |
-| `app/security.py`, `app/seed.py` | Anim | Asif reviews: `Principal` feeds the database scope, and the seed must respect the database rules. |
-| `app/services/case_workflow.py` (status changes, deadlines, missing fields) | Anim | Asif calls it from review and victim edits. |
-| `app/routers/<area>.py`, `app/services/<area>.py`, `app/repositories/<area>.py`, `app/models/<area>.py` | Owner of the area (§1.1) | One file per area, so you rarely touch the same file. |
+| `backend/migrations/**`, `app/db.py` | Asif | **Only Asif writes migrations.** Need a column? Ask Asif. |
+| `app/services/audit.py`, `app/services/extraction.py`, `app/services/victim_cases.py` | Asif | Call them; don't change them. |
+| `app/main.py`, `app/config.py`, `app/errors.py`, `app/responses.py`, `app/security.py`, `app/email.py`, `app/seed.py` | Anim | Asif adds router lines to `main.py` through small PRs. |
+| `app/services/case_workflow.py` | Anim | Asif calls it from review and victim edits. |
+| `app/routers/<area>.py`, `app/services/<area>.py`, `app/models/<area>.py` | Owner of the area (§1.1) | One file per area, so you rarely edit the same file. |
 | `app/services/ai_extraction.py`, `app/services/rag.py`, `app/prompts/**` | Galib | Backend only calls them (API_SPEC §7). |
-| `tests/**` | Whoever writes the code under test | Shared fixtures in `tests/conftest.py`: Anim. Database-rule fixtures: Asif. |
-| `docs/API_SPEC.md`, `docs/openapi.yaml` | Asif | Anim proposes changes, Asif applies them. Update both files together, **through a PR with one approval** (§9). |
+| `docs/API_SPEC.md`, `docs/openapi.yaml` | Asif | Changes go through a PR with one approval (§10). Update both files together. |
 
 ---
 
-## 2. Phases and timeline
+## 2. Phases
 
 Hours count from the hackathon start. The 🚦 lines are gates: don't start the next phase until the gate passes.
 
-### Phase 0: Agree (hours 0–2, together)
-
-| ID | Task | Owner | Done when |
+| Phase | Hours | Asif | Anim |
 | :--- | :--- | :--- | :--- |
-| P0.1 | Apply the "before coding" contract changes in §10 (C1–C4, C7, C12) | Asif | API_SPEC + openapi v0.4.0 merged through a PR; the lint check is clean |
-| P0.2 | Agree the shared interfaces in §4.3 (signatures only) | Both | Both say yes; stub files committed |
-| P0.3 | Dev database running on each machine (§3.2) | Each | `psql` connects as `migrator` and as `app_user` |
-| P0.4 | `backend/pyproject.toml`, dependencies, `fastapi dev` runs a hello-world `/api/health` | Anim | `curl localhost:8000/api/health` returns the envelope |
-| P0.5 | **Recommended (30 min):** deploy that hello-world to Render or Railway to find hosting limits early (sleeping service, database size and expiry). Full devops comes later. | Asif | A public URL returns `/api/health` |
-
-### Phase 1: Foundation (hours 2–6, in parallel)
-
-Only what the MVP needs. Chat, vector search and the victim-only database rules are built in Phase 4.
-
-| ID | Task | Owner | Depends on |
-| :--- | :--- | :--- | :--- |
-| A1 | Alembic with the `migrator` connection. **Migration 001 (core)**: `pgcrypto`; `banks`, `users`, `cases` (incl. `version`, counters, `victim_access_hash`/`victim_access_version`), `documents`, `document_contents`, `ai_extractions`, `notes`, `audit_log`, `idempotency_keys`, `rate_limits`; `CHECK` constraints instead of enum types; indexes | Asif | P0.3 |
-| A2 | **Migration 002**: RLS policies + `FORCE` + grants for those tables, append-only audit trigger, `next_case_reference()` (with `SET search_path`), counter triggers, `system` scope policies | Asif | A1 |
-| A3 | `app/db.py`: engine and pool; `SessionDep` that **commits before the response is sent** (§4.3); `short_tx(who)` and `system_session()` that re-apply the scope; `update_if_version()` | Asif | A1 |
-| A4 | `app/services/audit.py` (`record()`) and `app/services/victim_access.py` (`new_code()`, `hash_code()`) | Asif | A3 |
-| A5 | Database-rule test suite (§7.4) | Asif | A2, N6 |
-| N1 | `create_app()`, settings (`pydantic-settings`), CORS from env, router registry | Anim | P0.4 |
-| N2 | `errors.py` (`ApiError` + handlers, 422 converted to the envelope, 404/405, 500 with a request ID) and `responses.py` (`ok()`, `Page`, pagination parameters, `Money` type) | Anim | N1 |
-| N3 | `app/security.py`: argon2id hashing, JWT (alg/exp/iss/aud checked), `Principal`, role dependencies; refuses to start with a weak `JWT_SECRET` | Anim | P0.2 |
-| N4 | Middleware: request ID, structured logs with redaction, duplicate protection (§4.4 rule 8), rate limiter backed by Postgres | Anim | N2, A1 |
-| N5 | `GET /api/health` (database ping, `ai`, `rag`) | Anim | N1, A3 |
-| N6 | Seed (`app/seed.py`): banks, demo users, 30+ cases across all banks and statuses, 10+ documents with contents, demo victim codes, sample extractions. Idempotent. | Anim | A2 |
-| N7 | Test harness: `conftest.py` with **explicit test settings** (§7.2), `client`, `login_as(role)`, factories, reset of rate-limit and duplicate-protection tables before each test | Anim | N6 |
-
-### Phase 2: MVP endpoints (hours 6–14)
-
-| ID | Task | Owner |
-| :--- | :--- | :--- |
-| N8 | `POST /api/auth/login` (rate limit, audit), `GET /api/auth/me` | Anim |
-| N9 | `GET /api/banks`, `GET /api/users` | Anim |
-| N10 | `app/services/case_workflow.py`: allowed transitions, deadlines, `deadline_state`, missing fields, edit rules | Anim |
-| N11 | `GET /api/cases` (filters, sorting, pagination, flags from counters), `GET /api/cases/{id}` (+ deduplicated `case.viewed` audit) | Anim |
-| N12 | `POST /api/intake` (calls `victim_access.new_code()`), `POST /api/cases`, `PATCH /api/cases/{id}` (edit rules C1, atomic version check C3, field-by-field audit) | Anim |
-| N13 | `POST /api/cases/{id}/transition`, `POST /api/cases/{id}/assign` (both use the version check) | Anim |
-| A6 | `GET /api/cases/{id}/history` (JSON), `GET /api/audit-logs` | Asif |
-| A7 | `POST /api/cases/{id}/documents` (file type checked from its first bytes, 10 MB cap), `GET /api/documents/{id}/file` (download only, `nosniff`) | Asif |
-| A8 | AI extraction: Galib's `extract_fields()` stub, rule-based fallback, runner (timeout, concurrency cap, **AI call outside any DB transaction**), `POST …/extract`, `GET /api/extractions/{id}` | Asif |
-| A9 | `POST /api/extractions/{id}/review` (atomic: version check + fields through `case_workflow` + `final_value` + audit in one transaction) | Asif |
-
-🚦 **Hour-14 gate (the brief's "happy path")** — the §7.8 happy path must pass with real HTTP calls:
-1. Log in.
-2. Submit intake.
-3. Create a case.
-4. Upload a document.
-5. Run extraction.
-6. Accept the review.
-7. Move the case to Verified.
-8. Check that the audit history shows every step.
-
-If it isn't green, both of you fix it before anything else.
-
-### Phase 3: Should-tier and tests (hours 14–24)
-
-| ID | Task | Owner |
-| :--- | :--- | :--- |
-| N14 | `POST /api/cases/{id}/notes` | Anim |
-| N15 | `GET /api/dashboard/stats`, `GET /api/alerts/shared-accounts` | Anim |
-| N16 | Permission-table tests (§7.5) | Anim |
-| N17 | `backend/scripts/smoke.sh` (§7.9) | Anim |
-| A10 | `GET /api/review-queue`, CSV export of history | Asif |
-| A11 | Contract check through the Prism proxy (§7.7); fix every mismatch | Asif |
-| A12 | AI-down, timeout and prompt-injection tests (§7.6), concurrency tests (§7.3); hook up Galib's eval script | Asif |
-
-🚦 **Hour-24 security and contract gate.** This also covers the brief's hour-30 checkpoint.
-- Database-rule, permission, concurrency and AI-failure tests are green.
-- The contract check through the Prism proxy shows no errors.
-- The smoke script passes.
-
-**Extras start only after this gate.**
-
-### Phase 4: Extras (hours 24–34, only after the hour-24 gate)
-
-| ID | Task | Owner |
-| :--- | :--- | :--- |
-| A13 | **Migration 003 (victim):** victim RLS policies and the victim column-lock trigger. Endpoints: `POST /api/cases/{id}/victim-access`, `POST /api/victim/session`, `GET`/`PATCH /api/victim/case` | Asif |
-| A14 | **Migration 004 (assistant):** `vector` extension, `kb_documents`, `kb_passages`, `chat_messages` + their database rules. Victim chat: `GET /api/victim/chat`, `POST /api/victim/chat/messages` (bank-scoped retrieval, Galib's `answer()`, fallbacks, escalation), feedback | Asif |
-| N18 | Staff chat: `GET /api/cases/{id}/chat`, `POST …/chat/reply` (clears the escalation flag) | Anim |
-| N19 | Bluebooks: list, upload (background indexing with `system_session()`), publish, archive; startup cleanup for documents stuck in `processing` | Anim |
-
-### Phase 5: Harden (hours 34–36), then freeze
-
-- Both: bug hunt, the full smoke script, the full contract check.
-- **Hour 36 is the feature freeze: bug fixes only after that.** Devops starts.
+| **0. Agree** | 0–2 | Get contract v0.4.0 approved (PR, Minhaz) · dev database running · optional: deploy a hello-world to find hosting limits early | Agree the interfaces in §4.3 · `pyproject.toml`, `fastapi dev` serving `/api/health` |
+| **1. Foundation** | 2–6 | **A1** migration 001 (core tables, §7) · **A2** migration 002 (RLS, grants, audit trigger, reference function) · **A3** `db.py` (§4.2) · **A4** `audit.py` · **A5** database-rule tests | **N1** `create_app`, settings, errors, envelope, logging · **N2** `security.py` (password hashing, session tokens, user dependencies) · **N3** login, logout, me, rate limits · **N4** `email.py` (console/SMTP) · **N5** seed · **N6** test harness (§8.2) |
+| **2. MVP** | 6–14 | **A6** victim cases: create (the report form), list, get, edit · **A7** history, audit log · **A8** documents upload/download · **A9** extraction + circuit breaker (§4.5) · **A10** review | **N7** sign-up, verify email, resend, forgot/reset password · **N8** `case_workflow.py` · **N9** cases list/get · **N10** create/edit · **N11** transition, assign |
+| 🚦 **Gate 14** | | The §8.8 happy path passes over real HTTP | |
+| **3. Should + tests** | 14–24 | **A11** review queue, CSV export · **A12** Prism contract check, fix mismatches · **A13** AI-failure and concurrency tests | **N12** invitations, accept, deactivate · **N13** notes · **N14** dashboard, alerts · **N15** permission tests · **N16** smoke script |
+| 🚦 **Gate 24** | | Database-rule, permission, concurrency and AI-failure tests green; contract check clean; smoke script passes | |
+| **4. Extras** | 24–34 | **A14** victim invite + claim (phone/paper cases) · **A15** migration 003 (pgvector, bluebooks, chat) + victim chat | **N17** staff chat · **N18** bluebooks |
+| **5. Freeze** | 34–36 | Bug fixes, full smoke and contract check. **Hour 36: feature freeze.** Devops starts. | |
 
 ---
 
@@ -137,337 +64,363 @@ If it isn't green, both of you fix it before anything else.
 
 ### 3.1 Tools
 
-| Tool | Version | Why |
+| Tool | Version | Use |
 | :--- | :--- | :--- |
 | Python | 3.12 | runtime |
-| uv | latest | packages and venv (`fastapi` skill) |
-| Git (Git Bash on Windows) | any | curl and the scripts below run in Git Bash |
-| Postgres 16 + pgvector | via Docker (recommended) | dev and test database |
-| Node | **22.12+** | `npx` for Prism (contract check) and Redocly CLI v2 (lint), which needs Node 22.12+ |
+| uv | latest | packages and venv |
+| Git Bash (Windows) | any | the curl commands in §8.8 |
+| PostgreSQL | 16 | `pgvector` is only needed from Phase 4 |
+| Node | **22.12+** | `npx` for Prism 5.14.2 (contract check) and Redocly CLI 2.78.0 (lint); Redocly v2 needs Node 22.12+ |
 
-### 3.2 Dev database
+### 3.2 Free services ($0)
 
-**Option A (recommended): Docker Desktop.** Not installed on Asif's machine yet. A minimal `docker-compose.yml` with only the `db` service (image `pgvector/pgvector:pg16`) is part of P0.3. It runs an init SQL file that creates:
-- `migrator`: owns the tables, used only by Alembic and the seed;
-- `app_user`: what the app connects as. Not an owner, no `BYPASSRLS`;
-- the databases `fraud_relief` and `fraud_relief_test`.
+| Need | Development and tests | Live demo |
+| :--- | :--- | :--- |
+| Database | Docker image `pgvector/pgvector:pg16`, a local install, or a free hosted tier | A free hosted Postgres; add `?sslmode=require` to its URL |
+| Email | `EMAIL_MODE=console`: the email (with its link) is printed in the server log; tests read an in-memory outbox | `EMAIL_MODE=smtp` with any free SMTP tier (team decision, §12) |
+| Hosting | not needed | free tier, chosen in the devops phase |
 
-```bash
-docker compose up -d db
-```
+### 3.3 Database users
 
-**Option B: a local Postgres 16 install.** You must install pgvector for Postgres yourself, which is harder on Windows. Then run the same init SQL by hand.
+- **`migrator`** owns the tables. It runs only Alembic and the seed.
+- **`app_user`** is what the app connects as. It isn't an owner and has no `BYPASSRLS`, so RLS always applies.
+- Two databases: `fraud_relief` and `fraud_relief_test`.
 
-**Option C: a free hosted Postgres that has pgvector**, one per developer. Fine for development; slower tests.
-
-### 3.3 First run
+### 3.4 First run
 
 ```bash
 cd backend
-uv sync                                   # installs deps from uv.lock
-cp .env.example .env                      # fill in the values; .env is never committed
-uv run alembic upgrade head               # runs as MIGRATIONS_DATABASE_URL (migrator)
-uv run python -m app.seed                 # idempotent
-uv run fastapi dev                        # http://localhost:8000/docs
+uv sync
+cp .env.example .env              # never commit .env
+uv run alembic upgrade head       # uses MIGRATIONS_DATABASE_URL (migrator)
+uv run python -m app.seed         # idempotent
+uv run fastapi dev                # http://localhost:8000/docs
 ```
 
-### 3.4 Dependencies
+### 3.5 Dependencies
 
-- **Runtime:** `fastapi[standard]` (a version that supports `Depends(..., scope="function")`; pin it in `uv.lock`), `sqlmodel`, `psycopg[binary]`, `alembic`, `pydantic-settings`, `pyjwt`, `pwdlib[argon2]`, `pgvector` (Phase 4)
+- **Runtime:** `fastapi[standard]`, `sqlmodel`, `psycopg[binary]`, `alembic`, `pydantic-settings`, `pwdlib[argon2]`
 - **Dev:** `pytest`, `pytest-cov`, `freezegun`, `ruff`
+- **Phase 4:** `pgvector`
 
-### 3.5 Environment variables (`backend/.env.example`)
+### 3.6 Environment (`backend/.env.example`)
 
 ```
-APP_ENV=dev                               # dev | test | prod. Only changes: weak-secret check (not dev), test-DB guard (test)
+APP_ENV=dev                         # dev | test | prod
 DATABASE_URL=postgresql+psycopg://app_user:app_password@localhost:5432/fraud_relief
 MIGRATIONS_DATABASE_URL=postgresql+psycopg://migrator:migrator_password@localhost:5432/fraud_relief
 TEST_DATABASE_URL=postgresql+psycopg://app_user:app_password@localhost:5432/fraud_relief_test
 TEST_MIGRATIONS_DATABASE_URL=postgresql+psycopg://migrator:migrator_password@localhost:5432/fraud_relief_test
-JWT_SECRET=                               # 32+ random characters; the app refuses to start outside dev if weak
-JWT_ISSUER=fraud-relief-api
-JWT_AUDIENCE=fraud-relief-web
-JWT_EXPIRE_HOURS=8
+SESSION_HOURS=8
 CORS_ORIGINS=http://localhost:3000,http://localhost:5173
-AI_PROVIDER=
+FRONTEND_BASE_URL=http://localhost:3000   # links in emails point here
+EMAIL_MODE=console                  # console | smtp
+EMAIL_FROM=no-reply@example.test
+SMTP_HOST=
+SMTP_PORT=587
+SMTP_USER=
+SMTP_PASSWORD=
+AI_MODE=live                        # live | off (off = test the AI-down path)
 AI_API_KEY=
-AI_MODE=live                              # live | off (off = test the AI-down path)
 AI_TIMEOUT_SECONDS=20
 AI_MAX_CONCURRENT=4
-AI_CONFIDENCE_THRESHOLD=0.75
-RAG_EMBEDDING_MODEL=
-RAG_TOP_K=5
-RAG_MIN_SCORE=0.5
-CHAT_MAX_QUESTIONS_PER_HOUR=20
-IDEMPOTENCY_TTL_HOURS=24
-TRUSTED_PROXY_COUNT=0
 ```
 
 ---
 
-## 4. Architecture and code rules
+## 4. Architecture
 
-### 4.1 Layout
-
-Follows the team structure (`routers/`, `services/`, `models/`) and adds `repositories/` for database access.
+### 4.1 Layout (the team structure)
 
 ```
 backend/
 ├── app/
-│   ├── main.py            # create_app(): middleware, error handlers, routers
-│   ├── config.py          # Settings (pydantic-settings)
-│   ├── db.py              # engine, SessionDep, short_tx(), system_session(), update_if_version()
-│   ├── security.py        # hashing, JWT, Principal, role dependencies
-│   ├── errors.py          # ApiError, ErrorCode, exception handlers
-│   ├── responses.py       # ok(), Page, pagination/sort params, Money type
-│   ├── middleware/        # request_id.py, logging.py, idempotency.py, rate_limit.py
-│   ├── routers/           # HTTP only: auth, reference, intake, cases, documents, extractions, audit, dashboard, victim, chat, kb
-│   ├── services/          # business rules, transactions, audit calls (one file per area)
-│   ├── repositories/      # SQL only, one file per table group
-│   ├── models/            # tables.py (SQLModel tables) + one schemas file per area (requests/responses)
-│   ├── prompts/           # Galib
+│   ├── main.py        # create_app(): middleware, error handlers, routers
+│   ├── config.py      # Settings (pydantic-settings)
+│   ├── db.py          # engine, get_session, per-transaction scope, system_session
+│   ├── security.py    # password hashing, session tokens, Principal, role dependencies
+│   ├── email.py       # send(to, subject, body): console or SMTP
+│   ├── errors.py      # ApiError, error codes, handlers (422 → envelope)
+│   ├── responses.py   # ok(), Page, Money
+│   ├── routers/       # HTTP only, one file per area
+│   ├── services/      # rules + SQL (SQLModel) + audit + commit, one file per area
+│   ├── models/        # SQLModel tables and request/response schemas
+│   ├── prompts/       # Galib
 │   └── seed.py
-├── migrations/            # Alembic (written by hand for RLS, triggers, grants, extensions)
-├── tests/                 # unit/, api/, rls/, permissions/, contract/, ai/, concurrency/
+├── migrations/        # Alembic, hand-written for RLS, triggers, grants
+├── tests/             # unit/, api/, rls/, permissions/, ai/
 ├── scripts/smoke.sh
-├── eval/                  # Galib's labelled docs and golden questions
-├── pyproject.toml
 └── .env.example
 ```
 
-### 4.2 Layers: what may call what
+**Router → service → database.** Routers handle HTTP only. Services hold the rules, the SQL, the audit call and the commit. There is no separate repository layer; add one only if the same query is needed in three or more places.
 
+### 4.2 The three database rules that make writes safe
+
+**1. Every transaction carries the caller's scope.** The scope goes into `session.info` once, and a SQLAlchemy event applies it at the start of **every** transaction. That includes transactions opened after a commit and in background jobs.
+
+```python
+# app/db.py (Asif)
+@event.listens_for(Session, "after_begin")
+def _apply_scope(session, transaction, connection):
+    scope = session.info.get("scope")                 # set by get_session / system_session
+    if scope is None:
+        return                                         # no scope → RLS shows nothing (fails closed)
+    connection.exec_driver_sql(
+        "select set_config('app.role', %s, true), set_config('app.user_id', %s, true), "
+        "set_config('app.bank_id', %s, true)",
+        (scope.role, scope.user_id or "", scope.bank_id or ""),
+    )
+
+def get_session(who: CurrentPrincipal) -> Iterator[Session]:
+    with Session(engine, info={"scope": who.scope()}) as s:
+        yield s                                        # cleanup only rolls back and closes
+SessionDep = Annotated[Session, Depends(get_session)]
 ```
-router  →  service  →  repository  →  database
-              ↘ audit.record()   ↘ case_workflow   ↘ AI functions (never inside a DB transaction)
+
+**2. Commit before success.** By default FastAPI runs dependency cleanup **after** the response is sent, so a commit placed there could fail after the client already got `201`. So:
+- **every write service ends with `s.commit()`** before it returns;
+- the dependency never commits;
+- if the commit fails, the error handler returns a `500` envelope and nothing was saved.
+
+**3. Concurrent edits can't overwrite each other.** `cases` has an integer `version` column, mapped with SQLAlchemy's built-in optimistic locking.
+
+```python
+class CaseRow(SQLModel, table=True):
+    __mapper_args__ = {"version_id_col": ...}          # the `version` column; SQLAlchemy adds WHERE version = :loaded
+# in the service:
+case = get_visible_case(s, case_id)                    # 404 if not visible
+if case.version != data.expected_version:
+    raise ApiError(409, "STALE_CASE", "This case changed; reload it")
+apply_changes(case, data); audit.record(...)
+try:
+    s.commit()                                         # UPDATE ... WHERE id = :id AND version = :loaded
+except StaleDataError:                                 # someone else committed in between
+    s.rollback(); raise ApiError(409, "STALE_CASE", "This case changed; reload it")
 ```
 
-| Layer | Does | Never does |
-| :--- | :--- | :--- |
-| **Router** | Parses input (Pydantic), picks the dependencies, calls **one** service function, wraps the result in `ok()` | Business rules, SQL, try/except for flow control |
-| **Service** | Rules, permission checks beyond the role, audit, transaction boundaries, mapping database rows to response schemas | HTTP objects (`Request`, `Response`) |
-| **Repository** | SQL through SQLModel. **Always** runs in a scoped session. Explicit column lists for big tables. | Business decisions, commits |
-| **Models** | Tables, plus request schemas (`extra="forbid"`) and response schemas that mirror API_SPEC §4 exactly | Logic |
+The check in Python gives a clear error. The database `WHERE version` makes it atomic, so two simultaneous requests can never both win.
 
-### 4.3 Shared interfaces (agree in P0.2, then don't break them)
+### 4.3 Shared interfaces (agree in Phase 0)
 
 ```python
 # app/security.py (Anim)
-class Principal(BaseModel):
-    kind: Literal["user", "victim", "public", "system"]
-    user_id: UUID | None; role: Role | None; bank_id: str | None; case_id: UUID | None; name: str
-    def actor(self) -> Actor: ...                       # for audit entries
-
-CurrentUser = Annotated[Principal, Depends(get_current_principal)]   # any logged-in staff user
-StaffUser = Annotated[Principal, Depends(require_roles(Role.operator, Role.supervisor))]
-SupervisorUser = Annotated[Principal, Depends(require_roles(Role.supervisor))]
-VictimUser = Annotated[Principal, Depends(get_victim_principal)]
+class Principal(BaseModel):            # who is calling
+    user_id: UUID; name: str; role: Role; bank_id: str | None
+    def scope(self) -> Scope: ...
+    def actor(self) -> Actor: ...       # for audit entries
+CurrentPrincipal  # any logged-in account
+StaffUser         # operator or supervisor
+SupervisorUser
+VictimUser        # role victim with a verified email
 
 # app/db.py (Asif)
-def get_scoped_session(who: AnyPrincipal) -> Iterator[Session]:
-    """Opens a transaction, runs set_config('app.role'/'app.bank_id'/'app.case_id', ..., true) from `who`,
-    yields, then COMMITS. On any exception: rollback and re-raise."""
-SessionDep = Annotated[Session, Depends(get_scoped_session, scope="function")]
-#   scope="function": the commit runs after the route returns but BEFORE the response is sent,
-#   so a failed commit becomes an error response, never a 201 for data that wasn't saved.
-
-def short_tx(who: Principal) -> ContextManager[Session]: ...   # NEW connection + transaction, re-applies who's scope, commits on exit
-def system_session() -> ContextManager[Session]: ...           # app.role='system'; background jobs only
-def update_if_version(s: Session, table, row_id: UUID, expected_version: int, values: dict) -> Row | None:
-    """UPDATE ... SET ..., version = version + 1 WHERE id = :id AND version = :expected RETURNING *.
-    None means: not visible (→ 404) or stale (→ 409 STALE_CASE). The caller tells them apart with one SELECT."""
+SessionDep                                      # §4.2
+def system_session() -> ContextManager[Session]: ...    # scope role='system': auth lookups, background jobs, seed
 
 # app/services/audit.py (Asif)
-def record(s: Session, *, action: AuditAction, actor: Actor, summary: str, case: CaseRow | None = None,
-           changes: dict[str, dict] | None = None, metadata: dict | None = None) -> None: ...
+def record(s, *, action, actor, summary, case=None, changes=None, metadata=None) -> None: ...
 
-# app/errors.py (Anim)
-class ApiError(Exception):
-    def __init__(self, status: int, code: ErrorCode, message: str, details: dict | None = None): ...
-def not_found(what: str) -> ApiError: ...          # 404 RESOURCE_NOT_FOUND, also for "another bank's"
-def validation_error(field: str, message: str) -> ApiError: ...
-
-# app/responses.py (Anim)
-def ok(data, message: str = "ok") -> dict: ...
-PageParams = Annotated[PageQuery, Depends()]        # page, page_size (max 100)
+# app/errors.py, app/responses.py (Anim)
+class ApiError(Exception): (status, code, message, details=None)
+def ok(data, message="ok") -> dict: ...
 Money = Annotated[Decimal, Field(ge=0, max_digits=14, decimal_places=2),
                   PlainSerializer(float, return_type=float, when_used="json")]   # JSON number, not a string
 
+# app/email.py (Anim)
+def send(to: str, subject: str, body: str) -> None: ...     # console or SMTP; tests swap in an outbox
+
 # app/services/case_workflow.py (Anim)
-def allowed_transitions(case: CaseRow, who: Principal) -> list[CaseStatus]: ...
-def check_transition(case: CaseRow, who: Principal, req: TransitionRequest) -> None: ...  # raises ApiError
-def apply_fields(s: Session, case: CaseRow, changes: dict, who: Principal, expected_version: int) -> dict: ...
-#   shared by PATCH, review and victim edit; uses update_if_version(); returns {field: {from, to}} for the audit
-def missing_fields(case: CaseRow) -> list[MissingField]: ...
-def deadline_state(case: CaseRow, now: datetime) -> DeadlineState: ...
+allowed_transitions(case, who) · check_transition(case, who, req) · missing_fields(case) · deadline_state(case, now)
 ```
 
 ### 4.4 Rules for every endpoint
 
-1. **Contract first.** Field names, types, status codes and errors exactly as in API_SPEC and `openapi.yaml`. A different shape means a contract change (Asif, via a PR), never a quiet change.
-2. **Envelope everywhere.** Success is `ok(...)`; errors are `raise ApiError(...)`. Never return an error dict by hand.
-3. **Validation lives in schemas.** Use `Annotated[..., Field(...)]` / `StringConstraints`, `extra="forbid"` on requests, and no `...` (Ellipsis) defaults (`fastapi` skill).
-4. **Scope is never optional.** Every query goes through `SessionDep`, `short_tx(who)` or `system_session()`; never a bare session. The repository also filters by scope. Another bank's record returns **404**, the same as a missing one.
-5. **Commit before responding.** Writes go through `SessionDep` (scope `"function"`) or an explicit `short_tx(who)` that has committed before the route returns. A success status is only ever sent for committed data.
-6. **Every write is audited in the same transaction** as the change, recording changed fields as `{from, to}`. If the audit insert fails, the change rolls back.
-7. **Edit (PATCH) rules (C1):** a missing field stays unchanged, `null` clears it, and nested objects (`victim`) merge field by field.
-8. **Edit conflicts are atomic (C3).** Every case has an integer `version`. PATCH, transition, review and victim PATCH send `expected_version`.
-   - The update is one statement: `UPDATE … WHERE id = :id AND version = :expected` through `update_if_version()`. No row back → `409 STALE_CASE` (or 404 if not visible).
-   - Never compare versions in Python and update afterwards: two requests can both pass that check.
-   - The update and its audit entry share one transaction.
-   - Why not `updated_at`? JavaScript dates drop microseconds, so frontends would get false conflicts.
-9. **Duplicate protection (`Idempotency-Key`, C2)** on `POST /api/cases`, document upload, extract and chat messages. **Not** on the anonymous intake; see the last point.
-   - **The key** is a client-generated UUID v4 (anything else → 422).
-   - **Scope:** stored per `(principal kind + id, method + route, key)`, unique in the database. One user's key can never return another user's response.
-   - **Same request:** the server stores a SHA-256 hash of the request body. The same key with a different body → `422 IDEMPOTENCY_KEY_REUSED`.
-   - **Atomic:** the first request inserts the key as `in_progress` (`INSERT … ON CONFLICT DO NOTHING`) in its own short transaction. A second request while the first runs → `409 REQUEST_IN_PROGRESS`.
-   - **What's stored:** the final status and body. A replay returns them with the header `Idempotent-Replayed: true`. If the first request failed with a 5xx, the key is deleted so a retry can run.
-   - **Expiry:** `IDEMPOTENCY_TTL_HOURS`, cleaned up on startup.
-   - **Anonymous intake:** no stored replay. Replaying would mean storing the plaintext access code. Instead, the frontend disables the submit button, intake is rate-limited per IP, and double submissions are flagged by `possible_duplicate` (C6).
-10. **No network calls inside a transaction.** For AI work: read in `short_tx(who)`, call the AI with no transaction open, then write in a new `short_tx(who)` using the version check. Cap concurrent AI calls at `AI_MAX_CONCURRENT`; when the cap is reached, return the fallback immediately instead of waiting.
-11. **Time, money, IDs:**
-    - time: `datetime.now(UTC)`, stored as `timestamptz`
-    - money: the `Money` type: `Decimal` in Python, `numeric(14,2)` in the database, and an **explicit float serializer** so the JSON has a number (Pydantic would otherwise write a string). A test checks this (§7.3).
-    - IDs: UUID v4
-12. **Logs:**
-    - one structured line per request: request ID, route, status, duration, user ID
-    - **never** passwords, tokens, access codes, `Authorization` headers, or the bodies of `/intake` and `/victim/*`
-13. **Sync by default.** Use plain `def` routes with the sync SQLModel session (`fastapi` skill). Only use `async def` when every call inside is async.
-14. **Every route** declares `response_model=Envelope[...]`, `summary`, `tags`, and its `responses` for error codes, so it appears correctly in Swagger.
+1. **Contract first:** field names, status codes and error codes exactly as in API_SPEC and `openapi.yaml`.
+2. **Envelope everywhere:** `ok(...)` for success, `raise ApiError(...)` for errors. Validation errors are converted to the envelope by one handler.
+3. **Validation in schemas:** `extra="forbid"` on requests, constraints with `Field`/`StringConstraints`.
+4. **Scope everywhere:** only `SessionDep` or `system_session()`, never a bare session. Another bank's record, or another victim's case, returns **404**.
+5. **Commit before success**, with the audit entry in the same transaction (§4.2).
+6. **Edit rules:** a missing field stays unchanged, `null` clears it, nested objects merge.
+7. **Writes to a case send `expected_version`** (§4.2).
+8. **Closed cases are read-only** (`409 CASE_CLOSED`), except for notes.
+9. **Money** uses `Money` (JSON number). Time is `datetime.now(UTC)` / `timestamptz`. IDs are UUID v4.
+10. **Logs** get one line per request (ID, route, status, duration, user ID). Never passwords, tokens, email links, `Authorization` headers, or the bodies of auth and victim requests.
+
+Sync `def` routes by default (the `fastapi` skill). No network call while a transaction is open (§4.5).
+
+### 4.5 AI calls
+
+- **No open transaction during the call:** read what's needed, `s.commit()` (this ends the transaction and returns the connection to the pool), call the AI, then write the result. The next query starts a new transaction, and the scope is re-applied automatically (§4.2).
+- **Limits:** `AI_TIMEOUT_SECONDS`, at most `AI_MAX_CONCURRENT` calls at once.
+- **Circuit breaker**, a module-level counter:
+  - after 3 failures or timeouts in a row, skip the AI for 60 s and use the fallback immediately;
+  - then try one call;
+  - `/api/health` shows `ai: unavailable` while it's open.
 
 ---
 
-## 5. Recipe: building one CRUD resource
+## 5. Accounts and authentication
 
-Example: notes (`POST /api/cases/{case_id}/notes`). Every resource follows the same 8 steps.
+### 5.1 Who gets an account how
 
-1. **Read the contract:** the API_SPEC §6 section and the `openapi.yaml` path. Write down status codes and errors.
-2. **Table** (Asif): a new table or column means a migration, the RLS policy, an index, and a grant to `app_user`.
-3. **Schemas:** a request model (`extra="forbid"`) and a response model mirroring §4.
-4. **Repository:** functions that take a `Session` and return rows. No commits.
-5. **Service:** load the parent in scope (or 404), check the rules, write, audit, map to the response.
-6. **Router:** a thin function with dependencies and `ok(...)`. `SessionDep` commits before the response.
-7. **Tests:** the cases in §7.3.
-8. **curl check** (§7.8), then the Definition of Done (§8).
+| Account | How it's created | Can choose role or bank? |
+| :--- | :--- | :--- |
+| Victim | **Signs up** with email + password, then verifies the email | No. The role is always `victim`; there's no role field |
+| Operator, supervisor, bank viewer | **Invitation** from a supervisor, who sets the role (and the bank for a bank viewer). The invitee sets a password. | No. The role and bank come from the invitation |
+| Demo staff and victims | The seed (synthetic, API_SPEC §8) | — |
+
+### 5.2 Tokens
+
+| Token | Lifetime | Stored as | Ends when |
+| :--- | :--- | :--- | :--- |
+| **Session** (the bearer token after login) | `SESSION_HOURS` (8) | SHA-256 hash in `sessions` | Logout, password reset, deactivation, or expiry |
+| Email verification | 24 h | hash in `auth_tokens` | Used once |
+| Password reset | 1 h | hash in `auth_tokens` | Used once, or a newer reset is requested |
+| Invitation | 72 h | hash in `invitations` | Accepted or revoked |
+
+- All tokens are random: `secrets.token_urlsafe(32)`. The plaintext appears only in the response (session) or the email link, never in the database or the logs.
+- Session tokens are opaque, not JWTs. Every request looks up `sessions` joined to `users` (`is_active`) by the token hash. That's one indexed read, it makes logout and deactivation take effect immediately, and there's no signing key to manage.
+- Auth lookups run in `system_session()`. The caller's scope is only known after the lookup.
+
+### 5.3 Flows
+
+1. **Sign-up:** `POST /api/auth/signup` → `202`. A verification email is sent. If the email already has an account, the response is the same `202` and that address gets an "you already have an account" email instead, so nobody can test which emails exist.
+2. **Verify:** `POST /api/auth/verify-email {token}` → `200`. Unverified victims get `403 EMAIL_NOT_VERIFIED` at login. `POST /api/auth/resend-verification {email}` always returns `202`.
+3. **Login:** `POST /api/auth/login` → a session token + user. **Logout:** `POST /api/auth/logout` revokes the current session.
+4. **Forgot password:** `POST /api/auth/forgot-password {email}` always returns `202`. A reset link is sent if an active account exists. **Reset:** `POST /api/auth/reset-password {token, new_password}` sets the password and revokes **all** that user's sessions.
+5. **Invite** (supervisor): `POST /api/invitations {email, name, role, bank_id}`.
+   - `bank_id` is required for `bank_viewer` and must be empty for `operator` and `supervisor`.
+   - An email with a link is sent.
+   - `GET /api/invitations` lists them; `POST /api/invitations/{id}/revoke` cancels one.
+6. **Accept:** `POST /api/auth/accept-invitation {token, password}` creates the account with the invited role and bank. The email counts as verified, because the invitee received the link.
+7. **Deactivate** (supervisor): `PATCH /api/users/{id} {"is_active": false}` revokes all that user's sessions. A supervisor can't deactivate themselves.
+8. **Victim's phone/paper case** (Phase 4): an operator sends `POST /api/cases/{id}/victim-invite` to the email on the case. The victim, logged in with **that same verified email**, calls `POST /api/victim/claims {token}` and the case is linked to their account.
+
+### 5.4 Rules
+
+- **Passwords:** 10–128 characters, hashed with argon2id (`pwdlib`). Emails are stored lower-case.
+- **Rate limits** (in memory, per IP and per email; fine for one server instance):
+  - login: 5 failures per 15 min
+  - sign-up, resend and forgot-password: 5 per hour
+  - every `429` carries `Retry-After`
+- **Victims' scope:** victims see only cases where `cases.victim_user_id` is their own ID. This is enforced by RLS, not only by the code.
+- **Staff routes reject victim accounts with `403`, and victim routes reject staff with `403`.**
+
+### 5.5 Future work (not in the hackathon build)
+
+Multi-factor login, sign-in with Google or a bank, refresh tokens and a "my devices" list, changing email, account deletion, a breached-password check, bank-level admins who invite their own viewers, and a CLI to create the first supervisor outside the seed.
+
+---
+
+## 6. Recipe: one CRUD endpoint
+
+1. Read the API_SPEC section and the `openapi.yaml` path: status codes and errors.
+2. **Table** (Asif): a migration, the RLS policy, an index, and a grant to `app_user`.
+3. **Schemas:** request (`extra="forbid"`) and response, mirroring API_SPEC §4.
+4. **Service:** load in scope (or 404), check the rules, write, audit, **commit**, map to the response.
+5. **Router:** a thin function with `ok(...)`.
+6. **Tests:** §8.3. Then curl (§8.8) and the Definition of Done (§9).
 
 ```python
-# app/models/notes.py
-class NoteCreate(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    body: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=4000)]
-
-class NoteOut(BaseModel):
-    id: UUID
-    body: str
-    author: UserRef
-    created_at: datetime
-
-# app/repositories/notes.py
-def insert(s: Session, *, case_id: UUID, bank_id: str, author_id: UUID, body: str) -> NoteRow:
-    row = NoteRow(case_id=case_id, bank_id=bank_id, author_id=author_id, body=body)
-    s.add(row)
-    s.flush()                      # assigns id/created_at; SessionDep commits before the response
-    return row
-
 # app/services/notes.py
 def add_note(s: Session, who: Principal, case_id: UUID, data: NoteCreate) -> NoteOut:
-    case = cases_repo.get_visible(s, case_id)
+    case = s.exec(select(CaseRow).where(CaseRow.id == case_id)).first()   # RLS already limits rows
     if case is None:
-        raise not_found("Case")
-    row = notes_repo.insert(s, case_id=case.id, bank_id=case.bank_id, author_id=who.user_id, body=data.body)
-    audit.record(s, action=AuditAction.note_added, actor=who.actor(), summary="Note added", case=case)
-    return NoteOut(id=row.id, body=row.body, author=UserRef(id=who.user_id, name=who.name), created_at=row.created_at)
+        raise ApiError(404, "RESOURCE_NOT_FOUND", "Case not found")
+    note = NoteRow(case_id=case.id, bank_id=case.bank_id, author_id=who.user_id, body=data.body)
+    s.add(note)
+    audit.record(s, action="note.added", actor=who.actor(), summary="Note added", case=case)
+    s.commit()                                                             # before returning
+    return NoteOut.from_row(note, author=who)
 
 # app/routers/cases.py
-router = APIRouter(prefix="/api/cases", tags=["cases"])
-
 @router.post("/{case_id}/notes", status_code=201, response_model=Envelope[NoteOut], summary="Add a note")
 def create_note(case_id: UUID, data: NoteCreate, who: StaffUser, s: SessionDep) -> dict:
     return ok(notes_service.add_note(s, who, case_id, data), "Note added")
 ```
 
-**The same pattern for every operation:**
+| Operation | Service must |
+| :--- | :--- |
+| **List** | Filter and sort in SQL; one query (no per-row queries); return `Page` |
+| **Get** | Load in scope or 404; audit case views at most once per user per case every 10 minutes |
+| **Create** | Validate references, insert, audit, commit; **201** |
+| **Edit** | Edit rules (§4.4 rule 6), version check (§4.2), audit each changed field, commit |
+| **Delete** | **We don't delete** cases, documents, notes or audit entries. Close or deactivate instead. |
 
-| Operation | Router | Service must |
+---
+
+## 7. Database (Asif)
+
+1. **Two users** (§3.3). Every table has `FORCE ROW LEVEL SECURITY`.
+2. **Hand-written migrations** for RLS, triggers, grants and extensions. Never edit a pushed migration.
+3. **Migration 001 (core):**
+   - `banks`
+   - `users` (`role`, `bank_id`, `email_verified_at`, `is_active`)
+   - `sessions`, `auth_tokens`, `invitations`
+   - `cases` (`version`, `victim_user_id`, `payout_amount`, `document_count`, `pending_extraction_count`)
+   - `documents` and `document_contents`
+   - `ai_extractions`, `notes`, `audit_log`
+4. **Migration 002:**
+   - RLS policies:
+     - staff by role and bank;
+     - victims by `victim_user_id = app.user_id`;
+     - `system` for the auth tables and background jobs.
+   - Grants, the append-only audit trigger, and `next_case_reference()` (with `SET search_path`).
+5. **Migration 003 (Phase 4):** `vector`, `kb_documents`, `kb_passages`, `chat_messages`.
+6. **No enum types:** `text` + `CHECK`. **Counters** (`document_count`, `pending_extraction_count`) are updated by the service in the same transaction as the change.
+7. **File contents** live in `document_contents`, loaded only by the download endpoint.
+8. **The seed** is idempotent and synthetic. It creates the demo accounts in API_SPEC §8 (staff and two verified victims who own `RFR-2026-00042` and `RFR-2026-00051`).
+
+---
+
+## 8. Testing
+
+### 8.1 Levels
+
+| Folder | What | Example |
 | :--- | :--- | :--- |
-| **List** | `PageParams` + filter/sort `Query` params | Filter in SQL, not Python. One query with counters, no per-row queries. Return `Page`. |
-| **Get** | path ID | `get_visible()` or 404. Audit the view if the contract says so (deduplicated). |
-| **Create** | body + optional `Idempotency-Key` (rule 9) | Validate references (bank, owner), insert, audit. **201.** |
-| **Update** (PATCH) | body with `expected_version` | Edit rules (C1) and `case_workflow` rules, then `update_if_version()` + audit of each changed field, in one transaction |
-| **Delete** | — | **We don't delete** cases, documents, notes or audit entries. Use status changes (close, archive) and keep the history. |
+| `tests/unit/` | Pure logic, no database | transition rules, deadlines, the extraction fallback |
+| `tests/api/` | Endpoints through `TestClient` on the test database, including concurrency | create case → 201 + audit entry; two edits at once → one 409 |
+| `tests/rls/` | Raw SQL as **`app_user`**, no app code | a bank_a viewer sees 0 bank_b rows |
+| `tests/permissions/` | Every role × endpoint from API_SPEC §2 | a victim on `GET /api/cases` → 403 |
+| `tests/ai/` | AI down, timeout, bad output, circuit breaker | 3 timeouts → the next call falls back in under 100 ms |
+| Contract | The Prism proxy over the smoke run (§8.7) | no schema errors |
 
----
+**Never test as a database superuser.** Superusers skip RLS.
 
-## 6. Database rules (Asif)
+### 8.2 Test setup
 
-1. **Two database users.** `migrator` owns everything and runs Alembic and the seed. `app_user` runs the app: not an owner, no `BYPASSRLS`, all tables `FORCE ROW LEVEL SECURITY`.
-2. **Migrations are hand-written** for RLS policies, triggers, grants, functions and `CREATE EXTENSION`; autogenerate doesn't understand them. One migration per change. **Never edit a migration that's already pushed**; add a new one.
-3. **Migrations follow the phases.** 001–002 are the core for the MVP. 003 (victim) and 004 (assistant: `vector`, bluebook and chat tables) are written in Phase 4, not before.
-4. **No database enum types.** Use `text` + `CHECK (col IN (...))`; they're easy to change in a migration.
-5. **`cases.version`** is an integer, starts at 1, and is incremented only by `update_if_version()`.
-6. **Counters on `cases`** (`document_count`, `pending_extraction_count`), kept up to date by triggers, so lists make no per-row queries and victim sessions can see the "document missing" state.
-7. **File contents live in `document_contents`** (1:1 with `documents`), loaded only by the download endpoint.
-8. **`SECURITY DEFINER` functions** always `SET search_path = pg_catalog, public`, with `REVOKE ALL ... FROM PUBLIC` and `EXECUTE` granted only to `app_user`.
-9. **The audit log** accepts `INSERT` only. A trigger blocks `UPDATE` and `DELETE`, even for the owner, outside migrations.
-10. **`idempotency_keys`** has a unique index on `(scope, key)`. **`rate_limits`** is a small counter table. Both are excluded from the audit log.
-11. **Vector search (Phase 4):** while there are fewer than ~1,000 passages, search exactly with no HNSW index, filtering by bank and `published` in `WHERE`.
-12. **The seed** is idempotent (skips if the banks exist), synthetic only, and pins the demo references and access codes from API_SPEC §8.
-
----
-
-## 7. Testing
-
-### 7.1 Test types and folders
-
-| Folder | What | Runs as | Example |
-| :--- | :--- | :--- | :--- |
-| `tests/unit/` | Pure logic, no database | — | transition rules, `deadline_state`, edit rules, the rule-based fallback |
-| `tests/api/` | Endpoints through `TestClient` with the real test DB | the app (`app_user`) | create case → 201 + audit entry |
-| `tests/rls/` | Raw SQL with only database rules in force | **`app_user`** | bank_a viewer sees 0 bank_b rows |
-| `tests/permissions/` | Every role × endpoint from API_SPEC §2 | the app | bank_viewer `POST /api/cases` → 403 |
-| `tests/concurrency/` | Two requests at the same time | the app, threads | two PATCHes with one version → one 200, one 409 |
-| `tests/ai/` | AI down, timeout, invalid output, injection | the app, AI mocked | `AI_MODE=off` → `rules_fallback` |
-| `tests/contract/` | Responses match `openapi.yaml` | Prism proxy | no schema errors on the smoke run |
-
-**Never run tests as a database superuser.** Superusers skip RLS, so the separation tests would pass falsely.
-
-### 7.2 Test setup
-
-- **The app under test gets explicit settings.** It never reads `DATABASE_URL` from `.env` in tests.
-- **Guard against the dev database:** the session fixture fails at once unless the database name ends in `_test`.
-- **Migrate and seed once per test session** through `TEST_MIGRATIONS_DATABASE_URL`.
-- **Reset before each test:** an autouse fixture truncates `idempotency_keys` and `rate_limits`, so test order can't change results.
-- **Tests that write** create their **own** cases and never assume global counts. The dashboard test computes its expected numbers with SQL.
+- **The app under test gets explicit settings**, built from the `TEST_*` variables; nothing is read from `.env`. A guard fails at once unless the database name ends in `_test`.
+- **Migrate and seed once per session**, as `migrator`.
+- **Before each test:** clear the in-memory rate limiter and the email outbox.
+- **Tests that write** create their own cases and accounts, and never assume global counts.
 
 ```python
 # tests/conftest.py (Anim)
-from sqlalchemy.engine import make_url
-
-TEST_DB = os.environ["TEST_DATABASE_URL"]
-TEST_MIGRATOR_DB = os.environ["TEST_MIGRATIONS_DATABASE_URL"]
-
 @pytest.fixture(scope="session")
 def settings() -> Settings:
-    for url in (TEST_DB, TEST_MIGRATOR_DB):
+    db, mig = os.environ["TEST_DATABASE_URL"], os.environ["TEST_MIGRATIONS_DATABASE_URL"]
+    for url in (db, mig):
         assert make_url(url).database.endswith("_test"), f"refusing to test against {make_url(url).database}"
-    return Settings(app_env="test", database_url=TEST_DB, migrations_database_url=TEST_MIGRATOR_DB,
-                    jwt_secret="test-secret-" + "x" * 32, ai_mode="live", ai_timeout_seconds=1)
+    return Settings(app_env="test", database_url=db, migrations_database_url=mig,
+                    email_mode="outbox", ai_timeout_seconds=1)
 
 @pytest.fixture(scope="session")
-def client(settings) -> Iterator[TestClient]:
+def app(settings):
     migrate_and_seed(settings.migrations_database_url)
-    with TestClient(create_app(settings)) as c:
-        yield c
+    return create_app(settings)
 
-@pytest.fixture(autouse=True)
-def reset_request_state():
-    with psycopg.connect(TEST_MIGRATOR_DB.replace("+psycopg", "")) as conn:
-        conn.execute("truncate idempotency_keys, rate_limits")
+@pytest.fixture
+def client(app):
+    reset_rate_limits(); email.outbox.clear()
+    with TestClient(app) as c:
+        yield c
 
 @pytest.fixture
 def login_as(client):
     emails = {"operator": "operator1@opscenter.test", "supervisor": "supervisor@opscenter.test",
-              "viewer_a": "viewer@bank-a.test", "viewer_b": "viewer@bank-b.test"}
+              "viewer_a": "viewer@bank-a.test", "victim1": "victim1@mail.test"}
     def _headers(who: str) -> dict:
         r = client.post("/api/auth/login", json={"email": emails[who], "password": "Demo@1234"})
         assert r.status_code == 200, r.text
@@ -475,138 +428,87 @@ def login_as(client):
     return _headers
 ```
 
-### 7.3 What every endpoint's tests must cover
+### 8.3 What each endpoint's tests cover
 
 | Case | Expect |
 | :--- | :--- |
-| Happy path | Status code, envelope, exact fields, **audit entry written** |
-| No token / bad token | `401 UNAUTHORIZED` |
-| Wrong role | `403 FORBIDDEN` |
-| Another bank's record, with a role that may do this action | **exactly** `404 RESOURCE_NOT_FOUND` |
-| Bad body / unknown field | `422 VALIDATION_ERROR` with `details.fields` |
-| Domain errors | e.g. `409 INVALID_STATUS_TRANSITION`, `422 MISSING_REQUIRED_INFO`, `409 STALE_CASE`, `409 CASE_CLOSED`, `409 CASE_LOCKED` |
-| Concurrency (writes with a version) | Two requests with the same `expected_version` at once → one 2xx, one `409 STALE_CASE`, one audit entry |
-| Double review | The same extraction reviewed twice at once → one 200, one 409 |
-| Duplicate protection (create endpoints) | Same key + same body → same response, one row. Same key + different body → 422. Another user with the same key → their own new request. |
-| Commit failure | Force the commit to fail (monkeypatch) → a 500 envelope, **never** 201, and nothing saved |
-| Money | Amounts in the JSON are numbers (`isinstance(v, (int, float))`), not strings |
+| Happy path | Status, envelope, exact fields, **audit entry** |
+| No token, or a logged-out token | `401` |
+| Wrong role (including a victim on staff routes) | `403` |
+| Another bank's record (with a role allowed to do this), or another victim's case | **exactly** `404` |
+| Bad body or an unknown field (e.g. `role` in sign-up) | `422 VALIDATION_ERROR` |
+| Domain errors | `409 INVALID_STATUS_TRANSITION`, `422 MISSING_REQUIRED_INFO`, `409 STALE_CASE`, `409 CASE_CLOSED`, `403 EMAIL_NOT_VERIFIED`, `400 INVALID_TOKEN` |
+| Two edits with the same `expected_version` at once | One 2xx, one `409 STALE_CASE`, one audit entry |
+| Commit fails (monkeypatched) | A `500` envelope, never `2xx`, nothing saved |
+| Money | Amounts are JSON numbers, never strings |
 
 ```python
-def test_add_note_happy_path(client, login_as, new_case):
-    r = client.post(f"/api/cases/{new_case}/notes", json={"body": "Called the bank."}, headers=login_as("operator"))
-    assert r.status_code == 201
-    body = r.json()
-    assert body["success"] is True and body["data"]["body"] == "Called the bank."
-    history = client.get(f"/api/cases/{new_case}/history", headers=login_as("operator")).json()["data"]["items"]
-    assert history[0]["action"] == "note.added"
+def test_bank_viewer_gets_404_for_other_bank(client, login_as, case_in_bank_b):
+    r = client.get(f"/api/cases/{case_in_bank_b}", headers=login_as("viewer_a"))   # GET is allowed for viewers
+    assert r.status_code == 404 and r.json()["error"]["code"] == "RESOURCE_NOT_FOUND"
 
-def test_bank_viewer_cannot_see_other_bank_case(client, login_as, case_in_bank_b):
-    # GET is allowed for bank viewers, so this tests bank separation, not role rejection
-    r = client.get(f"/api/cases/{case_in_bank_b}", headers=login_as("viewer_a"))
-    assert r.status_code == 404
-    assert r.json()["error"]["code"] == "RESOURCE_NOT_FOUND"
-
-def test_parallel_patch_one_wins(client, login_as, new_case):
+def test_parallel_edits_one_wins(client, login_as, new_case):
     h = login_as("operator")
-    version = client.get(f"/api/cases/{new_case}", headers=h).json()["data"]["version"]
-    def patch(amount):
-        return client.patch(f"/api/cases/{new_case}", headers=h, json={"amount": amount, "expected_version": version})
+    v = client.get(f"/api/cases/{new_case}", headers=h).json()["data"]["version"]
+    edit = lambda amount: client.patch(f"/api/cases/{new_case}", headers=h,
+                                       json={"amount": amount, "expected_version": v}).status_code
     with ThreadPoolExecutor(2) as pool:
-        codes = sorted(f.result().status_code for f in [pool.submit(patch, 1000), pool.submit(patch, 2000)])
-    assert codes == [200, 409]
+        assert sorted(pool.map(edit, [1000, 2000])) == [200, 409]
+
+def test_signup_verify_login(client):
+    body = {"email": "new.victim@mail.test", "password": "a-long-password", "name": "New Victim"}
+    assert client.post("/api/auth/signup", json=body).status_code == 202
+    login = {"email": body["email"], "password": body["password"]}
+    assert client.post("/api/auth/login", json=login).json()["error"]["code"] == "EMAIL_NOT_VERIFIED"
+    token = email.outbox.last_token(to=body["email"])                    # the outbox keeps the link
+    assert client.post("/api/auth/verify-email", json={"token": token}).status_code == 200
+    assert client.post("/api/auth/login", json=login).status_code == 200
+
+def test_signup_cannot_choose_role(client):
+    r = client.post("/api/auth/signup", json={"email": "x@mail.test", "password": "a-long-password",
+                                              "name": "X", "role": "supervisor"})
+    assert r.status_code == 422
 ```
 
-### 7.4 Database-rule tests (Asif)
+### 8.4 Database-rule tests (Asif)
 
-```python
-# tests/rls/test_bank_scope.py — connects as app_user with psycopg, no app code involved
-def scoped(conn, **settings):
-    for k, v in settings.items():
-        conn.execute("select set_config(%s, %s, true)", (f"app.{k}", v))
+Raw SQL as `app_user`, with `set_config` per test:
+- a bank_a viewer sees only bank_a cases;
+- no scope sees nothing;
+- a bank viewer can't `UPDATE` cases;
+- `DELETE FROM audit_log` fails;
+- a victim scope sees only cases with its `victim_user_id`;
+- `app_user` can't read `sessions` without the `system` scope.
 
-def test_bank_viewer_sees_only_own_bank(app_user_conn):
-    with app_user_conn.transaction():
-        scoped(app_user_conn, role="bank_viewer", bank_id="bank_a")
-        banks = {r[0] for r in app_user_conn.execute("select distinct bank_id from cases")}
-    assert banks == {"bank_a"}
+### 8.5 Permission table (Anim)
 
-def test_no_scope_sees_nothing(app_user_conn):
-    with app_user_conn.transaction():
-        assert app_user_conn.execute("select count(*) from cases").fetchone()[0] == 0
+One parametrized test with a row per role × endpoint from API_SPEC §2, for example:
+- `("POST", "/api/cases", "victim1", 403)`
+- `("POST", "/api/invitations", "operator", 403)`
+- `("GET", "/api/audit-logs", "viewer_a", 200)`
 
-def test_bank_viewer_cannot_write(app_user_conn, case_in_bank_a):
-    with pytest.raises(psycopg.Error):
-        with app_user_conn.transaction():
-            scoped(app_user_conn, role="bank_viewer", bank_id="bank_a")
-            app_user_conn.execute("update cases set amount = 1 where id = %s", (case_in_bank_a,))
+When §2 changes, change this list first.
 
-def test_audit_log_cannot_be_changed(app_user_conn):
-    with pytest.raises(psycopg.Error):
-        with app_user_conn.transaction():
-            scoped(app_user_conn, role="supervisor")
-            app_user_conn.execute("delete from audit_log")
+### 8.6 AI failures (Asif)
 
-# Phase 4 (migration 003): a victim scope sees exactly one case and no notes
-```
+| Test | Expect |
+| :--- | :--- |
+| `extract_fields` raises | `source: rules_fallback` (text) or `failed` (image) |
+| Slower than the timeout | Same, with `error.reason: timeout`, in about 1 s |
+| Bad output | `failed`, `invalid_ai_output` |
+| 3 failures in a row | Breaker opens; the next call falls back in under 100 ms; health shows `ai: unavailable` |
+| No transaction held | During a slow mocked call, `pg_stat_activity` shows no `idle in transaction` from the app |
+| Injection document | Extraction is `pending_review`; status, owner and amount unchanged |
 
-### 7.5 Permission-table tests (Anim)
-
-One parametrized test generated from API_SPEC §2. When the table changes, change this list first and watch it fail.
-
-```python
-MATRIX = [  # (method, path, who, expected status)
-    ("POST", "/api/cases", "viewer_a", 403),
-    ("POST", "/api/cases", "operator", 201),
-    ("GET", "/api/audit-logs", "operator", 403),
-    ("GET", "/api/audit-logs", "supervisor", 200),
-    ("GET", "/api/audit-logs", "viewer_a", 200),
-    ("GET", "/api/dashboard/stats", "operator", 403),
-    ("GET", "/api/alerts/shared-accounts", "viewer_a", 403),
-    # ... one row per role × endpoint in API_SPEC §2
-]
-
-@pytest.mark.parametrize(("method", "path", "who", "expected"), MATRIX)
-def test_permission_matrix(client, login_as, method, path, who, expected, valid_body_for):
-    r = client.request(method, path, headers=login_as(who), json=valid_body_for(method, path))
-    assert r.status_code == expected, r.text
-```
-
-### 7.6 AI failure tests (Asif)
-
-| Test | How | Expect |
-| :--- | :--- | :--- |
-| AI down | monkeypatch `extract_fields` to raise `AIUnavailableError` | `source: rules_fallback`, `review_lane: low_confidence` (text file) or `failed` (image) |
-| Timeout | monkeypatch to sleep longer than `ai_timeout_seconds=1` (test settings) | Same as down, `error.reason: timeout`, request finishes in about 1 s |
-| Bad output | return `{"fields": "oops"}` | `failed`, `invalid_ai_output` |
-| Busy | fill `AI_MAX_CONCURRENT` with blocked calls | the next call returns the fallback at once |
-| No transaction held | during a slow mocked AI call, check `pg_stat_activity` | no `idle in transaction` connection from the app |
-| Injection | seed injection document | extraction is `pending_review`; status, owner and amount unchanged |
-| Chat down (Phase 4) | `answer()` raises | `answer_type: passages_only`, citations from the case's bank only |
-| Cross-bank chat (Phase 4) | victim of bank_a asks a bank_b-only question | `no_answer`; every used passage has `bank_id = bank_a` |
-
-### 7.7 Contract checks
-
-**Prism proxy (main check).** Prism sits in front of the real backend and checks every request and response against `openapi.yaml`:
+### 8.7 Contract check
 
 ```bash
+npx -y @redocly/cli@2.78.0 lint docs/openapi.yaml                                  # Node 22.12+
 npx -y @stoplight/prism-cli@5.14.2 proxy docs/openapi.yaml http://localhost:8000 -p 4011 --errors
-# now send the smoke script or your curls to http://localhost:4011 instead of :8000
+# send the smoke script or curls to :4011; a response that breaks the contract becomes an error
 ```
 
-A response that doesn't match the contract becomes an error with the mismatch described. Fix the code, or propose a contract change through a PR; never change either side silently.
-
-**Lint the contract** whenever it changes (Node 22.12+):
-```bash
-npx -y @redocly/cli@2.78.0 lint docs/openapi.yaml
-```
-
-**Optional fuzzing:** Schemathesis can generate thousands of requests from `openapi.yaml`. Pin its version in the dev dependencies, and check `schemathesis run --help` for the flags of that version.
-
-### 7.8 Manual testing with curl (Git Bash)
-
-These commands use the v0.4.0 contract (`version` / `expected_version`, C3).
-
-**Setup, once per terminal:**
+### 8.8 curl (Git Bash)
 
 ```bash
 BASE=http://localhost:8000
@@ -616,166 +518,132 @@ for k in sys.argv[1].split('.'): d=d[int(k)] if k.isdigit() else d[k]
 print(d)" "$1"; }
 login() { curl -s -X POST "$BASE/api/auth/login" -H 'Content-Type: application/json' \
   -d "{\"email\":\"$1\",\"password\":\"Demo@1234\"}" | jget data.token; }
-OP=$(login operator1@opscenter.test); SUP=$(login supervisor@opscenter.test); VA=$(login viewer@bank-a.test)
-code() { curl -s -o /dev/null -w '%{http_code}\n' "$@"; }      # prints only the status code
-uuid() { python -c 'import uuid;print(uuid.uuid4())'; }
+code() { curl -s -o /dev/null -w '%{http_code}\n' "$@"; }
 ver() { curl -s "$BASE/api/cases/$1" -H "Authorization: Bearer $OP" | jget data.version; }
+OP=$(login operator1@opscenter.test); VA=$(login viewer@bank-a.test); V1=$(login victim1@mail.test)
 ```
 
-**Happy path (the hour-14 gate).** Every step has to satisfy API_SPEC §3.3 before the case can leave Received:
+**Happy path (gate 14).** Each step satisfies API_SPEC §3.3 before the case leaves Received.
 
 ```bash
-curl -s "$BASE/api/health"
-
-# 1. Public intake (no Idempotency-Key here, see §4.4 rule 9)
-curl -s -X POST "$BASE/api/intake" -H 'Content-Type: application/json' -d '{
-  "bank_id":"bank_b","victim":{"name":"Test Victim","phone":"+81-90-0000-0101"},
+# 1. A verified victim reports (seeded victim1)
+curl -s -X POST "$BASE/api/victim/cases" -H "Authorization: Bearer $V1" -H 'Content-Type: application/json' -d '{
+  "bank_id":"bank_b","victim":{"name":"Victim One","phone":"+81-90-0000-0101"},
   "amount":120000,"currency":"JPY","transfer_date":"2026-11-01","scam_type":"phishing","consent":true}'
 
-# 2. Operator creates a paper case with only the minimum (name); the rest comes from the document
+# 2. An operator creates a paper case with only a name; the rest comes from the document
 CASE=$(curl -s -X POST "$BASE/api/cases" -H "Authorization: Bearer $OP" -H 'Content-Type: application/json' \
-  -H "Idempotency-Key: $(uuid)" -d '{"bank_id":"bank_b","channel":"paper","victim":{"name":"Paper Victim"}}' | jget data.id)
-curl -s "$BASE/api/cases/$CASE" -H "Authorization: Bearer $OP" | jget data.flags.missing_fields
-#    → ['victim_contact', 'amount', 'transfer_date', 'account_number', 'scam_type', 'document']
+  -d '{"bank_id":"bank_b","channel":"paper","victim":{"name":"Paper Victim"}}' | jget data.id)
 
-# 3. Upload a document and run extraction
-DOC=$(curl -s -X POST "$BASE/api/cases/$CASE/documents" -H "Authorization: Bearer $OP" -H "Idempotency-Key: $(uuid)" \
+# 3. Upload, extract, accept with EVERY field Received → Verified needs
+DOC=$(curl -s -X POST "$BASE/api/cases/$CASE/documents" -H "Authorization: Bearer $OP" \
   -F "file=@eval/docs/paper_form_01.txt" -F "doc_type=intake_form" | jget data.id)
-EXT=$(curl -s -X POST "$BASE/api/documents/$DOC/extract" -H "Authorization: Bearer $OP" -H "Idempotency-Key: $(uuid)" | jget data.id)
-
-# 4. Accept the review with EVERY field the Received → Verified rule needs
+EXT=$(curl -s -X POST "$BASE/api/documents/$DOC/extract" -H "Authorization: Bearer $OP" | jget data.id)
 curl -s -X POST "$BASE/api/extractions/$EXT/review" -H "Authorization: Bearer $OP" -H 'Content-Type: application/json' -d "{
   \"decision\":\"accept\",\"expected_version\":$(ver $CASE),
   \"fields\":{\"victim_phone\":\"+81-90-0000-0102\",\"amount\":250000,\"transfer_date\":\"2026-10-28\",
             \"account_number\":\"0012345\",\"scam_type\":\"impersonation\"}}"
-curl -s "$BASE/api/cases/$CASE" -H "Authorization: Bearer $OP" | jget data.flags.missing_fields   # → []
+curl -s "$BASE/api/cases/$CASE" -H "Authorization: Bearer $OP" | jget data.flags.missing_fields      # → []
 
-# 5. Move to Verified (expect 200), then read the history
+# 4. Move to Verified (expect 200) and read the history
 code -X POST "$BASE/api/cases/$CASE/transition" -H "Authorization: Bearer $OP" -H 'Content-Type: application/json' \
   -d "{\"to_status\":\"verified\",\"expected_version\":$(ver $CASE)}"
 curl -s "$BASE/api/cases/$CASE/history" -H "Authorization: Bearer $OP"
 ```
 
-**Error paths (each must print the expected code):**
+**Error paths (each prints the expected code):**
 
 ```bash
-code "$BASE/api/cases"                                                        # 401  no token
-code "$BASE/api/cases/$CASE" -H "Authorization: Bearer $VA"                   # 404  bank_a viewer reads a bank_b case
-code -X POST "$BASE/api/cases" -H "Authorization: Bearer $VA" -H 'Content-Type: application/json' -d '{}'   # 403
-code -X POST "$BASE/api/cases/$CASE/transition" -H "Authorization: Bearer $OP" -H 'Content-Type: application/json' \
-  -d "{\"to_status\":\"payout_review\",\"expected_version\":$(ver $CASE)}"     # 409  not allowed from here
+code "$BASE/api/cases"                                                         # 401 no token
+code "$BASE/api/cases/$CASE" -H "Authorization: Bearer $VA"                    # 404 bank_a viewer reads a bank_b case
+code "$BASE/api/cases" -H "Authorization: Bearer $V1"                          # 403 victim on a staff route
+code -X PATCH "$BASE/api/cases/$CASE" -H "Authorization: Bearer $OP" -H 'Content-Type: application/json' \
+  -d '{"amount":1,"expected_version":0}'                                       # 409 STALE_CASE
 code -X POST "$BASE/api/cases/$CASE/transition" -H "Authorization: Bearer $OP" -H 'Content-Type: application/json' \
   -d "{\"to_status\":\"closed\",\"closure_reason\":\"paid_out\",\"note\":\"x\",\"expected_version\":$(ver $CASE)}"   # 403 supervisor only
-code -X POST "$BASE/api/intake" -H 'Content-Type: application/json' -d '{"bank_id":"bank_z"}'   # 422
-code -X PATCH "$BASE/api/cases/$CASE" -H "Authorization: Bearer $OP" -H 'Content-Type: application/json' \
-  -d '{"amount":1,"expected_version":0}'                                      # 409  STALE_CASE
-K=$(uuid); for body in '{"bank_id":"bank_b","channel":"paper","victim":{"name":"A"}}' '{"bank_id":"bank_b","channel":"paper","victim":{"name":"B"}}'; do
-  code -X POST "$BASE/api/cases" -H "Authorization: Bearer $OP" -H 'Content-Type: application/json' -H "Idempotency-Key: $K" -d "$body"
-done                                                                          # 201, then 422 (same key, different body)
-for i in $(seq 1 12); do code -X POST "$BASE/api/auth/login" -H 'Content-Type: application/json' \
-  -d '{"email":"operator1@opscenter.test","password":"wrong"}'; done          # 401 … then 429
+code -X POST "$BASE/api/auth/signup" -H 'Content-Type: application/json' \
+  -d '{"email":"x@mail.test","password":"a-long-password","name":"X","role":"supervisor"}'   # 422 no role field
+code -X POST "$BASE/api/auth/logout" -H "Authorization: Bearer $V1"; code "$BASE/api/auth/me" -H "Authorization: Bearer $V1"   # 200, then 401
+for i in $(seq 1 6); do code -X POST "$BASE/api/auth/login" -H 'Content-Type: application/json' \
+  -d '{"email":"operator1@opscenter.test","password":"wrong"}'; done           # 401 ×5, then 429
 ```
 
-**AI-down path:** restart the server with `AI_MODE=off`, then run extraction again. Expect `"source":"rules_fallback"`, and `/api/health` reports `"ai":"unavailable"`.
+**Sign-up by hand:** call `POST /api/auth/signup`, copy the verification link printed in the server log (`EMAIL_MODE=console`), then call `POST /api/auth/verify-email` with its token.
 
-**Victim side (Phase 4):**
-
-```bash
-VT=$(curl -s -X POST "$BASE/api/victim/session" -H 'Content-Type: application/json' \
-  -d '{"reference":"RFR-2026-00051","access_code":"M3PX-8KWN-5QDA"}' | jget data.token)
-curl -s "$BASE/api/victim/case" -H "Authorization: Bearer $VT"
-code "$BASE/api/cases" -H "Authorization: Bearer $VT"                         # 403  victim token on staff API
-curl -s -X POST "$BASE/api/victim/chat/messages" -H "Authorization: Bearer $VT" -H 'Content-Type: application/json' \
-  -H "Idempotency-Key: $(uuid)" -d '{"question":"What happens next with my case?"}'
-```
-
-**PowerShell** (`curl` there is an alias, so use `curl.exe` or `Invoke-RestMethod`):
+**PowerShell:** use `curl.exe` (plain `curl` is an alias there) or `Invoke-RestMethod`:
 
 ```powershell
-$BASE = "http://localhost:8000"
-$OP = (Invoke-RestMethod -Method Post "$BASE/api/auth/login" -ContentType 'application/json' `
+$OP = (Invoke-RestMethod -Method Post http://localhost:8000/api/auth/login -ContentType 'application/json' `
   -Body '{"email":"operator1@opscenter.test","password":"Demo@1234"}').data.token
-Invoke-RestMethod "$BASE/api/cases?page_size=5" -Headers @{ Authorization = "Bearer $OP" } | ConvertTo-Json -Depth 6
+Invoke-RestMethod "http://localhost:8000/api/cases?page_size=5" -Headers @{ Authorization = "Bearer $OP" }
 ```
 
-**Swagger UI** at `http://localhost:8000/docs`: click **Authorize** and paste a token. Good for quick checks; it doesn't replace tests.
-
-### 7.9 Smoke script (Anim, N17)
-
-`backend/scripts/smoke.sh` runs the happy path and the error paths above, checks each status code **and** the `missing_fields` checkpoints, prints `PASS` or `FAIL` per line, and exits non-zero on any failure. It runs against `:8000` (the app) or `:4011` (the Prism proxy, adding the contract check). It's the last thing run before every merge to `main` and before the demo.
-
-### 7.10 Commands
+**Smoke script** (`scripts/smoke.sh`, Anim): runs the happy path and the error paths, prints PASS/FAIL per line, exits non-zero on any failure. It runs against `:8000`, or `:4011` for the contract check too.
 
 ```bash
-uv run pytest -q                          # everything
-uv run pytest tests/unit -q               # fast, no database
-uv run pytest tests/rls tests/permissions tests/concurrency -q
-uv run pytest --cov=app --cov-report=term-missing   # target: 80%+ on app/services
+uv run pytest -q                                   # all tests
+uv run pytest --cov=app --cov-report=term-missing  # aim for 80%+ on app/services
 uv run ruff check . && uv run ruff format --check .
-bash scripts/smoke.sh                     # against a running server
 ```
 
 ---
 
-## 8. Definition of Done
+## 9. Definition of Done (an endpoint becomes `LIVE`)
 
-### Per endpoint
-- [ ] Matches API_SPEC and `openapi.yaml` exactly; no errors through the Prism proxy
-- [ ] Role check + bank scope (RLS + repository); another bank's record → exactly 404
-- [ ] Validation in schemas; 422 in the envelope
-- [ ] Commits before the response; audit entry in the same transaction as the change
-- [ ] Writes with a version use `update_if_version()`; the concurrency test passes
-- [ ] Tests from §7.3 pass
-- [ ] Works with curl (added to the smoke script if it's on the demo path)
-- [ ] Shows in Swagger with summary, tags and error responses
-- [ ] No AI or network call inside a DB transaction; no per-row queries in lists
-- [ ] No personal data or secrets in logs; money appears as JSON numbers
-
-### Per PR
-- [ ] `ruff` clean, all tests green, coverage not lower
-- [ ] Small (under ~400 lines where possible), one area
-- [ ] API_SPEC §5 status set to `LIVE` for finished endpoints (Asif)
-- [ ] Work log updated (`contributors/<you>/WORK_LOG.md`)
+- [ ] Matches API_SPEC and `openapi.yaml`; no errors through the Prism proxy
+- [ ] Role check + RLS scope; another bank's record or another victim's case → exactly 404
+- [ ] Commits before success; the audit entry is in the same transaction
+- [ ] Case writes use the version check; the concurrency test passes
+- [ ] The §8.3 tests pass; curl works; it appears in Swagger with its error responses
+- [ ] No network call inside a transaction; no secrets or personal data in logs; money as JSON numbers
+- [ ] Asif sets the endpoint to `LIVE` in API_SPEC §5
 
 ---
 
-## 9. Git workflow
-
-The rule comes from AGENTS.md §3.5 and is not optional.
+## 10. Git workflow
 
 | Change | Path to `main` |
 | :--- | :--- |
-| **API contract** (`docs/API_SPEC.md`, `docs/openapi.yaml`) | Branch → PR → **one teammate's approval** → merge |
-| **Shared config or framework** (`pyproject.toml`, `uv.lock`, `.env.example`, `app/main.py`, `app/config.py`, `app/db.py`, `app/security.py`, migrations, `tests/conftest.py`, CI) | Branch → PR → **one approval** → merge |
-| **Another person's or team's area** | Branch → PR → **that owner's approval** → merge |
-| Small, safe change in your **own** area (one router or service and its tests, your work log) | Allowed straight to `main` after `git pull origin main` |
+| API contract (`docs/API_SPEC.md`, `docs/openapi.yaml`) | Branch → PR → **one teammate's approval** → merge |
+| Shared config or framework (`pyproject.toml`, `uv.lock`, `.env.example`, `main.py`, `config.py`, `db.py`, `security.py`, migrations, `tests/conftest.py`) | Branch → PR → **one approval** → merge |
+| Another person's area | Branch → PR → **that owner's approval** |
+| A small change inside your own area | Straight to `main` after `git pull origin main` |
 
-- **Branches:** `asif/<topic>`, `anim/<topic>`, e.g. `anim/cases-crud`, `asif/rls-migrations`. One area per branch.
-- **Before pushing:** `git pull origin main`. The pre-push hook refuses stale pushes.
-- **Review:** each of you reviews the other's PR within 30 minutes, against §8 and the shared interfaces.
-- **Commits:** Conventional Commits (`feat(cases): …`, `test(rls): …`, `fix(auth): …`). No AI attribution anywhere.
-- **Conflict hot spots:**
-  - `app/main.py`: one line per router, in alphabetical order.
-  - `tests/conftest.py`: add fixtures in new files where you can.
-  - Migrations: Asif only.
+- **Branches:** `asif/<topic>` and `anim/<topic>`.
+- **Commits:** Conventional Commits. No AI attribution anywhere.
+- **Before pushing:** `git pull origin main`.
 
 ---
 
-## 10. Contract changes for v0.4.0 (Asif, through a PR)
+## 11. Contract v0.4.0 and what we left out
 
-From the system review, the backend review and the guide review. **Before coding** means it's part of P0.1.
+**In v0.4.0** (docs updated; needs PR approval):
+- accounts for victims and staff (D15), logout, password reset, invitations, deactivation
+- edit rules
+- `version` + `409 STALE_CASE`
+- `409 CASE_CLOSED`
+- realistic deadlines
+- money as JSON numbers
+- `Retry-After` on 429
+- `payout_amount`
+- `possible_duplicate`
+- the bluebook `audience` tag
+- safe download headers
+- deduplicated view audit
+- "no API versioning during the hackathon"
 
-| ID | Change | When |
-| :--- | :--- | :--- |
-| C1 | Edit (PATCH) rules: a missing field stays unchanged, `null` clears it, nested objects merge | Before coding |
-| C2 | Optional `Idempotency-Key` (UUID v4) on case create, document upload, extract and chat messages; not on intake. New errors `422 IDEMPOTENCY_KEY_REUSED` and `409 REQUEST_IN_PROGRESS`; replay header `Idempotent-Replayed: true` | Before coding |
-| C3 | Integer `version` on `Case` (and `VictimCase`); `expected_version` on PATCH, transition, review and victim PATCH → `409 STALE_CASE` (D12) | Before coding |
-| C4 | Closed cases are read-only → `409 CASE_CLOSED`; notes still allowed (D11) | Before coding |
-| C7 | Realistic stage durations; `due_soon` = the last 20% of a stage (S1, S3) | Before coding |
-| C12 | State that money fields are JSON numbers with at most 2 decimals, never strings | Before coding |
-| C5 | Closing as `paid_out` requires `payout_amount` (+ `paid_at`), shown on the case | Phase 2 |
-| C10 | Document download: always a download (`attachment`), `nosniff`; decide whether bank viewers may see `id_document` (S4) | Phase 2 |
-| C11 | Case views audited at most once per user per case every 10 minutes (S9) | Phase 2 |
-| C6 | `flags.possible_duplicate` (same contact + amount + transfer date + account); also catches double intake submissions | Phase 3 |
-| C8 | Bluebook `audience: victim_facing \| staff_only`; the chatbot uses victim-facing documents only | Phase 4 |
-| C9 | Access codes are delivered to the contact on file, not read out by an operator; a victim's contact change notifies the old contact and flags staff; optional one-time code | Phase 4 |
+**Left out on purpose (simpler):**
+- `Idempotency-Key`: disabled buttons + `possible_duplicate` instead
+- JWTs: opaque sessions instead
+- a separate security-events table: denied requests go to the request log
+- a repository layer
+- background job queues
+
+**Future work:** §5.5, plus multi-factor login and the audit-log retention policy from the design review (M6, M7).
+
+## 12. Decisions the team still needs
+
+1. **Must a victim have a verified account before reporting?** v0.4.0 says yes: one path, follow-up and chat work, and no access codes. The alternative is anonymous reporting plus a later claim.
+2. **Email for the live demo:** which free SMTP provider? Console mode is enough for development and tests.
+3. **D2:** do operators see all five banks, or only assigned banks?
+4. **Phone/paper victims** (Phase 4): is the email invite + claim enough, or do we skip victim access for those cases in the hackathon?

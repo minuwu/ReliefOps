@@ -1,6 +1,6 @@
 # API Specification (Shared Contract)
 
-**Version** 0.3.0 (draft) · **Updated** 2026-11-14 · **Owner** Asif (Backend)
+**Version** 0.4.0 (draft) · **Updated** 2026-11-14 · **Owner** Asif (Backend)
 
 This is the **single source of truth** for the API between Frontend, Backend and AI. Build against it now using mocks. From now on, any change goes through an `XREQ` in [AGENTS.md](../AGENTS.md). Never rename a field silently.
 
@@ -8,7 +8,7 @@ A machine-readable copy of this contract is in [openapi.yaml](openapi.yaml) (Ope
 
 The reasons behind these choices (data model, security, AI safety, devops) are in [plans/backend-plan.md](plans/backend-plan.md). Decision numbers like **D1** refer to that file.
 
-**Product in one paragraph:** a case system for one operations center that handles fraud-victim relief cases for five banks. A victim's web form, or an operator entering a phone or paper report, opens a case. Operators move the case through six stages. Supervisors watch deadlines and workload. A bank viewer sees only their own bank's cases. One AI feature reads an uploaded document and *suggests* field values, and nothing reaches the case until a person accepts it. A second AI feature, the **case assistant**, answers a victim's questions from their own bank's bluebook and passes anything it can't answer to staff.
+**Product in one paragraph:** a case system for one operations center that handles fraud-victim relief cases for five banks. A victim with a verified account reports online, or an operator enters a phone or paper report. Operators move the case through six stages. Supervisors watch deadlines and workload. A bank viewer sees only their own bank's cases. One AI feature reads an uploaded document and *suggests* field values, and nothing reaches the case until a person accepts it. A second AI feature, the **case assistant**, answers a victim's questions from their own bank's bluebook and passes anything it can't answer to staff.
 
 ## Contents
 0. [Assumptions to know before building](#0-assumptions-to-know-before-building)
@@ -31,14 +31,15 @@ The reasons behind these choices (data model, security, AI safety, devops) are i
 2. **Operators and supervisors are center staff (D2)** and work across all five banks. Bank viewers are bank employees: read-only and limited to their own bank. Every time someone opens a case, it is written to the audit log.
 3. **The AI only suggests (D3).** No endpoint lets the AI change a status or make any money decision. AI output is stored separately and reaches the case only after a person accepts it.
 4. **Money decisions need a supervisor (D4).** Closing a case as `paid_out` or `rejected` is supervisor-only.
-5. **Victims can see and edit their own case (D13).** Victims have no accounts. Intake returns a reference and a one-time access code; together they open a session that covers only that case.
-   - Contact details stay editable until the case closes.
-   - Report details are editable only while the case is still `received`.
-   - Staff can issue a new code, for phone or paper cases or a lost code.
+5. **Everyone has an account (D15).**
+   - Victims sign up with email and password, and must verify the email before logging in. A victim sees only their own cases.
+   - Staff and bank viewers can't sign up. A supervisor invites them and sets their role (and bank).
+   - Victims edit contact details until a case closes, and report details only while it is `received`.
 6. **Victims can ask a case assistant (D14).** A chatbot answers from **the bluebook of the victim's own bank** and a minimal view of their case.
    - The bank comes from the case on the server, so no victim can reach another bank's bluebook.
    - It never changes anything, promises money or predicts an outcome.
    - Questions it can't answer go to staff, who reply in the same thread (§3.6).
+7. **Nothing is live yet.** Every endpoint is `PLANNED`. The mock (§9.1) only replays the examples in this contract.
 
 If you disagree with one of these, file an `XREQ` before building on it.
 
@@ -53,12 +54,16 @@ If you disagree with one of these, file an `XREQ` before building on it.
 | Contract file | [docs/openapi.yaml](openapi.yaml), OpenAPI 3.1, validated with `npx -y @redocly/cli@2.78.0 lint docs/openapi.yaml` |
 | Mock API (no backend) | `http://localhost:4010`, served from `openapi.yaml` (see §9). Point the frontend's API base URL here until the backend is live. |
 | Format | JSON, UTF-8, `snake_case` keys. File upload is the only `multipart/form-data` request. |
-| Auth | `Authorization: Bearer <token>` on every endpoint not marked **public**. A token lasts 8 hours and there is no refresh in v0.1. On any `401`, send the user back to the login screen. |
+| Auth | `Authorization: Bearer <token>` on every endpoint not marked **public**. The token is an opaque random string, not a JWT, so don't parse it. It lasts 8 hours, and `POST /api/auth/logout` ends it early. On any `401`, send the user to the login screen. |
+| Versioning | No version in the path during the hackathon. Breaking changes only through an `XREQ`. |
 | IDs | UUID strings. Banks use fixed short IDs: `bank_a` to `bank_e`. |
 | Case reference | Each case also has a human-readable `reference`, e.g. `RFR-2026-00042`. Show the reference in the UI and use `id` in URLs. |
 | Timestamps | ISO 8601 in UTC, e.g. `2026-11-14T04:30:00Z`. Calendar dates use `YYYY-MM-DD`. |
-| Money | `amount` is a JSON number (≥ 0, at most 2 decimals) with a `currency` ISO 4217 code. Seed data uses `JPY`. |
+| Money | `amount` and `payout_amount` are JSON **numbers** (≥ 0, at most 2 decimals), never strings, with a `currency` ISO 4217 code. Seed data uses `JPY`. |
 | Nulls | A nullable field is always present and set to `null`. Keys are never left out. |
+| Editing (`PATCH`) | Send only what changes. A missing field stays unchanged, `null` clears it, and nested objects (`victim`) merge field by field. |
+| Edit conflicts | A case has an integer `version`. Every write to a case (PATCH, transition, review, victim edit) sends `expected_version`. If someone else changed the case first → `409 STALE_CASE`; reload and retry. |
+| Rate limits | `429 RATE_LIMITED` responses carry a `Retry-After` header (seconds). |
 | Lists | Query `page` (starts at 1, default 1) and `page_size` (default 20, max 100). The response `data` is `{ "items": [...], "page": 1, "page_size": 20, "total": 57 }`. |
 | Files | File downloads (`/file`, `?format=csv`) return the raw file, not the envelope. |
 
@@ -95,17 +100,21 @@ FastAPI's validation errors (422) are converted to this format:
 | HTTP | `code` | When |
 | :--- | :--- | :--- |
 | 400 | `BAD_REQUEST` | Malformed body or unsupported file type |
+| 400 | `INVALID_TOKEN` | A verification, password-reset, invitation or claim token is unknown, already used, or expired |
+| 403 | `EMAIL_NOT_VERIFIED` | A victim tried to log in or report before verifying their email |
 | 401 | `UNAUTHORIZED` | Missing, invalid or expired token |
-| 401 | `INVALID_CREDENTIALS` | Wrong email or password at login, or wrong case reference / access code for a victim session |
+| 401 | `INVALID_CREDENTIALS` | Wrong email or password at login |
 | 403 | `FORBIDDEN` | Your role can't do this (e.g. an operator closing a case as `paid_out`) |
 | 404 | `RESOURCE_NOT_FOUND` | It doesn't exist **or it belongs to another bank**. Cross-bank access always returns 404, never 403, so a bank viewer can't confirm a case exists. |
 | 409 | `INVALID_STATUS_TRANSITION` | That status change isn't allowed from the current status. `details`: `{ "from", "to", "allowed": [] }` |
 | 409 | `ALREADY_REVIEWED` | The extraction was already accepted or rejected |
 | 409 | `CASE_LOCKED` | A victim tried to change a field that is locked at the case's current status (§3.5). `details`: `{ "locked_fields": [] }` |
+| 409 | `STALE_CASE` | `expected_version` doesn't match: the case changed since you loaded it. `details`: `{ "current_version": 4 }` |
+| 409 | `CASE_CLOSED` | The case is closed and read-only (notes are still allowed) |
 | 413 | `FILE_TOO_LARGE` | Upload is over 10 MB |
 | 422 | `VALIDATION_ERROR` | A field failed validation. `details.fields[]` |
 | 422 | `MISSING_REQUIRED_INFO` | The case lacks information needed for this status change. `details.missing_fields[]` |
-| 429 | `RATE_LIMITED` | Too many public intake submissions, or too many failed logins, from one IP |
+| 429 | `RATE_LIMITED` | Too many attempts (login, sign-up, password reset, reports, chat). See `Retry-After`. |
 | 500 | `INTERNAL_ERROR` | Unexpected server error |
 
 **An AI failure is never returned as an HTTP error.** If the AI times out or is down, the extraction request still succeeds, and the returned extraction has `status: "failed"` or `source: "rules_fallback"` (see 6.5).
@@ -114,17 +123,21 @@ FastAPI's validation errors (422) are converted to this format:
 
 ## 2. Roles and permissions
 
-Staff roles: `operator`, `supervisor`, `bank_viewer`. Victims have no account. Anyone can use the intake form. A victim who has their case's reference and access code opens a **victim session** that covers only that one case (§6.7).
+Roles: `operator`, `supervisor`, `bank_viewer` (staff, invited by a supervisor) and `victim` (signs up, §6.1). Sign-up can never choose a role; it always creates a `victim`.
 
 | Action | operator | supervisor | bank_viewer | victim |
 | :--- | :---: | :---: | :---: | :---: |
-| Submit victim intake form | – | – | – | ✓ (no login) |
-| List / open cases | all banks | all banks | own bank | own case only (limited view) |
+| Sign up, verify email, reset own password | – | – | – | ✓ (public) |
+| Log in, log out, reset password | ✓ | ✓ | ✓ | ✓ |
+| Submit a fraud report | – | – | – | ✓ (verified email) |
+| List / open cases | all banks | all banks | own bank | own cases only (limited view) |
 | Create case (phone / paper report) | ✓ | ✓ | – | – |
 | Edit case fields | ✓ | ✓ | – | own case, limited (§3.5) |
 | Add notes (internal) | ✓ | ✓ | – | – |
-| Issue a victim access code | ✓ | ✓ | – | – |
-| Ask the case assistant (chatbot) | – | – | – | own case |
+| Invite a victim to link a phone/paper case | ✓ | ✓ | – | – |
+| Invite staff and bank viewers (sets role and bank), revoke invitations | – | ✓ | – | – |
+| Deactivate a user | – | ✓ | – | – |
+| Ask the case assistant (chatbot) | – | – | – | own cases |
 | Read a case's chat thread | ✓ | ✓ | own bank | own case |
 | Reply to a victim in the chat | ✓ | ✓ | – | – |
 | List bluebooks | all banks | all banks | own bank | – |
@@ -140,7 +153,7 @@ Staff roles: `operator`, `supervisor`, `bank_viewer`. Victims have no account. A
 | Global audit log | – | all banks | own bank | – |
 | Shared-account alerts | – | ✓ | – | – |
 
-**Who enforces this:** the server does, through API checks plus Postgres row-level security (D5). The frontend hides buttons only to make the UI tidier. For a `bank_viewer`, any `bank_id` filter is ignored and replaced with their own bank. A victim session works only on `/api/victim/*`; every other endpoint returns `403 FORBIDDEN` to it.
+**Who enforces this:** the server does, through API checks plus Postgres row-level security (D5). The frontend hides buttons only to make the UI tidier. For a `bank_viewer`, any `bank_id` filter is ignored and replaced with their own bank. A victim account works only on `/api/auth/*` and `/api/victim/*`; every staff endpoint returns `403 FORBIDDEN` to it. A victim asking for another victim's case gets `404`.
 
 ---
 
@@ -150,18 +163,18 @@ Staff roles: `operator`, `supervisor`, `bank_viewer`. Victims have no account. A
 
 | Value | Label | Default stage deadline |
 | :--- | :--- | :--- |
-| `received` | Received | 2 days |
-| `verified` | Verified | 5 days |
-| `account_check` | Account Check | 10 days |
-| `notice_published` | Notice Published | 60 days |
-| `payout_review` | Payout Review | 10 days |
+| `received` | Received | 7 days |
+| `verified` | Verified | 14 days |
+| `account_check` | Account Check | 45 days |
+| `notice_published` | Notice Published | 90 days |
+| `payout_review` | Payout Review | 45 days |
 | `closed` | Closed | none |
 
 When a case enters a status, `deadline` = entry time + that status's day count. The day counts are placeholders and can be changed in server config. A supervisor can override a deadline (see 6.3, PATCH).
 
 `deadline_state` is computed on every read:
 - `on_track`
-- `due_soon`: deadline within 2 days
+- `due_soon`: in the last 20% of the stage (at least 1 day before the deadline)
 - `overdue`: deadline has passed
 - `none`: case is closed
 
@@ -172,8 +185,8 @@ When a case enters a status, `deadline` = entry time + that status's day count. 
 - **Close** from any open status, with a `closure_reason`:
   - `withdrawn`: operator or supervisor.
   - `rejected`: supervisor only.
-  - `paid_out`: supervisor only, and only from `payout_review`.
-- `closed` is final.
+  - `paid_out`: supervisor only, only from `payout_review`, and with `payout_amount`.
+- `closed` is final, and the case becomes **read-only**: edits, uploads, extractions, reviews, transitions and victim edits return `409 CASE_CLOSED`. Notes are still allowed.
 
 **The frontend doesn't need to code these rules.** Every case comes with `allowed_transitions` and `allowed_closure_reasons` for the logged-in user. Build the action buttons from those lists.
 
@@ -195,7 +208,7 @@ Every case carries `flags.missing_fields`, which lists what's still missing. The
 ### 3.4 Enum values
 
 ```ts
-type Role = 'operator' | 'supervisor' | 'bank_viewer';
+type Role = 'operator' | 'supervisor' | 'bank_viewer' | 'victim';
 type CaseStatus = 'received' | 'verified' | 'account_check' | 'notice_published' | 'payout_review' | 'closed';
 type ClosureReason = 'paid_out' | 'rejected' | 'withdrawn';
 type DeadlineState = 'on_track' | 'due_soon' | 'overdue' | 'none';
@@ -219,7 +232,9 @@ type AuditAction =
   | 'ai.extraction_completed' | 'ai.extraction_failed'
   | 'ai.review_accepted' | 'ai.review_rejected'
   | 'export.generated'
-  | 'case.access_code_issued'
+  | 'auth.logout' | 'auth.signup' | 'auth.email_verified' | 'auth.password_reset'
+  | 'user.invited' | 'user.invitation_revoked' | 'user.joined' | 'user.deactivated'
+  | 'case.victim_invited' | 'case.claimed'
   | 'chat.escalated' | 'chat.staff_replied'
   | 'kb.document_uploaded' | 'kb.document_published' | 'kb.document_archived';
 type ChatRole = 'victim' | 'assistant' | 'staff';
@@ -292,6 +307,7 @@ interface User {
   email: string;
   role: Role;
   bank_id: string | null;            // set only for bank_viewer
+  email_verified: boolean;
 }
 
 interface Victim {
@@ -307,6 +323,7 @@ interface CaseFlags {
   ai_review_pending: boolean;        // a document has an extraction waiting for review
   shared_account_case_count: number; // OTHER cases at the same bank with the same account_number (0 = none)
   victim_question_pending: boolean;  // the case assistant passed a victim's question to staff (§3.6)
+  possible_duplicate: boolean;       // same contact + amount + transfer date + account as another case
 }
 
 interface CaseSummary {              // one row in the case list / board
@@ -328,6 +345,8 @@ interface CaseSummary {              // one row in the case list / board
 }
 
 interface Case extends CaseSummary {
+  version: number;                   // send back as expected_version on every write (§1)
+  payout_amount: number | null;      // set when closed as paid_out
   victim: Victim;
   transfer_date: string | null;      // YYYY-MM-DD
   account_number: string | null;     // the account the money was SENT TO (checked / frozen)
@@ -453,6 +472,8 @@ interface SharedAccountAlert {
 }
 
 interface VictimCase {               // what a victim sees about their own case (§6.7)
+  id: string;
+  version: number;                   // send back as expected_version when editing
   reference: string;
   bank_name: string;
   status: CaseStatus;
@@ -511,11 +532,24 @@ interface KbDocument {               // one bluebook document; always belongs to
   version: string;
   language: Language;
   status: KbDocumentStatus;
+  audience: 'victim_facing' | 'staff_only';   // the assistant quotes only victim_facing documents
   passage_count: number | null;      // passages indexed; null until ready
   error: string | null;              // set when status is 'failed'
   uploaded_by: UserRef;
   uploaded_at: string;
   published_at: string | null;
+}
+
+interface Invitation {               // a staff invitation (§6.1)
+  id: string;
+  email: string;
+  name: string;
+  role: 'operator' | 'supervisor' | 'bank_viewer';
+  bank_id: string | null;            // required for bank_viewer, null otherwise
+  status: 'pending' | 'accepted' | 'revoked' | 'expired';
+  invited_by: UserRef;
+  created_at: string;
+  expires_at: string;                // 72 hours after creation
 }
 ```
 
@@ -523,16 +557,30 @@ interface KbDocument {               // one bluebook document; always belongs to
 
 ## 5. Endpoint index
 
-Tiers follow the brief: **MVP** is required, **Should** is expected, **Nice** is a bonus. **Extra** is not in the brief: it's the team's own case assistant (RAG), built only once the MVP path works. Build the frontend in that order. Status: `PLANNED` = agreed, not built · `MOCKED` = backend returns fixed data · `LIVE` = real and checked in Swagger.
+Tiers follow the brief: **MVP** is required, **Should** is expected, **Nice** is a bonus. **Extra** is not in the brief: it's the team's own case assistant (RAG), built only once the MVP path works. Build the frontend in that order. Status: `PLANNED` = agreed, not built · `LIVE` = implemented and passing the development guide's Definition of Done. **As of v0.4.0 every endpoint is `PLANNED`; nothing is live yet.**
 
 | # | Method | Path | Who | Tier | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | 6.1 | POST | `/api/auth/login` | public | MVP | PLANNED |
 | 6.1 | GET | `/api/auth/me` | logged in | MVP | PLANNED |
+| 6.1 | POST | `/api/auth/logout` | logged in | MVP | PLANNED |
+| 6.1 | POST | `/api/auth/signup` | public | MVP | PLANNED |
+| 6.1 | POST | `/api/auth/verify-email` | public | MVP | PLANNED |
+| 6.1 | POST | `/api/auth/resend-verification` | public | MVP | PLANNED |
+| 6.1 | POST | `/api/auth/forgot-password` | public | MVP | PLANNED |
+| 6.1 | POST | `/api/auth/reset-password` | public | MVP | PLANNED |
+| 6.1 | POST | `/api/auth/accept-invitation` | public | Should | PLANNED |
+| 6.1 | POST | `/api/invitations` | supervisor | Should | PLANNED |
+| 6.1 | GET | `/api/invitations` | supervisor | Should | PLANNED |
+| 6.1 | POST | `/api/invitations/{invitation_id}/revoke` | supervisor | Should | PLANNED |
+| 6.1 | PATCH | `/api/users/{user_id}` | supervisor | Should | PLANNED |
 | 6.2 | GET | `/api/health` | public | MVP | PLANNED |
 | 6.2 | GET | `/api/banks` | public | MVP | PLANNED |
 | 6.2 | GET | `/api/users` | operator, supervisor | MVP | PLANNED |
-| 6.3 | POST | `/api/intake` | public | MVP | PLANNED |
+| 6.7 | POST | `/api/victim/cases` | victim | MVP | PLANNED |
+| 6.7 | GET | `/api/victim/cases` | victim | MVP | PLANNED |
+| 6.7 | GET | `/api/victim/cases/{case_id}` | victim | MVP | PLANNED |
+| 6.7 | PATCH | `/api/victim/cases/{case_id}` | victim | Should | PLANNED |
 | 6.3 | GET | `/api/cases` | all roles | MVP | PLANNED |
 | 6.3 | POST | `/api/cases` | operator, supervisor | MVP | PLANNED |
 | 6.3 | GET | `/api/cases/{case_id}` | all roles | MVP | PLANNED |
@@ -540,7 +588,8 @@ Tiers follow the brief: **MVP** is required, **Should** is expected, **Nice** is
 | 6.3 | POST | `/api/cases/{case_id}/transition` | operator, supervisor | MVP | PLANNED |
 | 6.3 | POST | `/api/cases/{case_id}/assign` | operator, supervisor | MVP | PLANNED |
 | 6.3 | POST | `/api/cases/{case_id}/notes` | operator, supervisor | Should | PLANNED |
-| 6.3 | POST | `/api/cases/{case_id}/victim-access` | operator, supervisor | Should | PLANNED |
+| 6.3 | POST | `/api/cases/{case_id}/victim-invite` | operator, supervisor | Extra | PLANNED |
+| 6.7 | POST | `/api/victim/claims` | victim | Extra | PLANNED |
 | 6.4 | GET | `/api/cases/{case_id}/history` | all roles | MVP | PLANNED |
 | 6.5 | POST | `/api/cases/{case_id}/documents` | operator, supervisor | MVP | PLANNED |
 | 6.5 | GET | `/api/documents/{document_id}/file` | all roles | Should | PLANNED |
@@ -552,12 +601,9 @@ Tiers follow the brief: **MVP** is required, **Should** is expected, **Nice** is
 | 6.4 | GET | `/api/audit-logs` | supervisor, bank_viewer | MVP | PLANNED |
 | 6.6 | GET | `/api/alerts/shared-accounts` | supervisor | Nice | PLANNED |
 | 6.4 | GET | `/api/cases/{case_id}/history?format=csv` | all roles | Nice | PLANNED |
-| 6.7 | POST | `/api/victim/session` | public | Should | PLANNED |
-| 6.7 | GET | `/api/victim/case` | victim session | Should | PLANNED |
-| 6.7 | PATCH | `/api/victim/case` | victim session | Should | PLANNED |
-| 6.7 | GET | `/api/victim/chat` | victim session | Extra | PLANNED |
-| 6.7 | POST | `/api/victim/chat/messages` | victim session | Extra | PLANNED |
-| 6.7 | POST | `/api/victim/chat/messages/{message_id}/feedback` | victim session | Extra | PLANNED |
+| 6.7 | GET | `/api/victim/cases/{case_id}/chat` | victim | Extra | PLANNED |
+| 6.7 | POST | `/api/victim/cases/{case_id}/chat/messages` | victim | Extra | PLANNED |
+| 6.7 | POST | `/api/victim/cases/{case_id}/chat/messages/{message_id}/feedback` | victim | Extra | PLANNED |
 | 6.8 | GET | `/api/cases/{case_id}/chat` | operator, supervisor, bank_viewer | Extra | PLANNED |
 | 6.8 | POST | `/api/cases/{case_id}/chat/reply` | operator, supervisor | Extra | PLANNED |
 | 6.8 | GET | `/api/kb/documents` | operator, supervisor, bank_viewer | Extra | PLANNED |
@@ -565,7 +611,7 @@ Tiers follow the brief: **MVP** is required, **Should** is expected, **Nice** is
 | 6.8 | POST | `/api/kb/documents/{kb_document_id}/publish` | supervisor | Extra | PLANNED |
 | 6.8 | POST | `/api/kb/documents/{kb_document_id}/archive` | supervisor | Extra | PLANNED |
 
-**Not in this version:** file upload by victims, password reset, token refresh, moving a case between banks.
+**Not in this version (future work):** file upload by victims, multi-factor login, sign-in with Google or a bank, token refresh, changing a user's role (re-invite instead), moving a case between banks, `Idempotency-Key`.
 
 ---
 
@@ -585,25 +631,80 @@ Response `200`:
 {
   "success": true,
   "data": {
-    "token": "eyJhbGciOiJIUzI1NiIs...",
+    "token": "kq3V9zJ2m4sXw8pLr1tYc6nB0dFhGa5eQ7uI",
     "expires_at": "2026-11-14T12:30:00Z",
     "user": {
       "id": "11111111-1111-4111-8111-111111111111",
       "name": "Operator One",
       "email": "operator1@opscenter.test",
       "role": "operator",
-      "bank_id": null
+      "bank_id": null,
+      "email_verified": true
     }
   },
   "message": "Login successful"
 }
 ```
 
-Errors: `401 INVALID_CREDENTIALS`, `422 VALIDATION_ERROR`, `429 RATE_LIMITED` (too many failed attempts from one IP or for one email). Successful and failed logins are both audited.
+Staff and victims use the same login. Errors: `401 INVALID_CREDENTIALS`, `403 EMAIL_NOT_VERIFIED` (victim), `422 VALIDATION_ERROR`, `429 RATE_LIMITED` (5 failed attempts per IP or email within 15 minutes). Successful and failed logins are both audited.
 
 #### `GET /api/auth/me` · logged in
 
 Response `200`: `data` is a `User`. Errors: `401 UNAUTHORIZED`.
+
+#### `POST /api/auth/logout` · logged in
+
+Ends the current session. Response `200` with `data: null`. The same token then gets `401`.
+
+#### `POST /api/auth/signup` · public · rate-limited
+
+```json
+{ "email": "rina.example@mail.test", "password": "a-long-password", "name": "Rina Example", "preferred_language": "ja" }
+```
+
+Always creates a `victim`; a `role` field is rejected (`422`, unknown field). The password is 10–128 characters. Response `202` with the same message whether or not the email already has an account, so nobody can test which emails exist. A verification email is sent: a link valid for 24 hours, or for an existing account a "you already have an account" note.
+
+#### `POST /api/auth/verify-email` · public
+
+`{ "token": "<from the email link>" }` → `200`. Errors: `400 INVALID_TOKEN`.
+
+#### `POST /api/auth/resend-verification` · public · rate-limited
+
+`{ "email": "..." }` → always `202`.
+
+#### `POST /api/auth/forgot-password` · public · rate-limited
+
+`{ "email": "..." }` → always `202`. If an active account exists, a reset link valid for 1 hour is emailed.
+
+#### `POST /api/auth/reset-password` · public
+
+`{ "token": "...", "new_password": "..." }` → `200`. This ends **all** of that user's sessions. Errors: `400 INVALID_TOKEN`, `422`.
+
+#### `POST /api/auth/accept-invitation` · public
+
+`{ "token": "...", "password": "..." }` → `200`. Creates the account with the invited role and bank; the email counts as verified. Errors: `400 INVALID_TOKEN`, `422`.
+
+#### `POST /api/invitations` · supervisor
+
+```json
+{ "email": "viewer2@bank-c.test", "name": "Cobalt Viewer", "role": "bank_viewer", "bank_id": "bank_c" }
+```
+
+- `bank_id` is required for `bank_viewer` and must be `null` for `operator` and `supervisor`.
+- Response `201`: `data` is an `Invitation`. An email with a 72-hour link is sent.
+- Errors: `403`, `409` (the email already has an account or a pending invitation), `422`.
+
+#### `GET /api/invitations` · supervisor
+
+Response `200`: `data` is `Invitation[]`.
+
+#### `POST /api/invitations/{invitation_id}/revoke` · supervisor
+
+Response `200`: `data` is the `Invitation` with `status: "revoked"`. Errors: `404`, `409` (already accepted).
+
+#### `PATCH /api/users/{user_id}` · supervisor
+
+`{ "is_active": false }` → `200`, `data` is the `User`. Deactivating ends all of that user's sessions. A supervisor can't deactivate themselves (`422`).
 
 ---
 
@@ -635,9 +736,9 @@ Response `200`: `data` is `User[]`, not paginated. Used for the "assign owner" d
 
 ### 6.3 Cases
 
-#### `POST /api/intake` · public · rate-limited by IP
+#### `POST /api/victim/cases` · victim (verified email) · rate-limited
 
-The victim's web form. It creates a case in `received` with `channel: "web_form"`.
+The victim's report form. It creates a case in `received` with `channel: "web_form"`, linked to the victim's account. `victim.email` defaults to the account email.
 
 Request:
 ```json
@@ -664,23 +765,9 @@ Request:
 - **Required:** `bank_id`, `victim.name`, `victim.phone` or `victim.email`, `amount`, `transfer_date`, `scam_type`, and `consent: true`.
 - **Optional:** `account_number`, since the victim may not know it yet. A missing account number shows up in `flags.missing_fields`.
 
-Response `201`. This deliberately returns no internal IDs or case data:
-```json
-{
-  "success": true,
-  "data": {
-    "reference": "RFR-2026-00042",
-    "access_code": "K7QM-4XHP-2RTV",
-    "status": "received",
-    "submitted_at": "2026-11-14T04:30:00Z"
-  },
-  "message": "Report received. Keep your reference number and access code."
-}
-```
+Response `201`: `data` is the new `VictimCase` (§4). The frontend should disable the submit button while sending; repeated reports are flagged with `flags.possible_duplicate` for staff.
 
-The `access_code` appears only in this response, and the server stores only a hash of it. With the reference, it lets the victim view and edit their case (§6.7). Show both on the confirmation screen and tell the victim to keep them.
-
-Errors: `422 VALIDATION_ERROR`, `429 RATE_LIMITED`.
+Errors: `401`, `403 EMAIL_NOT_VERIFIED`, `422 VALIDATION_ERROR`, `429 RATE_LIMITED`.
 
 #### `GET /api/cases` · all roles
 
@@ -702,7 +789,7 @@ Response `200`: `data` is a page of `CaseSummary`. For a board view, call it wit
 
 An operator creates a case from a phone call or paper report. Only `bank_id`, `channel` and `victim.name` are required. Any other field can be filled in later, by hand or through an AI extraction. This is the main demo flow: create the case, upload the scanned paper form, let the AI fill the fields, then have a person review them.
 
-Request: the same body as `/api/intake`, without `consent`, plus:
+Request: the same body as `POST /api/victim/cases`, without `consent`, plus:
 ```json
 {
   "channel": "paper",
@@ -717,13 +804,14 @@ Response `201`: `data` is a `Case`. Errors: `422 VALIDATION_ERROR`.
 
 #### `GET /api/cases/{case_id}` · all roles
 
-Response `200`: `data` is a `Case`. **Side effect:** it writes a `case.viewed` audit entry.
+Response `200`: `data` is a `Case`. **Side effect:** it writes a `case.viewed` audit entry, at most once per user per case every 10 minutes.
 
 ```json
 {
   "success": true,
   "data": {
     "id": "7f3c2a9e-5b1d-4c8e-9a10-2d6f8b4e1c33",
+    "version": 3,
     "reference": "RFR-2026-00042",
     "bank_id": "bank_b",
     "bank_name": "Birch Regional Bank",
@@ -749,10 +837,11 @@ Response `200`: `data` is a `Case`. **Side effect:** it writes a `case.viewed` a
     "assigned_operator": { "id": "11111111-1111-4111-8111-111111111111", "name": "Operator One" },
     "reported_date": "2026-11-02",
     "closure_reason": null,
+    "payout_amount": null,
     "created_at": "2026-11-02T03:12:00Z",
     "updated_at": "2026-11-14T04:30:00Z",
     "closed_at": null,
-    "flags": { "missing_fields": [], "ai_review_pending": false, "shared_account_case_count": 2, "victim_question_pending": false },
+    "flags": { "missing_fields": [], "ai_review_pending": false, "shared_account_case_count": 2, "victim_question_pending": false, "possible_duplicate": false },
     "allowed_transitions": ["account_check", "received", "closed"],
     "allowed_closure_reasons": ["withdrawn"],
     "documents": [
@@ -797,27 +886,28 @@ Partial update. Send only the fields that changed.
 - **Not editable here:** `status` (use `/transition`), `bank_id`, `assigned_operator` (use `/assign`).
 
 ```json
-{ "amount": 260000, "victim": { "phone": "+81-90-0000-0043" } }
+{ "expected_version": 3, "amount": 260000, "victim": { "phone": "+81-90-0000-0043" } }
 ```
 
 Response `200`: `data` is the updated `Case`. Each changed field is audited with its old and new value.
 
-Errors: `403 FORBIDDEN` (deadline change by a non-supervisor), `404`, `422 VALIDATION_ERROR`.
+Errors: `403 FORBIDDEN` (deadline change by a non-supervisor), `404`, `409 STALE_CASE`, `409 CASE_CLOSED`, `422 VALIDATION_ERROR`.
 
 #### `POST /api/cases/{case_id}/transition` · operator, supervisor
 
 ```json
-{ "to_status": "closed", "closure_reason": "withdrawn", "note": "Victim withdrew the claim by phone." }
+{ "expected_version": 3, "to_status": "closed", "closure_reason": "withdrawn", "note": "Victim withdrew the claim by phone." }
 ```
 
 - `note` is required when moving back a step or closing.
-- `closure_reason` is required when `to_status` is `closed`.
+- `closure_reason` is required when `to_status` is `closed`; `payout_amount` is required with `closure_reason: "paid_out"`.
 - On success, the case gets a new `deadline` (3.1) and an audit entry is written.
 
 Response `200`: `data` is the updated `Case`.
 
 Errors:
 - `409 INVALID_STATUS_TRANSITION`, with `details: { "from", "to", "allowed": [] }`
+- `409 STALE_CASE`, `409 CASE_CLOSED`
 - `422 MISSING_REQUIRED_INFO`, with `details: { "missing_fields": ["account_number", "document"] }`
 - `403 FORBIDDEN`, when a money closure is attempted by a non-supervisor
 - `404`
@@ -838,24 +928,9 @@ Send `null` to unassign. Response `200`: `data` is the updated `Case`. Errors: `
 
 Response `201`: `data` is a `Note`. Notes keep case knowledge in the system when staff change.
 
-#### `POST /api/cases/{case_id}/victim-access` · operator, supervisor
+#### `POST /api/cases/{case_id}/victim-invite` · operator, supervisor · Extra
 
-Issues a new access code for the case's victim. Use it when:
-- the case came in by phone or paper, so the victim has no code yet;
-- the victim lost their code.
-
-The previous code and any open victim session stop working.
-
-No body. Response `201`:
-```json
-{
-  "success": true,
-  "data": { "reference": "RFR-2026-00042", "access_code": "R9TB-6NZE-3WFJ" },
-  "message": "Give this code to the victim. It is shown only once."
-}
-```
-
-It's audited as `case.access_code_issued`, and the code itself is never logged. Errors: `403 FORBIDDEN` (bank viewer), `404`.
+For a phone or paper case: emails the case's `victim.email` a link (valid 7 days) that lets the victim link the case to their account (`POST /api/victim/claims`). No body. Response `200` with `data: null`. Audited as `case.victim_invited`; the token is never logged. Errors: `403`, `404`, `422` (no email on the case).
 
 ---
 
@@ -905,7 +980,7 @@ Response `201`: `data` is a `DocumentMeta`. Errors: `400 BAD_REQUEST` (file type
 
 #### `GET /api/documents/{document_id}/file` · all roles (bank_viewer: own bank)
 
-Returns the raw file with its `Content-Type` and is audited as `document.downloaded`. It needs the bearer header, so the frontend must fetch it, turn it into a blob and use an object URL. A plain `<a href>` won't send the token.
+Returns the raw file with its `Content-Type`, `Content-Disposition: attachment` and `X-Content-Type-Options: nosniff`, and is audited as `document.downloaded`. It needs the bearer header, so the frontend must fetch it, turn it into a blob and use an object URL. A plain `<a href>` won't send the token.
 
 #### `POST /api/documents/{document_id}/extract` · operator, supervisor
 
@@ -978,6 +1053,7 @@ To accept, send the values the person approves (edited or not). **Only the field
 ```json
 {
   "decision": "accept",
+  "expected_version": 3,
   "fields": { "amount": 250000, "transfer_date": "2026-10-28", "account_number": "0012345" },
   "note": "Checked the account number against the scan."
 }
@@ -996,7 +1072,7 @@ Response `200`:
 
 The audit entry `ai.review_accepted` stores each field's AI value next to its final value. This is how we measure AI accuracy on real reviews.
 
-Errors: `409 ALREADY_REVIEWED`, `422 VALIDATION_ERROR` (`note` missing on reject, bad value types), `404`.
+Errors: `409 ALREADY_REVIEWED`, `409 STALE_CASE`, `409 CASE_CLOSED`, `422 VALIDATION_ERROR` (`note` missing on reject, bad value types), `404`.
 
 #### `GET /api/review-queue` · operator, supervisor
 
@@ -1044,31 +1120,17 @@ Matching uses `(bank_id, account_number)`, so it never compares data across bank
 
 ### 6.7 Victim self-service
 
-Victims have no account. The intake form gives them a reference and an access code (§6.3). Together they open a **victim session**: a token that lasts 1 hour and works only for that one case, on `/api/victim/*`. Send it like any other token: `Authorization: Bearer <token>`.
+Victims log in like everyone else (§6.1) and must have a verified email. Every `/api/victim/*` route works only on the victim's own cases; another victim's case returns `404`.
 
-#### `POST /api/victim/session` · public · rate-limited
+#### `GET /api/victim/cases` · victim
 
-```json
-{ "reference": "RFR-2026-00042", "access_code": "K7QM-4XHP-2RTV" }
-```
+Response `200`: `data` is `VictimCase[]` (the victim's own cases, newest first; not paginated).
 
-The code is not case-sensitive, and the dashes are optional.
+#### `POST /api/victim/claims` · victim · Extra
 
-Response `200`:
-```json
-{
-  "success": true,
-  "data": { "token": "eyJhbGciOiJIUzI1NiIs...", "expires_at": "2026-11-14T05:30:00Z", "case": { "...": "VictimCase" } },
-  "message": "ok"
-}
-```
+`{ "token": "<from the case invite email>" }` → `200`, `data` is the linked `VictimCase`. The victim's verified email must match the email the invite was sent to. Errors: `400 INVALID_TOKEN`, `403`.
 
-Errors:
-- `401 INVALID_CREDENTIALS`: the same answer for a wrong reference and a wrong code, so nobody can test which references exist.
-- `422 VALIDATION_ERROR`
-- `429 RATE_LIMITED`: after 5 failed attempts for one reference or one IP within 15 minutes.
-
-#### `GET /api/victim/case` · victim session
+#### `GET /api/victim/cases/{case_id}` · victim
 
 Response `200`: `data` is a `VictimCase`. It's audited as `case.viewed` with actor type `victim`.
 
@@ -1076,6 +1138,8 @@ Response `200`: `data` is a `VictimCase`. It's audited as `case.viewed` with act
 {
   "success": true,
   "data": {
+    "id": "7f3c2a9e-5b1d-4c8e-9a10-2d6f8b4e1c33",
+    "version": 2,
     "reference": "RFR-2026-00042",
     "bank_name": "Birch Regional Bank",
     "status": "verified",
@@ -1103,12 +1167,12 @@ Response `200`: `data` is a `VictimCase`. It's audited as `case.viewed` with act
 }
 ```
 
-#### `PATCH /api/victim/case` · victim session
+#### `PATCH /api/victim/cases/{case_id}` · victim
 
 Partial update: send only the fields that changed. What's allowed depends on the status (§3.5), and the case's `editable_fields` lists it exactly.
 
 ```json
-{ "victim": { "phone": "+81-90-0000-0099", "preferred_language": "en" } }
+{ "expected_version": 2, "victim": { "phone": "+81-90-0000-0099", "preferred_language": "en" } }
 ```
 
 Response `200`: the updated `VictimCase`. Each changed field is audited as `case.updated` with actor type `victim` and its old and new value, so staff see the change in the case history (§6.4).
@@ -1116,13 +1180,14 @@ Response `200`: the updated `VictimCase`. Each changed field is audited as `case
 Errors:
 - `409 CASE_LOCKED`, with `details: { "locked_fields": ["amount"] }`. Example: changing the amount after the case was verified.
 - `422 VALIDATION_ERROR`. Example: removing both phone and email.
-- `401 UNAUTHORIZED`: the session expired, or staff issued a new access code.
+- `409 STALE_CASE`, `409 CASE_CLOSED`
+- `404`: not this victim's case.
 
-#### `GET /api/victim/chat` · victim session · Extra
+#### `GET /api/victim/cases/{case_id}/chat` · victim · Extra
 
 Response `200`: `data` is the case's `ChatThread`. It starts empty.
 
-#### `POST /api/victim/chat/messages` · victim session · rate-limited · Extra
+#### `POST /api/victim/cases/{case_id}/chat/messages` · victim · rate-limited · Extra
 
 ```json
 { "question": "What happens next with my case?" }
@@ -1167,7 +1232,7 @@ Errors:
 - `429 RATE_LIMITED`: over 20 questions per case per hour
 - `401`
 
-#### `POST /api/victim/chat/messages/{message_id}/feedback` · victim session · Extra
+#### `POST /api/victim/cases/{case_id}/chat/messages/{message_id}/feedback` · victim · Extra
 
 ```json
 { "feedback": "not_helpful" }
@@ -1199,7 +1264,7 @@ Query: `bank_id`, `status`. Response `200`: `data` is `KbDocument[]`, not pagina
 
 `multipart/form-data`:
 - `file`: PDF or TXT, at most 20 MB
-- `bank_id`, `title`, `version`, `language`
+- `bank_id`, `title`, `version`, `language`, `audience` (`victim_facing` or `staff_only`)
 
 Response `201`: `data` is a `KbDocument` with status `processing`. Splitting and indexing run in the background; poll the list until the status is `ready` or `failed`. It's audited as `kb.document_uploaded`.
 
@@ -1306,12 +1371,13 @@ The seed will include:
 
 Emails use the `.test` domain and phone numbers use `0000` blocks.
 
-Two seeded cases have fixed victim access codes (synthetic), for demos:
+Demo victim accounts (synthetic, password `Demo@1234`):
 
-| Reference | Access code | Status | Victim can edit |
+| Email | Owns | Status | Can edit |
 | :--- | :--- | :--- | :--- |
-| `RFR-2026-00042` | `K7QM-4XHP-2RTV` | `verified` (bank_b) | contact details only |
-| `RFR-2026-00051` | `M3PX-8KWN-5QDA` | `received` (bank_c) | everything in §3.5 |
+| `victim1@mail.test` | `RFR-2026-00042` | `verified` (bank_b) | contact details only |
+| `victim2@mail.test` | `RFR-2026-00051` | `received` (bank_c) | everything in §3.5 |
+| `victim3@mail.test` | — | email **not** verified | shows `403 EMAIL_NOT_VERIFIED` |
 
 **Bluebooks (synthetic):** one per bank, 4–6 pages each. They differ on purpose: required documents, contact hours, and how the notice period is worded. In the demo, ask the same question as victims of two different banks and get two different, correctly cited answers.
 
@@ -1343,11 +1409,11 @@ To get a specific response, send a `Prefer` header:
 | `Prefer: example=fallback` | The rule-based fallback extraction (low confidence) |
 | `Prefer: example=ai_down` | `ai: "unavailable"` from `GET /api/health`, for the banner |
 | `Prefer: code=422, example=missing_info` | `422 MISSING_REQUIRED_INFO` from `/transition` |
-| `Prefer: example=received` | On `GET` / `PATCH /api/victim/case`: a case still `received`, with every §3.5 field editable |
-| `Prefer: code=409` | On `PATCH /api/victim/case`: `409 CASE_LOCKED` |
-| `Prefer: example=no_answer` | On `POST /api/victim/chat/messages`: the assistant can't answer and passes the question to staff |
-| `Prefer: example=passages_only` | On `POST /api/victim/chat/messages`: the AI model is down, so only bluebook passages come back |
-| `Prefer: example=refused` | On `POST /api/victim/chat/messages`: the victim asked about other people, and nothing is revealed |
+| `Prefer: example=received` | On `GET` / `PATCH /api/victim/cases/{case_id}`: a case still `received`, with every §3.5 field editable |
+| `Prefer: code=409` | On `PATCH /api/victim/cases/{case_id}`: `409 CASE_LOCKED` |
+| `Prefer: example=no_answer` | On `POST /api/victim/cases/{case_id}/chat/messages`: the assistant can't answer and passes the question to staff |
+| `Prefer: example=passages_only` | On `POST /api/victim/cases/{case_id}/chat/messages`: the AI model is down, so only bluebook passages come back |
+| `Prefer: example=refused` | On `POST /api/victim/cases/{case_id}/chat/messages`: the victim asked about other people, and nothing is revealed |
 
 **What the mock does not do:**
 - It doesn't remember anything. A `POST` or `PATCH` returns the example, not your data.
@@ -1369,6 +1435,7 @@ To get a specific response, send a `Prefer` header:
 
 | Version | Date | Change |
 | :--- | :--- | :--- |
+| 0.4.0 | 2026-11-14 | **Breaking for victim screens.** Accounts for everyone (D15): victim sign-up, email verification, logout, forgot/reset password, staff invitations, deactivation; victim routes are now `/api/victim/cases/...`; access codes, `/api/intake` and `/api/victim/session` removed. Also: `version` + `expected_version` → `409 STALE_CASE`; `409 CASE_CLOSED`; PATCH rules; realistic stage durations; money as JSON numbers; `Retry-After`; `payout_amount`; `possible_duplicate`; bluebook `audience`; download headers; deduplicated view audit; opaque tokens; no path versioning. |
 | 0.3.0 | 2026-11-14 | Case assistant (RAG, D14): victim chat (§6.7), staff chat view and reply, and per-bank bluebook management (§6.8); rules in §3.6; AI interface in §7.2. New: `flags.victim_question_pending`, `rag` in health, chat and bluebook audit actions. Additive only. |
 | 0.2.0 | 2026-11-14 | Victim self-service (§3.5, §6.7): `POST /api/victim/session`, `GET`/`PATCH /api/victim/case`, and staff `POST /api/cases/{id}/victim-access`. Intake now also returns `access_code`. New: error `CASE_LOCKED`, actor type `victim`, audit action `case.access_code_issued`. Additive only; nothing existing was renamed or removed. |
 | 0.1.1 | 2026-11-14 | Added the machine-readable [openapi.yaml](openapi.yaml) and the no-backend mock (§9.1). Login can now return `429 RATE_LIMITED`. Named Galib as the AI owner (§7). |
