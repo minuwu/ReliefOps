@@ -1,6 +1,6 @@
 # API Specification (Shared Contract)
 
-**Version** 0.2.0 (draft) · **Updated** 2026-11-14 · **Owner** Asif (Backend)
+**Version** 0.3.0 (draft) · **Updated** 2026-11-14 · **Owner** Asif (Backend)
 
 This is the **single source of truth** for the API between Frontend, Backend and AI. Build against it now using mocks. From now on, any change goes through an `XREQ` in [AGENTS.md](../AGENTS.md). Never rename a field silently.
 
@@ -8,7 +8,7 @@ A machine-readable copy of this contract is in [openapi.yaml](openapi.yaml) (Ope
 
 The reasons behind these choices (data model, security, AI safety, devops) are in [plans/backend-plan.md](plans/backend-plan.md). Decision numbers like **D1** refer to that file.
 
-**Product in one paragraph:** a case system for one operations center that handles fraud-victim relief cases for five banks. A victim's web form, or an operator entering a phone or paper report, opens a case. Operators move the case through six stages. Supervisors watch deadlines and workload. A bank viewer sees only their own bank's cases. One AI feature reads an uploaded document and *suggests* field values, and nothing reaches the case until a person accepts it.
+**Product in one paragraph:** a case system for one operations center that handles fraud-victim relief cases for five banks. A victim's web form, or an operator entering a phone or paper report, opens a case. Operators move the case through six stages. Supervisors watch deadlines and workload. A bank viewer sees only their own bank's cases. One AI feature reads an uploaded document and *suggests* field values, and nothing reaches the case until a person accepts it. A second AI feature, the **case assistant**, answers a victim's questions from their own bank's bluebook and passes anything it can't answer to staff.
 
 ## Contents
 0. [Assumptions to know before building](#0-assumptions-to-know-before-building)
@@ -35,6 +35,10 @@ The reasons behind these choices (data model, security, AI safety, devops) are i
    - Contact details stay editable until the case closes.
    - Report details are editable only while the case is still `received`.
    - Staff can issue a new code, for phone or paper cases or a lost code.
+6. **Victims can ask a case assistant (D14).** A chatbot answers from **the bluebook of the victim's own bank** and a minimal view of their case.
+   - The bank comes from the case on the server, so no victim can reach another bank's bluebook.
+   - It never changes anything, promises money or predicts an outcome.
+   - Questions it can't answer go to staff, who reply in the same thread (§3.6).
 
 If you disagree with one of these, file an `XREQ` before building on it.
 
@@ -120,6 +124,11 @@ Staff roles: `operator`, `supervisor`, `bank_viewer`. Victims have no account. A
 | Edit case fields | ✓ | ✓ | – | own case, limited (§3.5) |
 | Add notes (internal) | ✓ | ✓ | – | – |
 | Issue a victim access code | ✓ | ✓ | – | – |
+| Ask the case assistant (chatbot) | – | – | – | own case |
+| Read a case's chat thread | ✓ | ✓ | own bank | own case |
+| Reply to a victim in the chat | ✓ | ✓ | – | – |
+| List bluebooks | all banks | all banks | own bank | – |
+| Upload, publish or archive a bluebook | – | ✓ | – | – |
 | Change status (not money closures) | ✓ | ✓ | – | – |
 | Close as `paid_out` or `rejected` | – | ✓ | – | – |
 | Override a deadline | – | ✓ | – | – |
@@ -210,7 +219,12 @@ type AuditAction =
   | 'ai.extraction_completed' | 'ai.extraction_failed'
   | 'ai.review_accepted' | 'ai.review_rejected'
   | 'export.generated'
-  | 'case.access_code_issued';
+  | 'case.access_code_issued'
+  | 'chat.escalated' | 'chat.staff_replied'
+  | 'kb.document_uploaded' | 'kb.document_published' | 'kb.document_archived';
+type ChatRole = 'victim' | 'assistant' | 'staff';
+type AnswerType = 'grounded' | 'passages_only' | 'no_answer' | 'refused';
+type KbDocumentStatus = 'processing' | 'ready' | 'published' | 'archived' | 'failed';
 type VictimEditableField =
   | 'victim.name' | 'victim.phone' | 'victim.email' | 'victim.address' | 'victim.preferred_language'
   | 'amount' | 'currency' | 'transfer_date' | 'account_number' | 'account_holder_name'
@@ -226,6 +240,40 @@ type VictimEditableField =
 | `bank_id`, status, owner, deadline, documents, notes | Never. |
 
 Every `VictimCase` carries `editable_fields`, the exact list for right now. Build the edit form from it. Changing any other field returns `409 CASE_LOCKED`.
+
+### 3.6 The case assistant (D14)
+
+**What it uses**
+- Only **published** bluebook documents of **the case's bank**. The server takes the bank from the case, never from the question.
+- A small, non-identifying case summary: status, time in the current stage, missing information, scam type, amount, transfer date and closure reason.
+- The last 6 messages of the thread.
+
+**What it never sees, so it can never reveal**
+- the victim's name, phone, email, address and account numbers
+- staff notes, the case owner, internal deadlines and AI extraction data
+- other cases, including shared-account counts
+- other banks' bluebooks
+
+**What it never does:** change the case, promise a payout or an amount, or predict the outcome. It explains the process; staff decide.
+
+| `answer_type` | Meaning | `needs_staff` |
+| :--- | :--- | :--- |
+| `grounded` | Written from bluebook passages; always has `citations` | `false` |
+| `passages_only` | The AI model was unavailable; returns the most relevant passages as `citations` with a short notice, no written answer | `false` |
+| `no_answer` | The bank's bluebook doesn't answer it confidently enough | `true` |
+| `refused` | Out of scope: asks about other people, asks the assistant to act, or asks for a decision | `false` |
+
+If the victim asks to talk to a person, the reply says staff will contact them, and `needs_staff` is `true`.
+
+**Escalation.** When `needs_staff` is `true`:
+- the case gets `flags.victim_question_pending = true`, so it stands out on the board;
+- an audit entry `chat.escalated` is written;
+- staff answer with `POST /api/cases/{id}/chat/reply`, which posts a `staff` message into the victim's thread and clears the flag.
+
+**Limits**
+- A question is at most 1,000 characters.
+- 20 questions per case per hour (`429`).
+- Answers come in the victim's `preferred_language`; citations quote the bluebook in its own language.
 
 ---
 
@@ -258,6 +306,7 @@ interface CaseFlags {
   missing_fields: MissingField[];    // see 3.3
   ai_review_pending: boolean;        // a document has an extraction waiting for review
   shared_account_case_count: number; // OTHER cases at the same bank with the same account_number (0 = none)
+  victim_question_pending: boolean;  // the case assistant passed a victim's question to staff (§3.6)
 }
 
 interface CaseSummary {              // one row in the case list / board
@@ -422,13 +471,59 @@ interface VictimCase {               // what a victim sees about their own case 
   updated_at: string;
   // Deliberately absent: internal id, owner, deadline, notes, documents, AI data, audit trail.
 }
+
+interface Citation {
+  document_id: string;
+  document_title: string;            // e.g. "Birch Regional Bank — Fraud Relief Bluebook"
+  version: string;                   // e.g. "2026.1"
+  section: string | null;            // e.g. "3.1 After verification"
+  page: number | null;
+  quote: string;                     // the passage, in the bluebook's own language
+}
+
+interface ChatMessage {
+  id: string;
+  role: ChatRole;
+  body: string;                      // the question, the assistant's answer, or a staff reply
+  language: Language;
+  created_at: string;
+  author: UserRef | null;            // staff replies only
+  // Assistant messages only; null, [] or false on other roles:
+  answer_type: AnswerType | null;
+  citations: Citation[];
+  confidence: number | null;         // 0..1
+  needs_staff: boolean;
+  feedback: 'helpful' | 'not_helpful' | null;
+}
+
+interface ChatThread {               // one thread per case
+  case_reference: string;
+  messages: ChatMessage[];           // oldest first
+  victim_question_pending: boolean;
+  assistant_available: boolean;      // false when the AI model is down (answers are then passages_only)
+}
+
+interface KbDocument {               // one bluebook document; always belongs to exactly one bank
+  id: string;
+  bank_id: string;
+  bank_name: string;
+  title: string;
+  version: string;
+  language: Language;
+  status: KbDocumentStatus;
+  passage_count: number | null;      // passages indexed; null until ready
+  error: string | null;              // set when status is 'failed'
+  uploaded_by: UserRef;
+  uploaded_at: string;
+  published_at: string | null;
+}
 ```
 
 ---
 
 ## 5. Endpoint index
 
-Tiers follow the brief: **MVP** is required, **Should** is expected, **Nice** is a bonus. Build the frontend in that order. Status: `PLANNED` = agreed, not built · `MOCKED` = backend returns fixed data · `LIVE` = real and checked in Swagger.
+Tiers follow the brief: **MVP** is required, **Should** is expected, **Nice** is a bonus. **Extra** is not in the brief: it's the team's own case assistant (RAG), built only once the MVP path works. Build the frontend in that order. Status: `PLANNED` = agreed, not built · `MOCKED` = backend returns fixed data · `LIVE` = real and checked in Swagger.
 
 | # | Method | Path | Who | Tier | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -460,6 +555,15 @@ Tiers follow the brief: **MVP** is required, **Should** is expected, **Nice** is
 | 6.7 | POST | `/api/victim/session` | public | Should | PLANNED |
 | 6.7 | GET | `/api/victim/case` | victim session | Should | PLANNED |
 | 6.7 | PATCH | `/api/victim/case` | victim session | Should | PLANNED |
+| 6.7 | GET | `/api/victim/chat` | victim session | Extra | PLANNED |
+| 6.7 | POST | `/api/victim/chat/messages` | victim session | Extra | PLANNED |
+| 6.7 | POST | `/api/victim/chat/messages/{message_id}/feedback` | victim session | Extra | PLANNED |
+| 6.8 | GET | `/api/cases/{case_id}/chat` | operator, supervisor, bank_viewer | Extra | PLANNED |
+| 6.8 | POST | `/api/cases/{case_id}/chat/reply` | operator, supervisor | Extra | PLANNED |
+| 6.8 | GET | `/api/kb/documents` | operator, supervisor, bank_viewer | Extra | PLANNED |
+| 6.8 | POST | `/api/kb/documents` | supervisor | Extra | PLANNED |
+| 6.8 | POST | `/api/kb/documents/{kb_document_id}/publish` | supervisor | Extra | PLANNED |
+| 6.8 | POST | `/api/kb/documents/{kb_document_id}/archive` | supervisor | Extra | PLANNED |
 
 **Not in this version:** file upload by victims, password reset, token refresh, moving a case between banks.
 
@@ -510,12 +614,14 @@ Response `200`: `data` is a `User`. Errors: `401 UNAUTHORIZED`.
 ```json
 {
   "success": true,
-  "data": { "status": "healthy", "db": "ok", "ai": "available", "timestamp": "2026-11-14T04:30:00Z" },
+  "data": { "status": "healthy", "db": "ok", "ai": "available", "rag": "available", "timestamp": "2026-11-14T04:30:00Z" },
   "message": "ok"
 }
 ```
 
 `ai` is `"available"`, `"unavailable"` (provider not reachable) or `"disabled"` (no API key set). When it isn't `available`, the frontend should show a banner like "AI offline — enter fields manually".
+
+`rag` reports the case assistant: `"available"`, `"degraded"` (the AI model is down, so answers are `passages_only`), `"unavailable"`, or `"disabled"` (no published bluebooks or no key).
 
 #### `GET /api/banks` · public
 
@@ -646,7 +752,7 @@ Response `200`: `data` is a `Case`. **Side effect:** it writes a `case.viewed` a
     "created_at": "2026-11-02T03:12:00Z",
     "updated_at": "2026-11-14T04:30:00Z",
     "closed_at": null,
-    "flags": { "missing_fields": [], "ai_review_pending": false, "shared_account_case_count": 2 },
+    "flags": { "missing_fields": [], "ai_review_pending": false, "shared_account_case_count": 2, "victim_question_pending": false },
     "allowed_transitions": ["account_check", "received", "closed"],
     "allowed_closure_reasons": ["withdrawn"],
     "documents": [
@@ -1012,9 +1118,110 @@ Errors:
 - `422 VALIDATION_ERROR`. Example: removing both phone and email.
 - `401 UNAUTHORIZED`: the session expired, or staff issued a new access code.
 
+#### `GET /api/victim/chat` · victim session · Extra
+
+Response `200`: `data` is the case's `ChatThread`. It starts empty.
+
+#### `POST /api/victim/chat/messages` · victim session · rate-limited · Extra
+
+```json
+{ "question": "What happens next with my case?" }
+```
+
+An optional `language` overrides the victim's `preferred_language` for this answer. The call is synchronous: the server waits up to 20 s, so use a 30 s fetch timeout. It always returns `201`, even when the AI is down, so check `answer_type`.
+
+Response `201`:
+```json
+{
+  "success": true,
+  "data": {
+    "question": {
+      "id": "c4a70000-0000-4000-8000-000000000001", "role": "victim", "body": "What happens next with my case?",
+      "language": "ja", "created_at": "2026-11-14T04:40:00Z", "author": null,
+      "answer_type": null, "citations": [], "confidence": null, "needs_staff": false, "feedback": null
+    },
+    "answer": {
+      "id": "c4a70000-0000-4000-8000-000000000002", "role": "assistant",
+      "body": "Your case has been verified. Under Birch Regional Bank's bluebook, the next step is the account check: the bank confirms the account you sent money to and freezes what is left in it. You don't need to do anything now; the center contacts you only if more documents are needed. This is general information, not a decision about a payout.",
+      "language": "ja", "created_at": "2026-11-14T04:40:03Z", "author": null,
+      "answer_type": "grounded",
+      "citations": [
+        {
+          "document_id": "b0b0b0b0-0000-4000-8000-00000000000b",
+          "document_title": "Birch Regional Bank — Fraud Relief Bluebook",
+          "version": "2026.1",
+          "section": "3.1 After verification",
+          "page": 6,
+          "quote": "After verification, the Bank checks the recipient account and freezes any remaining balance. The applicant is contacted only if further documents are required."
+        }
+      ],
+      "confidence": 0.86, "needs_staff": false, "feedback": null
+    }
+  },
+  "message": "ok"
+}
+```
+
+Errors:
+- `422 VALIDATION_ERROR`: empty, or over 1,000 characters
+- `429 RATE_LIMITED`: over 20 questions per case per hour
+- `401`
+
+#### `POST /api/victim/chat/messages/{message_id}/feedback` · victim session · Extra
+
+```json
+{ "feedback": "not_helpful" }
+```
+
+Only works on assistant messages. Response `200`: the updated `ChatMessage`. Answers marked `not_helpful` feed the quality review (backend-plan §6). Errors: `404`, `422`.
+
+---
+
+### 6.8 Case assistant: staff side and bluebooks (Extra)
+
+#### `GET /api/cases/{case_id}/chat` · operator, supervisor, bank_viewer (own bank)
+
+Response `200`: the same `ChatThread` the victim sees, so staff know exactly what the assistant told them.
+
+#### `POST /api/cases/{case_id}/chat/reply` · operator, supervisor
+
+```json
+{ "body": "Hello, this is the operations center. We received your police report number, thank you." }
+```
+
+Posts a `staff` message into the victim's thread and clears `victim_question_pending`. Response `201`: `data` is the new `ChatMessage`. It's audited as `chat.staff_replied`. Errors: `403`, `404`, `422`.
+
+#### `GET /api/kb/documents` · operator, supervisor (all banks), bank_viewer (own bank)
+
+Query: `bank_id`, `status`. Response `200`: `data` is `KbDocument[]`, not paginated.
+
+#### `POST /api/kb/documents` · supervisor
+
+`multipart/form-data`:
+- `file`: PDF or TXT, at most 20 MB
+- `bank_id`, `title`, `version`, `language`
+
+Response `201`: `data` is a `KbDocument` with status `processing`. Splitting and indexing run in the background; poll the list until the status is `ready` or `failed`. It's audited as `kb.document_uploaded`.
+
+**Bluebooks must be synthetic.** The brief forbids real bank documents.
+
+Errors: `400` (file type), `413` (over 20 MB), `422`.
+
+#### `POST /api/kb/documents/{kb_document_id}/publish` · supervisor
+
+Only a `ready` document can be published, and the assistant uses only published documents. Publishing a new version with the same title archives the older one. Response `200`: `data` is the `KbDocument`. It's audited as `kb.document_published`.
+
+Errors: `409 INVALID_STATUS_TRANSITION` (not `ready`), `403`, `404`.
+
+#### `POST /api/kb/documents/{kb_document_id}/archive` · supervisor
+
+The assistant stops using it. Response `200`: `data` is the `KbDocument`. It's audited as `kb.document_archived`. Errors: `403`, `404`.
+
 ---
 
 ## 7. AI module interface (Backend ↔ AI)
+
+### 7.1 Document extraction
 
 Galib (AI / LLM) implements one function. Backend calls it and handles everything around it.
 
@@ -1040,6 +1247,34 @@ def extract_fields(file_bytes: bytes, mime_type: str, doc_type: str) -> dict:
 | Prompt files in `backend/app/prompts/` (versioned) | 20 s timeout, rule-based fallback, retries |
 | Per-field `confidence` and `evidence` | `overall_confidence`, `review_lane`, threshold setting |
 | Evaluation on the labelled test documents (field-level accuracy, with real failure examples) | Saving results, review flow, audit trail, applying accepted values |
+
+### 7.2 Case assistant (RAG)
+
+Galib implements three functions. **Retrieval itself runs in the backend**, inside the bank-scoped database session, so filtering by bank is enforced by our database rules and not by AI code.
+
+```python
+# backend/app/services/rag.py
+def split_bluebook(file_bytes: bytes, mime_type: str) -> list[dict]:
+    """[{"text": "...", "section": "3.1 After verification", "page": 6}, ...] in reading order."""
+
+def embed(texts: list[str]) -> list[list[float]]:
+    """One vector per text. Fixed dimension per model; backend stores the model name with each vector."""
+
+def answer(question: str, passages: list[dict], case_context: dict, history: list[dict], language: str) -> dict:
+    """
+    passages: [{"passage_id", "text", "section", "page", "score"}] — already limited to the case's bank.
+    case_context: the allow-listed, non-identifying case summary from §3.6.
+    Return {"answer_type": "grounded" | "no_answer" | "refused", "body": str,
+            "used_passage_ids": [...], "confidence": float, "needs_staff": bool,
+            "model": str, "prompt_version": str}
+    Every grounded answer must cite at least one passage. Raise AIUnavailableError if the model can't be reached.
+    """
+```
+
+| AI (Galib) owns | Backend (Asif, Anim) owns |
+| :--- | :--- |
+| How bluebooks are split, the embedding model, prompts, answer rules (cite, refuse, escalate) | Storing passages in pgvector; **bank-scoped retrieval** (keyword + vector); building the allow-listed case context |
+| The golden question set and its scores (backend-plan §6) | Timeouts, the `passages_only` fallback, rate limits, saving threads, escalation flag, audit |
 
 ---
 
@@ -1078,6 +1313,8 @@ Two seeded cases have fixed victim access codes (synthetic), for demos:
 | `RFR-2026-00042` | `K7QM-4XHP-2RTV` | `verified` (bank_b) | contact details only |
 | `RFR-2026-00051` | `M3PX-8KWN-5QDA` | `received` (bank_c) | everything in §3.5 |
 
+**Bluebooks (synthetic):** one per bank, 4–6 pages each. They differ on purpose: required documents, contact hours, and how the notice period is worded. In the demo, ask the same question as victims of two different banks and get two different, correctly cited answers.
+
 ---
 
 ## 9. Notes for mocking
@@ -1108,6 +1345,9 @@ To get a specific response, send a `Prefer` header:
 | `Prefer: code=422, example=missing_info` | `422 MISSING_REQUIRED_INFO` from `/transition` |
 | `Prefer: example=received` | On `GET` / `PATCH /api/victim/case`: a case still `received`, with every §3.5 field editable |
 | `Prefer: code=409` | On `PATCH /api/victim/case`: `409 CASE_LOCKED` |
+| `Prefer: example=no_answer` | On `POST /api/victim/chat/messages`: the assistant can't answer and passes the question to staff |
+| `Prefer: example=passages_only` | On `POST /api/victim/chat/messages`: the AI model is down, so only bluebook passages come back |
+| `Prefer: example=refused` | On `POST /api/victim/chat/messages`: the victim asked about other people, and nothing is revealed |
 
 **What the mock does not do:**
 - It doesn't remember anything. A `POST` or `PATCH` returns the example, not your data.
@@ -1129,6 +1369,7 @@ To get a specific response, send a `Prefer` header:
 
 | Version | Date | Change |
 | :--- | :--- | :--- |
+| 0.3.0 | 2026-11-14 | Case assistant (RAG, D14): victim chat (§6.7), staff chat view and reply, and per-bank bluebook management (§6.8); rules in §3.6; AI interface in §7.2. New: `flags.victim_question_pending`, `rag` in health, chat and bluebook audit actions. Additive only. |
 | 0.2.0 | 2026-11-14 | Victim self-service (§3.5, §6.7): `POST /api/victim/session`, `GET`/`PATCH /api/victim/case`, and staff `POST /api/cases/{id}/victim-access`. Intake now also returns `access_code`. New: error `CASE_LOCKED`, actor type `victim`, audit action `case.access_code_issued`. Additive only; nothing existing was renamed or removed. |
 | 0.1.1 | 2026-11-14 | Added the machine-readable [openapi.yaml](openapi.yaml) and the no-backend mock (§9.1). Login can now return `429 RATE_LIMITED`. Named Galib as the AI owner (§7). |
 | 0.1.0 | 2026-11-14 | First full contract for the fraud-relief case system. Login `role` changed from `admin` to `operator` / `supervisor` / `bank_viewer`, and `bank_id` added to the user. |
