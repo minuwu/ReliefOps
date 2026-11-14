@@ -168,6 +168,7 @@ Rules:
 2. **Claude Code** auto-discovers `.claude/skills/`. **Every other agent** (Cursor, Copilot, Gemini CLI, Antigravity, Codex) must open `.claude/skills/<name>/SKILL.md` with its file tool and follow it. Pointer files exist at [`CLAUDE.md`](CLAUDE.md), [`GEMINI.md`](GEMINI.md), [`.cursor/rules/`](.cursor/rules/), and [`.github/copilot-instructions.md`](.github/copilot-instructions.md).
 3. **Need a skill that isn't here?** Use `find-skills`: `npx skills find "<topic>"`, then install into the repo with `npx skills add <owner/repo@skill> -a claude-code --copy -y`, add a row to `docs/SKILLS.md`, and commit. Never install only globally — the team won't get it.
 4. **Never commit code that contradicts a loaded skill** without noting why in the PR body.
+5. **ECC workflow layer (Claude Code).** `scripts/setup` installs [ECC](docs/SKILLS.md#6-ecc-everything-claude-code--workflow-harness) per machine: workflow skills (`tdd-workflow`, `verification-loop`, `e2e-testing`, …), reviewer subagents (`fastapi-reviewer`, `react-reviewer`, `security-reviewer`, …), `/plan` `/code-review` `/learn` commands, rules and hooks. Use `/plan` before multi-file work and `verification-loop` before marking an `XREQ` `[RESOLVED]`. Where ECC rules and this file disagree, this file wins. Never commit ECC-managed files (they are gitignored).
 
 ### 3.4 Step 2 — Query the Knowledge Graph First
 
@@ -230,6 +231,7 @@ Rules:
 | **Minhaz** | `minuwu` | Frontend / Full-Stack / Architecture | `minhaz/*` | [contributors/minhaz/WORK_LOG.md](contributors/minhaz/WORK_LOG.md) |
 | **Asif** | `MdAsif-Hossain` | Backend / Services / Database | `asif/*` | [contributors/asif/WORK_LOG.md](contributors/asif/WORK_LOG.md) |
 | **Anim** | `anim710` | Backend / Services / Database | `anim/*` | [contributors/anim/WORK_LOG.md](contributors/anim/WORK_LOG.md) |
+| **Galib** | `Ga-lib` | AI / LLM | `galib/*` | [contributors/galib/WORK_LOG.md](contributors/galib/WORK_LOG.md) |
 | *(Next Teammate)* | *TBD* | *Assigned Role* | `<name>/*` | `contributors/<name>/WORK_LOG.md` |
 
 Per-person setup checklists are in [TEAM_INSTRUCTIONS.md](TEAM_INSTRUCTIONS.md).
@@ -249,7 +251,12 @@ Per-person setup checklists are in [TEAM_INSTRUCTIONS.md](TEAM_INSTRUCTIONS.md).
 - **Branches**: `anim/<topic>`; PR to `main`. No direct pushes to `main`.
 - **Agent instructions in Anim's workspace**: fulfil `XREQ`s where `To: Backend` or `To: Anim`; load Backend skills (4.2); coordinate with Asif on shared `backend/` files and keep `docs/API_SPEC.md` in sync before committing.
 
-### 5.5 Onboarding a New Contributor (2 minutes)
+### 5.5 Galib
+- **Role**: AI / LLM engineering: model-powered features, prompts, deterministic fallbacks (Section 4.3).
+- **Branches**: `galib/<topic>`; PR to `main`. No direct pushes to `main`.
+- **Agent instructions in Galib's workspace**: fulfil `XREQ`s where `To: AI` or `To: Galib`; follow AI directives (4.3) and load Backend skills (`fastapi`, `python-testing-patterns`) for code in `backend/`; coordinate with Asif and Anim on shared `backend/` files and declare any SSE chunk format in an `XREQ`.
+
+### 5.6 Onboarding a New Contributor (2 minutes)
 1. Add a row to 5.1 and a short 5.x section (role, branch prefix, agent instructions).
 2. `cp -r contributors/_template contributors/<name>` and fill the header.
 3. Run `scripts/setup.sh` (or `scripts/setup.ps1` on Windows).

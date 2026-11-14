@@ -43,6 +43,7 @@ BJET-Hackathon/
 | **Minhaz** (`minuwu`) | Frontend / Full-Stack / Architecture | `minhaz/*` | [contributors/minhaz/WORK_LOG.md](contributors/minhaz/WORK_LOG.md) |
 | **Asif** (`MdAsif-Hossain`) | Backend / Services / Database | `asif/*` | [contributors/asif/WORK_LOG.md](contributors/asif/WORK_LOG.md) |
 | **Anim** (`anim710`) | Backend / Services / Database | `anim/*` | [contributors/anim/WORK_LOG.md](contributors/anim/WORK_LOG.md) |
+| **Galib** (`Ga-lib`) | AI / LLM | `galib/*` | [contributors/galib/WORK_LOG.md](contributors/galib/WORK_LOG.md) |
 
 ## Conventions
 

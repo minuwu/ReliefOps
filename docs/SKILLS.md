@@ -80,3 +80,39 @@ If an agent starts coding in a domain without having read the skill, stop it and
 ## 5. Local Skills (project-specific)
 
 Project-specific knowledge (domain glossary, demo script, judge rubric) belongs in a local skill: `npx skills init <name>` inside `.claude/skills/`, write `SKILL.md`, commit. Keep it under 200 lines; link to `docs/` for detail.
+
+---
+
+## 6. ECC (Everything Claude Code) — workflow harness
+
+[ECC](https://github.com/affaan-m/ecc) adds a planning, testing, review and security layer on top of the domain skills above. Pinned version: **`ecc-universal@2.2.3`**, profile **`core`**, target **`claude-project`** (installs into this repo's `.claude/`).
+
+**What you get (Claude Code):**
+
+| Layer | Where | Examples |
+| :--- | :--- | :--- |
+| Workflow skills (48) | `.claude/skills/` | `tdd-workflow`, `verification-loop`, `e2e-testing`, `error-handling`, `production-audit`, `codebase-onboarding`, `architecture-decision-records`, `delivery-gate`, `council` |
+| Subagents | `.claude/agents/` | `planner`, `code-reviewer`, `fastapi-reviewer`, `react-reviewer`, `typescript-reviewer`, `python-reviewer`, `database-reviewer`, `security-reviewer`, `build-error-resolver` |
+| Slash commands | `.claude/commands/` | `/plan`, `/code-review`, `/learn` (TDD and verification are skills: `tdd-workflow`, `verification-loop`) |
+| Rules (always loaded) | `.claude/rules/ecc/` | `common/` coding style, testing, security, git workflow; `python/fastapi.md`, `react/`, `typescript/` |
+| Hooks | `.claude/settings.json` | Bash preflight (blocks `--no-verify`, guards pushes), console-log and doc-file warnings, session memory |
+
+**How it is installed:** `scripts/setup.sh` / `scripts/setup.ps1` run it for you. Manual:
+
+```bash
+npx -y ecc-universal@2.2.3 install --target claude-project --profile core --enable-hooks
+npx -y ecc-universal@2.2.3 doctor --target claude-project      # expect: Status: OK
+```
+
+**Why it is not committed:** ECC writes each machine's absolute path into the hook commands in `.claude/settings.json` and does not fall back if that path is missing. A committed copy would break every hook on a teammate's machine. So ECC files are gitignored (marked block in `.gitignore`) and every person installs the same pinned version locally. Our 13 domain skills above stay committed; no ECC skill shares a name with them.
+
+**Precedence:** this repo's protocol wins. `AGENTS.md` and the domain skills in §1 override ECC rules where they disagree (e.g. API envelope, branch naming). ECC's `common/git-workflow.md` and our `git-workflow-and-versioning` skill agree on Conventional Commits.
+
+**Hook side effect:** ECC's Bash preflight blocks `git push --no-verify` from agents. That is intended: agents must not bypass the pre-push hook or push to `main`. Humans in their own terminal are unaffected.
+
+**Other agents:** ECC also supports Cursor, Codex, Gemini and others (`--target cursor|codex|gemini`, beta or experimental). Install those only for yourself; they are not part of team setup.
+
+**Upgrading ECC:** bump the version in both setup scripts and this section, run setup, then regenerate the ECC block in `.gitignore` from `.claude/ecc/install-state.json` so new paths stay ignored. Run `npx -y ecc-universal@<ver> doctor --target claude-project` before committing.
+
+**Removing:** `npx -y ecc-universal@2.2.3 uninstall --dry-run`, then without `--dry-run`.
+
