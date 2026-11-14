@@ -4,6 +4,25 @@ Owner: Asif (`MdAsif-Hossain`) — Role: Backend / Services / Database — Branc
 
 Use this log to share progress, planned work, and dependencies with the team. Update it after each work session, keep the newest entry first, and use Bangladesh time (UTC+6). Link to relevant issues, commits, or pull requests when available.
 
+## 2026-11-14 (session 5)
+
+### Completed
+- Updated Anim's use-case diagram [docs/diagrams/use-cases.excalidraw](../../docs/diagrams/use-cases.excalidraw) from contract v0.1.0 to v0.3.0 (137 → 208 elements), in the file's own style.
+  - **Group 1:** + Open my case, View & edit my own case, Issue victim access code.
+  - **Group 2:** "Edit case fields & add notes" split into Edit case fields and Add internal note (staff only).
+  - **New group 5, Case assistant (RAG):** Ask, Rate an answer, Reply to the victim («extend» Ask), Read the case's chat.
+  - **New group 6, Bluebooks (one per bank):** List and Manage.
+  - **New system actor, Case assistant (RAG):** cyan, with a dashed arrow to the bluebooks labelled "reads only the published bluebook of the case's bank".
+  - **Repeat copies** of Victim, Operator, Supervisor and Bank Viewer next to groups 5–6, so lines don't cross the whole diagram.
+  - **All 26 existing actor lines** recalculated to the moved use cases.
+  - Subtitle → v0.3.0; two notes bullets; legend entry "Case assistant".
+- Kept the original JSON format (1-space indent, raw Unicode). Checked the layout with a rendered preview.
+
+### Blockers / handoff
+- **Anim:** your diagram now matches API_SPEC v0.3.0. Open it in Excalidraw and adjust anything you'd lay out differently.
+
+---
+
 ## 2026-11-14 (session 4)
 
 ### Completed
