@@ -154,7 +154,7 @@ Response (200 OK):
    - Do not use GitFlow. Short-lived branches named `<name>/<topic>`:
      - `minhaz/dashboard-ui`
      - `asif/ai-pipeline`
-   - PR to `main` after a quick peer review. No direct pushes to `main`. The pre-push hook syncs `origin/main` for you.
+   - PR to `main` for cross-team or contract changes. Small changes may go straight to `main`, but only after `git pull origin main`; the pre-push hook rejects stale pushes and syncs `origin/main` into feature branches for you.
 2. **Deploy on Hour 2 (Not Hour 23)**:
    - Connect the repository to **Vercel** (frontend) and **Render / Railway** (backend) right away with dummy code.
    - Catch CORS issues, build errors, and missing environment variables early.

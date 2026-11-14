@@ -108,7 +108,7 @@ npx -y ecc-universal@2.2.3 doctor --target claude-project      # expect: Status:
 
 **Precedence:** this repo's protocol wins. `AGENTS.md` and the domain skills in §1 override ECC rules where they disagree (e.g. API envelope, branch naming). ECC's `common/git-workflow.md` and our `git-workflow-and-versioning` skill agree on Conventional Commits.
 
-**Hook side effect:** ECC's Bash preflight blocks `git push --no-verify` from agents. That is intended: agents must not bypass the pre-push hook or push to `main`. Humans in their own terminal are unaffected.
+**Hook side effect:** ECC's Bash preflight blocks `git push --no-verify` from agents. That is intended: agents must not bypass the pre-push hook. Pushing to `main` is fine without it, after `git pull origin main`. Humans in their own terminal are unaffected.
 
 **Other agents:** ECC also supports Cursor, Codex, Gemini and others (`--target cursor|codex|gemini`, beta or experimental). Install those only for yourself; they are not part of team setup.
 

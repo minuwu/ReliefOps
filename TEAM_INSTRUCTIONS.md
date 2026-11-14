@@ -29,7 +29,7 @@ Then:
 
 ## 3. Non-negotiables
 
-- No direct pushes to `main`. Branch `<name>/<topic>` → PR → one approval → merge.
+- Pull before you push to `main`: `git pull origin main`, check, then `git push origin main`. The pre-push hook rejects a push that is missing remote commits. Cross-team, contract or shared-config changes still go `<name>/<topic>` → PR → one approval → merge.
 - Never commit `.env`. Keep `.env.example` current.
 - Skills are mandatory: an agent coding in a domain without its skill loaded is doing it wrong (AGENTS.md §3.3).
 - Breaking an API field without an `XREQ` to Frontend is a `P0` incident.

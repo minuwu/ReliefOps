@@ -1,7 +1,8 @@
 #!/bin/sh
 # Git pre-push hook: for each branch being pushed, fetch the remote, merge the
-# branch's remote copy and origin/main into it, then re-push. Blocks direct
-# pushes to main and refuses to merge over uncommitted changes.
+# branch's remote copy and origin/main into it, then re-push. Direct pushes to
+# main are allowed only when the pusher has already pulled the latest remote main.
+# Refuses to merge over uncommitted changes.
 #
 # Git passes pushed refs on stdin: "<local ref> <local sha> <remote ref> <remote sha>".
 # Decisions are made per pushed ref, not from the checked-out branch.
@@ -31,11 +32,20 @@ while read local_ref local_sha remote_ref remote_sha; do
         *) continue ;;
     esac
 
-    # main only moves through pull requests.
+    # Direct pushes to main are allowed, but only from a commit that already
+    # contains everything on the remote main ("pull first"). No auto-merge here:
+    # the pusher must pull, check the result, then push.
     if [ "$branch" = "main" ]; then
-        echo " [pre-push hook] ERROR: direct push to 'main' is blocked. Open a PR from a '<name>/<topic>' branch."
-        echo " [pre-push hook] Deliberate override: git push --no-verify $remote main"
-        exit 1
+        git fetch -q "$remote" main 2>/dev/null
+        remote_main=$(git rev-parse -q --verify "$remote/main" 2>/dev/null)
+        if [ -n "$remote_main" ] && ! git merge-base --is-ancestor "$remote_main" "$local_sha" 2>/dev/null; then
+            missing=$(git rev-list --count "$local_sha..$remote_main" 2>/dev/null || echo "?")
+            echo " [pre-push hook] ERROR: $remote/main has $missing commit(s) you have not pulled."
+            echo " [pre-push hook] Run: git pull $remote main   then check the result and push again."
+            exit 1
+        fi
+        echo " [pre-push hook] '$branch' contains latest $remote/main. Push allowed."
+        continue
     fi
 
     # Auto-merge only works on the branch that is checked out, and only on a clean tree.
