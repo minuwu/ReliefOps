@@ -4,6 +4,31 @@ Owner: Asif (`MdAsif-Hossain`) — Role: Backend / Services / Database — Branc
 
 Use this log to share progress, planned work, and dependencies with the team. Update it after each work session, keep the newest entry first, and use Bangladesh time (UTC+6). Link to relevant issues, commits, or pull requests when available.
 
+## 2026-11-14 (session 3)
+
+### Completed
+- Contract v0.2.0: victims can now view and edit their own case (decision D11 in backend-plan).
+  - Intake returns a one-time `access_code` alongside the reference. Staff can issue a new one with `POST /api/cases/{id}/victim-access`, for phone or paper cases or a lost code.
+  - `POST /api/victim/session` takes reference + code and returns a 1-hour token for that one case. `GET` and `PATCH /api/victim/case` use it.
+  - Contact details are editable until the case closes; report details only while it is `received`; bank, status, documents and notes never. Anything else returns `409 CASE_LOCKED`. `editable_fields` tells the UI what is allowed.
+  - Additive only: new error `CASE_LOCKED`, actor type `victim`, audit action `case.access_code_issued`.
+- Updated docs/API_SPEC.md and docs/openapi.yaml together. `redocly lint` reports the description valid, with the same 5 expected warnings. Merged `main`, which brought in Galib's problem statement.
+- Mock check on `localhost:4010`:
+  - intake returns the access code; the victim session opens with the demo code
+  - no token → `401`
+  - the `received` example has every field editable; a contact edit → `200`
+  - a locked field → `409`; an unknown field → `422`
+  - staff can issue a new code
+- backend-plan: D11, the requirement-map row, `victim_access_hash`/`victim_access_version` on `cases`, the victim RLS policy in §5, and a proof test.
+
+### Next
+- Decide whether victims may also upload documents. Galib's demo script (problem statement §8, step 1) has the victim upload one; it is not in the contract yet.
+
+### Blockers / handoff
+- **Minhaz (Frontend):** new screens: intake confirmation (reference + access code), "open my case" (reference + code), and the victim's case page with an edit form built from `editable_fields`. Try them on the mock with `Prefer: example=received` and `Prefer: code=409`.
+
+---
+
 ## 2026-11-14 (session 2)
 
 ### Completed

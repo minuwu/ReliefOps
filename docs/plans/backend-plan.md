@@ -1,6 +1,6 @@
 # Backend, Database & DevOps Plan — Fraud Relief Case System
 
-**Owner** Asif (Backend / Database / DevOps) · **Status** draft v0.1.1 · **Updated** 2026-11-14
+**Owner** Asif (Backend / Database / DevOps) · **Status** draft v0.2 · **Updated** 2026-11-14
 **Team** Backend: Asif, Anim · AI: Galib · Frontend: Minhaz
 **Contract** [docs/API_SPEC.md](../API_SPEC.md) · **Progress log** [contributors/asif/WORK_LOG.md](../../contributors/asif/WORK_LOG.md)
 
@@ -67,6 +67,7 @@ Status: **Agreed** = follows directly from the brief · **Proposed** = needs a y
 | D8 | The audit log is append-only. The app's DB role can only `INSERT` and `SELECT` it, and a trigger blocks `UPDATE` and `DELETE`. | "Who did what and when" has to be trustworthy. | Agreed |
 | D9 | One history trail: `audit_log`. `cases` also stores `status_changed_at` and `closed_at` so metrics are fast. | No second history table to keep in sync. | Agreed |
 | D10 | Uploaded files go on a Docker volume at `<storage>/<bank_id>/<document_id>`. Paths are never exposed, and files are served only through the logged-in download endpoint. | Simple, and it respects bank separation. | Agreed |
+| D11 | Victims edit their own case without an account. Intake (or staff, for phone/paper cases) gives a per-case access code. Reference + code opens a 1-hour victim session for that case only. Contact details are editable until closed; report details only while `received`. Only a hash of the code is stored. | Victims can fix mistakes and update contact details themselves, so operators handle fewer calls. Locking facts after verification keeps verified data trustworthy. No victim can reach another case. | Proposed |
 
 ---
 
@@ -75,6 +76,7 @@ Status: **Agreed** = follows directly from the brief · **Proposed** = needs a y
 | Brief requirement | Tier | Covered by ([API_SPEC.md](../API_SPEC.md)) |
 | :--- | :--- | :--- |
 | Web intake form creates a case | MVP | `POST /api/intake`, `POST /api/cases` |
+| Victim (optional user) checks and corrects their own report | Optional | `POST /api/victim/session`, `GET`/`PATCH /api/victim/case`, D11 |
 | Case list / board with status, deadline, owner | MVP | `GET /api/cases` → `CaseSummary` |
 | Login with 3 roles | MVP | `POST /api/auth/login`, roles §2 |
 | Bank A never sees Bank B | MVP | D5, §5 below |
@@ -100,7 +102,7 @@ Every bank-owned table carries its own `bank_id`, even when it could be found th
 | :--- | :--- | :--- |
 | `banks` | `id text pk` (`bank_a`…`bank_e`), `name` | Seeded, never changes |
 | `users` | `id uuid`, `email unique`, `name`, `password_hash`, `role`, `bank_id → banks null` | Check: `bank_id` is set exactly when `role = 'bank_viewer'` |
-| `cases` | `id uuid`, `reference unique`, `bank_id`, `status`, `status_changed_at`, `deadline`, `assigned_operator_id`, `victim_name/phone/email/address`, `preferred_language`, `amount numeric(14,2)`, `currency char(3)`, `transfer_date`, `account_number`, `account_holder_name`, `scam_type`, `description`, `channel`, `reported_date`, `closure_reason`, `created_at`, `updated_at`, `closed_at` | Check: `closed_at`/`closure_reason` are set exactly when `status = 'closed'` |
+| `cases` | `id uuid`, `reference unique`, `bank_id`, `status`, `status_changed_at`, `deadline`, `assigned_operator_id`, `victim_name/phone/email/address`, `preferred_language`, `amount numeric(14,2)`, `currency char(3)`, `transfer_date`, `account_number`, `account_holder_name`, `scam_type`, `description`, `channel`, `reported_date`, `closure_reason`, `created_at`, `updated_at`, `closed_at` | Check: `closed_at`/`closure_reason` are set exactly when `status = 'closed'`. Also `victim_access_hash` (hash of the access code, never the code) and `victim_access_version` (incremented on reissue, so old victim tokens stop working) |
 | `documents` | `id`, `case_id`, `bank_id`, `filename`, `doc_type`, `mime_type`, `size_bytes`, `sha256`, `storage_path`, `uploaded_by`, `uploaded_at` | `storage_path` is never returned by the API |
 | `ai_extractions` | `id`, `document_id`, `case_id`, `bank_id`, `status`, `source`, `model`, `prompt_version`, `overall_confidence`, `review_lane`, `fields jsonb`, `missing_fields text[]`, `error jsonb`, `created_at`, `reviewed_by`, `reviewed_at`, `review_note` | `fields[].final_value` is filled in on review |
 | `notes` | `id`, `case_id`, `bank_id`, `author_id`, `body`, `created_at` | Kept so knowledge survives staff turnover |
@@ -132,12 +134,18 @@ Enums are Postgres enum types with the same values as API_SPEC §3.4.
 4. **API layer.** Repositories also filter by scope. "Doesn't exist" and "not yours" both return the same `404`.
 5. **Files, totals and exports run under the same scoped session.** That covers the dashboard counts, CSV exports and alerts, so a count can't leak another bank's data either.
 6. **Login and tokens.** Rate-limit failed logins per IP and per email (`429 RATE_LIMITED`). Tokens are HS256 JWTs, and decoding checks the algorithm, expiry, issuer and audience. CORS origins come from `CORS_ORIGINS` and are never credentialed (bearer tokens only, no cookies). These follow ECC's `python/fastapi.md` security rules.
+7. **Victim sessions (D11).**
+   - **Token:** claims `typ: victim`, `case_id` and `access_version`; expires after 1 hour.
+   - **Database scope:** each request runs with `app.role = 'victim'` and `app.case_id`. The only policy that matches is read/update on `cases` where `id = current_setting('app.case_id')`, so a victim session can't reach other cases, documents, notes, AI data or the audit log.
+   - **Field locks:** the service layer enforces which columns may change at each status (API_SPEC §3.5) and answers `409 CASE_LOCKED` otherwise.
+   - **Access codes:** 12 random Crockford base32 characters (60 bits), stored hashed. After 5 failed attempts per reference or IP within 15 minutes → `429`.
 
 **Proof we'll show** (pytest, run in CI and live in the demo if asked):
 - `viewer@bank-a` → `GET` a `bank_b` case → `404`.
 - `viewer@bank-a` → `GET /api/cases` → every row is `bank_a`.
 - `viewer@bank-a` → dashboard totals equal the `bank_a`-only counts.
 - **The database alone holds:** raw SQL as `app_user` with `app.bank_id = 'bank_a'` returns 0 `bank_b` rows. This proves layer 2 works even if layer 4 were removed.
+- A victim session for `RFR-2026-00042` → `GET /api/cases` → `403`. Changing `amount` on that verified case → `409 CASE_LOCKED`.
 
 ---
 
