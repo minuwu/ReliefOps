@@ -17,6 +17,7 @@ Skills are versioned instruction packs (`SKILL.md` + reference files) that make 
 | Define or change the API contract | `openapi-spec-generation` | update [`docs/API_SPEC.md`](API_SPEC.md) |
 | Commit, branch, resolve conflicts, split messy work | `git-workflow-and-versioning` | — |
 | Deploy frontend | `deploy-to-vercel` | — |
+| Review a backend design (API, database, security, scalability) | `backend-design-review` | write the report to `docs/plans/` (example: `backend-design-review.md`) |
 | Need a capability no skill covers | `find-skills` | install per §3, add a row here |
 
 Skill paths: `.claude/skills/<name>/SKILL.md`.
@@ -41,6 +42,7 @@ Skill paths: `.claude/skills/<name>/SKILL.md`.
 | `openapi-spec-generation` | `wshobson/agents` | ~17K | OpenAPI 3.1 specs, design-first contracts, validation |
 | `git-workflow-and-versioning` | `addyosmani/agent-skills` | ~72K | Atomic commits, branching, conflict resolution, versioning |
 | `deploy-to-vercel` | `vercel-labs/agent-skills` | ~192K | Deploy and get preview/production links |
+| `backend-design-review` | `dauquangthanh/hanoi-rainbow` | — | Backend design review: API, database, security, scalability; severity-rated report. Markdown only, no scripts (checked 2026-11-14; Gen Safe, Socket 0 alerts, Snyk Low) |
 
 Install counts as of 2026-11-14. Verify a skill on https://skills.sh/ before trusting a new one; prefer official org sources and 1K+ installs.
 

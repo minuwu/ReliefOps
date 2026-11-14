@@ -1,6 +1,13 @@
 {
   "version": 2,
   "skills": {
+    "backend-design-review": {
+      "source": "DauQuangThanh/hanoi-rainbow",
+      "sourceType": "github",
+      "skillPath": "skills/backend-design-review/SKILL.md",
+      "computedHash": "1c6e9277d0b442e06ef856f1e1ccc18d4d0fb6c1d56d4672aef47d332abdcd41",
+      "installMode": "copy"
+    },
     "deploy-to-vercel": {
       "source": "vercel-labs/agent-skills",
       "sourceType": "github",
