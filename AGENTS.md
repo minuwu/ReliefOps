@@ -180,8 +180,8 @@ Rules:
 - `graphify` missing → `pip install graphifyy`, or `python -m graphify`.
 
 ### 3.5 Git Rules for Agents
-- **Branch**: `<name>/<short-topic>` (e.g. `minhaz/dashboard-ui`, `asif/auth-login`). **Nobody commits directly to `main`.**
-- **Merge**: open a PR to `main`; one teammate approves, squash or merge. Keep PRs small (< 400 lines when possible).
+- **Branch**: `<name>/<short-topic>` (e.g. `minhaz/dashboard-ui`, `asif/auth-login`). Direct pushes to `main` are allowed **only after `git pull origin main`**; the pre-push hook rejects a push that is missing remote commits.
+- **Merge**: small, safe changes may go straight to `main` after pulling. Anything that touches another team's area, the API contract, or shared config goes through a PR with one teammate's approval. Keep PRs small (< 400 lines when possible).
 - **Commit messages**: Conventional Commits (`feat:`, `fix:`, `docs:`, `chore(xreq):`). No AI/tool attribution trailers.
 - **Sync**: the pre-push hook ([`.githooks/pre-push`](.githooks/pre-push)) fetches and merges `origin/main` before every push. It is enabled by `scripts/setup.sh` / `scripts/setup.ps1`. Commit or stash before pushing — the hook merges and will refuse a dirty tree.
 - **Secrets**: never commit `.env`. Keep `.env.example` current in `frontend/` and `backend/`.
@@ -243,17 +243,17 @@ Per-person setup checklists are in [TEAM_INSTRUCTIONS.md](TEAM_INSTRUCTIONS.md).
 
 ### 5.3 Asif
 - **Role**: Backend engineering, data models, API integrations.
-- **Branches**: `asif/<topic>`; PR to `main`. No direct pushes to `main`.
+- **Branches**: `asif/<topic>`; PR to `main`, or direct push to `main` after pulling.
 - **Agent instructions in Asif's workspace**: fulfil `XREQ`s where `To: Backend` or `To: Asif`; load Backend skills (4.2); keep Swagger `/docs` and `docs/API_SPEC.md` in sync before committing.
 
 ### 5.4 Anim
 - **Role**: Backend engineering alongside Asif: services, data models, API integrations.
-- **Branches**: `anim/<topic>`; PR to `main`. No direct pushes to `main`.
+- **Branches**: `anim/<topic>`; PR to `main`, or direct push to `main` after pulling.
 - **Agent instructions in Anim's workspace**: fulfil `XREQ`s where `To: Backend` or `To: Anim`; load Backend skills (4.2); coordinate with Asif on shared `backend/` files and keep `docs/API_SPEC.md` in sync before committing.
 
 ### 5.5 Galib
 - **Role**: AI / LLM engineering: model-powered features, prompts, deterministic fallbacks (Section 4.3).
-- **Branches**: `galib/<topic>`; PR to `main`. No direct pushes to `main`.
+- **Branches**: `galib/<topic>`; PR to `main`, or direct push to `main` after pulling.
 - **Agent instructions in Galib's workspace**: fulfil `XREQ`s where `To: AI` or `To: Galib`; follow AI directives (4.3) and load Backend skills (`fastapi`, `python-testing-patterns`) for code in `backend/`; coordinate with Asif and Anim on shared `backend/` files and declare any SSE chunk format in an `XREQ`.
 
 ### 5.6 Onboarding a New Contributor (2 minutes)

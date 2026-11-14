@@ -31,7 +31,7 @@ The reasons behind these choices (data model, security, AI safety, devops) are i
 2. **Operators and supervisors are center staff (D2)** and work across all five banks. Bank viewers are bank employees: read-only and limited to their own bank. Every time someone opens a case, it is written to the audit log.
 3. **The AI only suggests (D3).** No endpoint lets the AI change a status or make any money decision. AI output is stored separately and reaches the case only after a person accepts it.
 4. **Money decisions need a supervisor (D4).** Closing a case as `paid_out` or `rejected` is supervisor-only.
-5. **Victims can see and edit their own case (D11).** Victims have no accounts. Intake returns a reference and a one-time access code; together they open a session that covers only that case.
+5. **Victims can see and edit their own case (D13).** Victims have no accounts. Intake returns a reference and a one-time access code; together they open a session that covers only that case.
    - Contact details stay editable until the case closes.
    - Report details are editable only while the case is still `received`.
    - Staff can issue a new code, for phone or paper cases or a lost code.
@@ -217,7 +217,7 @@ type VictimEditableField =
   | 'scam_type' | 'description';
 ```
 
-### 3.5 What a victim can change (D11)
+### 3.5 What a victim can change (D13)
 
 | Fields | When |
 | :--- | :--- |

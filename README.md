@@ -47,7 +47,7 @@ BJET-Hackathon/
 
 ## Conventions
 
-1. **Branches**: `<name>/<topic>` → PR → `main`. No direct pushes to `main`.
+1. **Branches**: `<name>/<topic>` → PR → `main`. Direct pushes to `main` are allowed after `git pull origin main`; the pre-push hook rejects stale ones.
 2. **Contract-first**: Frontend ships against mocks mirroring `docs/API_SPEC.md`; Backend implements the same contract. Integration is a toggle flip.
 3. **Cross-team needs** go through an `XREQ` in [AGENTS.md §2](AGENTS.md#2-active-cross-functional-request-queue-xreq). The partner's agent treats it as top priority.
 4. **Skills are mandatory** for agents ([docs/SKILLS.md](docs/SKILLS.md)). **Knowledge graph first** for codebase questions: `graphify query "<question>"`.
