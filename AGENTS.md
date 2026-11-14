@@ -168,6 +168,7 @@ Rules:
 2. **Claude Code** auto-discovers `.claude/skills/`. **Every other agent** (Cursor, Copilot, Gemini CLI, Antigravity, Codex) must open `.claude/skills/<name>/SKILL.md` with its file tool and follow it. Pointer files exist at [`CLAUDE.md`](CLAUDE.md), [`GEMINI.md`](GEMINI.md), [`.cursor/rules/`](.cursor/rules/), and [`.github/copilot-instructions.md`](.github/copilot-instructions.md).
 3. **Need a skill that isn't here?** Use `find-skills`: `npx skills find "<topic>"`, then install into the repo with `npx skills add <owner/repo@skill> -a claude-code --copy -y`, add a row to `docs/SKILLS.md`, and commit. Never install only globally — the team won't get it.
 4. **Never commit code that contradicts a loaded skill** without noting why in the PR body.
+5. **ECC workflow layer (Claude Code).** `scripts/setup` installs [ECC](docs/SKILLS.md#6-ecc-everything-claude-code--workflow-harness) per machine: workflow skills (`tdd-workflow`, `verification-loop`, `e2e-testing`, …), reviewer subagents (`fastapi-reviewer`, `react-reviewer`, `security-reviewer`, …), `/plan` `/code-review` `/learn` commands, rules and hooks. Use `/plan` before multi-file work and `verification-loop` before marking an `XREQ` `[RESOLVED]`. Where ECC rules and this file disagree, this file wins. Never commit ECC-managed files (they are gitignored).
 
 ### 3.4 Step 2 — Query the Knowledge Graph First
 
