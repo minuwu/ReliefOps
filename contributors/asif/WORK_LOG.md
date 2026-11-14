@@ -15,7 +15,7 @@ Use this log to share progress, planned work, and dependencies with the team. Up
   - Definition of Done; contract changes C1–C11 for v0.4.0
 - Merged `asif/api-contract` into `main`: contract v0.3.0, openapi.yaml, backend plan, the updated use-case diagram, Galib's suggestions, this guide.
   - **Process miss:** AGENTS.md §3.5 requires a PR with one teammate's approval for contract changes and other people's areas (the diagram is Anim's). This went straight to `main`. Fix: Minhaz (contract) and Anim (diagram) review commits `fc67951`…`b23b97c` on `main` after the fact; from now on, contract changes go through a PR.
-- Guide **v1.1** after Codex's review, all 8 points fixed:
+- Guide **v1.1** after a review, all 8 points fixed:
   - commit before the response (`scope="function"`), and `short_tx(who)` re-applies the scope
   - scoped, atomic duplicate protection, none on anonymous intake
   - atomic version check using an integer `version` (timestamps lose microseconds in JavaScript)
