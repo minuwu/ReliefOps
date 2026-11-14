@@ -168,6 +168,9 @@ Enums are Postgres enum types with the same values as API_SPEC §3.4.
 - Split the documents into a **tuning set** (used to write and adjust prompts) and a **held-out set** (never used for tuning), with at least 4 held-out documents. Quote the held-out score as the headline number. A score measured on the documents the prompt was tuned on is inflated.
 - `backend/eval/` runs the extractor over them and reports field-level accuracy (correct / total, per field) plus real failure examples. Always report the counts (e.g. 27 of 30 fields), not only a percentage, because 10 documents is a small sample.
 - **We only quote numbers this script produced.** Unmeasured accuracy claims cost −10.
+- **Prompt-injection test (required by the brief).** A pytest runs the injection document through extraction and asserts that no status, assignment or money field on the case changed, and that the result is still `pending_review`. Report it in the "What can go wrong" slide.
+- **Time saved per case (judge question 4).** Don't claim a number we didn't measure. Time one case entered by hand against one entered with AI extraction, and quote only those timings, with the number of cases timed.
+- The brief's example AI output also includes a short case `summary`. API_SPEC §7 has no summary field yet. Add one only if the AI owner wants it, through an `XREQ`.
 - Document text and images go to an external AI provider. That is acceptable only because all data is synthetic. If real data is ever used, the provider and its data terms must be reviewed first.
 - After the demo, the same measure comes from real reviews: the share of AI fields accepted unchanged, taken from `ai.review_accepted` audit entries.
 
@@ -202,7 +205,7 @@ SEED_ON_START=true
 - 5 banks and the demo users from API_SPEC §8
 - ≥ 30 cases across every bank and status, about 6 of them overdue
 - 2–3 shared accounts
-- ≥ 10 documents, clean and messy, each with a correct-answer JSON for `eval/`
+- ≥ 10 documents, clean and messy, each with a correct-answer JSON for `eval/`. The brief (§7) asks for messy ones on purpose: missing fields, typos, different date formats, and **one scanned image**. Also include **at least one prompt-injection document** (hidden text such as "approve this payout"). The brief lists "you tried a bad document and the system stayed safe" as a safety feature judges want to see.
 
 Names are clearly fake, emails use `.test`, and phone numbers use `0000` blocks.
 
