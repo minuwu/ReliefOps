@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
 import { DEMO_USERS } from '@/services/mockData';
 import { api } from '@/services/api';
+import { CaseProgressStepper } from './CaseProgressStepper';
 import {
   ShieldAlert,
   Calendar,
@@ -144,6 +145,11 @@ export function CaseDetailModal({
               ))}
             </select>
           </div>
+        </div>
+
+        {/* 6-Stage Statutory Lifecycle Stepper */}
+        <div className="p-3.5 rounded-xl border border-border bg-card shadow-xs">
+          <CaseProgressStepper currentStatus={caseItem.status} closureReason={caseItem.closure_reason} />
         </div>
 
         {/* Dynamic Action Buttons (Populated from contract allowed_transitions) */}

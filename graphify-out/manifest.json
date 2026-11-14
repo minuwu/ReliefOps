@@ -30,15 +30,15 @@
     "semantic_hash": ""
   },
   "docs/API_SPEC.md": {
-    "mtime": 1794678302.3207092,
-    "seen": 1794679131.569376,
-    "ast_hash": "fa853c466172662f5f514a04012e4a81",
+    "mtime": 1794680675.5019035,
+    "seen": 1794681380.9795678,
+    "ast_hash": "c0cceafea08a5ef3495c52fd6331145f",
     "semantic_hash": ""
   },
   "docs/README.md": {
-    "mtime": 1794678302.3222249,
-    "seen": 1794679131.5693784,
-    "ast_hash": "c115ba64fbddcd6c10e0489ca95a508e",
+    "mtime": 1794679499.1595924,
+    "seen": 1794681380.9795702,
+    "ast_hash": "c96ca784469a7210380fc85aac23f6f3",
     "semantic_hash": ""
   },
   "docs/plans/cross-functional-protocol-plan.md": {
@@ -96,21 +96,21 @@
     "semantic_hash": "3b066d2dc99abb980fafb1e81ca3884c"
   },
   "contributors/asif/WORK_LOG.md": {
-    "mtime": 1794678302.317681,
-    "seen": 1794679131.5693657,
-    "ast_hash": "5608a73ecde9ed630974b192f484ef22",
+    "mtime": 1794679499.1560252,
+    "seen": 1794681380.9795585,
+    "ast_hash": "60524d646d9791b43602cb793b89b7c8",
     "semantic_hash": ""
   },
   "contributors/minhaz/WORK_LOG.md": {
-    "mtime": 1794679104.8656156,
-    "seen": 1794679131.569373,
-    "ast_hash": "b8a68c07a42b903e2a2e0e5d53285af5",
+    "mtime": 1794680659.3836987,
+    "seen": 1794681380.9795654,
+    "ast_hash": "5918706989c784fa87ae7286992592e2",
     "semantic_hash": ""
   },
   "docs/SKILLS.md": {
-    "mtime": 1794678413.0324795,
-    "seen": 1794679131.5693805,
-    "ast_hash": "c5f56c4abf15a2e33ff4ba9b0af7de0d",
+    "mtime": 1794680636.2533529,
+    "seen": 1794681380.9795723,
+    "ast_hash": "d8d3a6fe038ef6962a065495f57754df",
     "semantic_hash": ""
   },
   "backend/app/__init__.py": {
@@ -144,15 +144,15 @@
     "semantic_hash": "8ef680972118bb9cbd254d24b68bd448"
   },
   "docs/plans/backend-plan.md": {
-    "mtime": 1794678302.3305957,
-    "seen": 1794679131.5693867,
-    "ast_hash": "fdf7b626caa872e91a4c0d834ce99081",
+    "mtime": 1794679499.1682684,
+    "seen": 1794681380.9795792,
+    "ast_hash": "3a16c7fca423719403829bba2d5e4182",
     "semantic_hash": ""
   },
   "docs/openapi.yaml": {
-    "mtime": 1794678302.3267865,
-    "seen": 1794679131.5692456,
-    "ast_hash": "9984b48b0c0c558228a38dcb7ba6479a",
+    "mtime": 1794680675.504008,
+    "seen": 1794681380.9794385,
+    "ast_hash": "36132419836783143bf322603609932c",
     "semantic_hash": ""
   },
   "frontend/package.json": {
@@ -168,21 +168,21 @@
     "semantic_hash": ""
   },
   "frontend/src/components/cases/CaseDetailModal.tsx": {
-    "mtime": 1794678757.569997,
-    "seen": 1794679131.5692554,
-    "ast_hash": "c2cac77423aa54114e114ec60f08eee0",
+    "mtime": 1794680764.0858731,
+    "seen": 1794681380.9794502,
+    "ast_hash": "19b2fabe0e008d54313f3f9243b15e39",
     "semantic_hash": ""
   },
   "frontend/src/components/extraction/ExtractionReviewModal.tsx": {
-    "mtime": 1794679018.433292,
-    "seen": 1794679131.569258,
-    "ast_hash": "65355dd57ed54dea056a4bf68b38f3f0",
+    "mtime": 1794681238.5263991,
+    "seen": 1794681380.979463,
+    "ast_hash": "641938e63003a7cb49f49524bfc025cd",
     "semantic_hash": ""
   },
   "frontend/src/components/layout/Navbar.tsx": {
-    "mtime": 1794678722.4445055,
-    "seen": 1794679131.5692604,
-    "ast_hash": "92012b5612eab9ccaac4950b9c6a2c13",
+    "mtime": 1794679805.090557,
+    "seen": 1794681380.9794662,
+    "ast_hash": "1647adabdb9675937fde85735551960f",
     "semantic_hash": ""
   },
   "frontend/src/components/ui/Badge.tsx": {
@@ -210,9 +210,9 @@
     "semantic_hash": ""
   },
   "frontend/src/components/ui/Modal.tsx": {
-    "mtime": 1794678699.579309,
-    "seen": 1794679131.5692768,
-    "ast_hash": "1522d25c37fa906253bc15a642d1e877",
+    "mtime": 1794681202.8607092,
+    "seen": 1794681380.9794803,
+    "ast_hash": "dfb1b7abb0458d5b962bc9603e3d1366",
     "semantic_hash": ""
   },
   "frontend/src/lib/utils.ts": {
@@ -234,15 +234,15 @@
     "semantic_hash": ""
   },
   "frontend/src/pages/CasesPage.tsx": {
-    "mtime": 1794679026.3908439,
-    "seen": 1794679131.56929,
-    "ast_hash": "9998d377689f865b232191314f292b40",
+    "mtime": 1794681338.4014368,
+    "seen": 1794681380.9794912,
+    "ast_hash": "677cb82d938f01e5d4274989a718c03c",
     "semantic_hash": ""
   },
   "frontend/src/pages/DashboardPage.tsx": {
-    "mtime": 1794679030.847679,
-    "seen": 1794679131.569292,
-    "ast_hash": "b2a421b13503e4ed814d21e4cd3039e4",
+    "mtime": 1794681346.8760884,
+    "seen": 1794681380.9794939,
+    "ast_hash": "67dbc8f6888101c12926151ef76b9bcd",
     "semantic_hash": ""
   },
   "frontend/src/pages/ReviewQueuePage.tsx": {
@@ -252,9 +252,9 @@
     "semantic_hash": ""
   },
   "frontend/src/pages/VictimPortalPage.tsx": {
-    "mtime": 1794679039.1247542,
-    "seen": 1794679131.5692966,
-    "ast_hash": "387a299d7d4d97d4415c2067ba090727",
+    "mtime": 1794681076.738224,
+    "seen": 1794681380.9794989,
+    "ast_hash": "3a7fe445a414e934a93f53324afccc30",
     "semantic_hash": ""
   },
   "frontend/src/services/api.ts": {
@@ -330,9 +330,9 @@
     "semantic_hash": ""
   },
   "docs/plans/backend-development-guide.md": {
-    "mtime": 1794678302.3284163,
-    "seen": 1794679131.5693836,
-    "ast_hash": "5e28772255565e0b4da9b70e9a534fbc",
+    "mtime": 1794679499.1663663,
+    "seen": 1794681380.979577,
+    "ast_hash": "c25064230c8fb098094f006f3389fa57",
     "semantic_hash": ""
   },
   "docs/problem-statements/hackathon-1-safer-banking/Hackathon_1_Explained.md": {
@@ -357,6 +357,30 @@
     "mtime": 1794678920.178908,
     "seen": 1794679131.5694005,
     "ast_hash": "51cfa3db577ae1394b60693a8a1a906d",
+    "semantic_hash": ""
+  },
+  "frontend/src/components/cases/CaseProgressStepper.tsx": {
+    "mtime": 1794681094.6210096,
+    "seen": 1794681380.979454,
+    "ast_hash": "81b3e900095c210e3f5650d71852b53f",
+    "semantic_hash": ""
+  },
+  "frontend/src/components/dashboard/FraudRingVisualizer.tsx": {
+    "mtime": 1794681334.7791598,
+    "seen": 1794681380.9794574,
+    "ast_hash": "2bcf4634025e079b433487e98eeb7674",
+    "semantic_hash": ""
+  },
+  "frontend/src/components/extraction/DocumentOpticalPreview.tsx": {
+    "mtime": 1794681183.5166283,
+    "seen": 1794681380.97946,
+    "ast_hash": "5ba89df53d24791b810cc3ce077bf666",
+    "semantic_hash": ""
+  },
+  "docs/plans/backend-design-review.md": {
+    "mtime": 1794679499.1651335,
+    "seen": 1794681380.9795744,
+    "ast_hash": "3d2372f874a910347cf93cedb3439a7b",
     "semantic_hash": ""
   },
   "frontend/package-lock.json": {

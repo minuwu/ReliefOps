@@ -4,6 +4,7 @@ import { useReviewQueueStore } from '@/store/useReviewQueueStore';
 import { Modal } from '@/components/ui/Modal';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { DocumentOpticalPreview } from './DocumentOpticalPreview';
 import {
   Sparkles,
   CheckCircle2,
@@ -11,6 +12,7 @@ import {
   AlertTriangle,
   Quote,
   ShieldCheck,
+  ScanLine,
 } from 'lucide-react';
 
 interface ExtractionReviewModalProps {
@@ -29,6 +31,8 @@ export function ExtractionReviewModal({
   const { reviewExtraction, isActionLoading } = useReviewQueueStore();
   const [editedFields, setEditedFields] = useState<Record<string, any>>({});
   const [reviewNote, setReviewNote] = useState('');
+  const [showOpticalPreview, setShowOpticalPreview] = useState(true);
+  const [hoveredField, setHoveredField] = useState<string | null>(null);
 
   useEffect(() => {
     if (extraction) {
@@ -62,7 +66,7 @@ export function ExtractionReviewModal({
   const confidencePct = Math.round((extraction.overall_confidence || 0) * 100);
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} maxWidth="4xl">
+    <Modal isOpen={isOpen} onClose={onClose} maxWidth="5xl">
       <div className="space-y-6">
         {/* Header Ribbon */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-muted/40 border border-border">
@@ -100,14 +104,31 @@ export function ExtractionReviewModal({
           </div>
         </div>
 
-        {/* Human-in-the-Loop Safe Directive Banner */}
-        <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-xs text-blue-800 dark:text-blue-300 flex items-center gap-2.5">
-          <ShieldCheck className="w-4 h-4 shrink-0 text-blue-600 dark:text-blue-400" />
-          <span>
-            <strong>AI Safety Mandate (D3):</strong> AI suggestions never modify case data directly.
-            Compare the evidence quote against the current case facts and approve or adjust each field before applying.
-          </span>
+        {/* Human-in-the-Loop Safe Directive Banner & Optical Toggle */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-xs text-blue-800 dark:text-blue-300">
+          <div className="flex items-center gap-2.5">
+            <ShieldCheck className="w-4 h-4 shrink-0 text-blue-600 dark:text-blue-400" />
+            <span>
+              <strong>AI Safety Mandate (D3):</strong> Suggestions require human verification.
+              Compare optical geometry against the evidence quotes and case values before applying.
+            </span>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setShowOpticalPreview(!showOpticalPreview)}
+            className="shrink-0 text-xs border-blue-300 dark:border-blue-700 hover:bg-blue-100/50 dark:hover:bg-blue-900/40 gap-1.5"
+          >
+            <ScanLine className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+            {showOpticalPreview ? 'Hide Optical Preview' : 'Show Optical Geometry'}
+          </Button>
         </div>
+
+        {/* Optical Document Geometry Canvas (Interactive Visual Inspection) */}
+        {showOpticalPreview && (
+          <DocumentOpticalPreview extraction={extraction} activeFieldHover={hoveredField} />
+        )}
 
         {/* Fields Comparison Table */}
         <div className="border border-border rounded-xl overflow-hidden bg-card">
@@ -122,7 +143,14 @@ export function ExtractionReviewModal({
             {extraction.fields.map((field) => {
               const fieldConf = Math.round(field.confidence * 100);
               return (
-                <div key={field.name} className="grid grid-cols-12 p-3.5 items-start gap-3 hover:bg-muted/20 transition-colors">
+                <div
+                  key={field.name}
+                  onMouseEnter={() => setHoveredField(field.name)}
+                  onMouseLeave={() => setHoveredField(null)}
+                  className={`grid grid-cols-12 p-3.5 items-start gap-3 transition-colors ${
+                    hoveredField === field.name ? 'bg-primary/5' : 'hover:bg-muted/20'
+                  }`}
+                >
                   {/* Field Name & Confidence */}
                   <div className="col-span-3 space-y-1">
                     <p className="text-xs font-bold text-foreground font-mono">
@@ -153,8 +181,13 @@ export function ExtractionReviewModal({
                   </div>
 
                   {/* Current Case Value */}
-                  <div className="col-span-2 text-xs text-muted-foreground font-mono pt-1">
-                    {String(field.current_case_value ?? '(empty)')}
+                  <div className="col-span-2 text-xs text-muted-foreground font-mono pt-1 space-y-1">
+                    <p>{String(field.current_case_value ?? '(empty)')}</p>
+                    {String(field.current_case_value ?? '') !== String(field.value ?? '') && (
+                      <span className="inline-block text-[9px] font-bold text-amber-800 dark:text-amber-300 bg-amber-500/10 px-1.5 py-0.2 rounded">
+                        Diff Detected
+                      </span>
+                    )}
                   </div>
 
                   {/* Final Approved Value Input */}

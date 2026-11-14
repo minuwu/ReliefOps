@@ -2,15 +2,13 @@ import { useEffect, useState } from 'react';
 import { api } from '@/services/api';
 import { DashboardStats, SharedAccountAlert } from '@/types/api';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
-import { formatCurrency } from '@/lib/utils';
+import { FraudRingVisualizer } from '@/components/dashboard/FraudRingVisualizer';
 import {
   BarChart3,
   AlertOctagon,
   Clock,
   BrainCircuit,
   TrendingUp,
-  AlertTriangle,
 } from 'lucide-react';
 
 export function DashboardPage() {
@@ -104,62 +102,7 @@ export function DashboardPage() {
       </div>
 
       {/* Shared Account Fraud Syndicate Alerts (High Value Hackathon Demo Feature) */}
-      <Card className="border-rose-200 dark:border-rose-900/50">
-        <CardHeader className="pb-3 border-b border-border flex flex-row items-center justify-between">
-          <div>
-            <CardTitle className="text-base font-bold flex items-center gap-2 text-rose-700 dark:text-rose-400">
-              <AlertTriangle className="w-5 h-5 text-rose-600" />
-              Shared Destination Account Alerts (Fraud Ring Detection)
-            </CardTitle>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Destination bank accounts identified across multiple victim reports at the same or partner banks
-            </p>
-          </div>
-          <Badge variant="destructive">{alerts.length} Suspicious Ring(s) Detected</Badge>
-        </CardHeader>
-        <CardContent className="pt-4 space-y-4">
-          {alerts.map((alert) => (
-            <div
-              key={alert.account_number}
-              className="p-4 rounded-xl border border-rose-300 dark:border-rose-900/60 bg-rose-50/20 dark:bg-rose-950/20 space-y-3"
-            >
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div>
-                  <span className="font-mono text-sm font-bold text-foreground">
-                    Account: {alert.account_number}
-                  </span>
-                  <span className="text-xs text-muted-foreground ml-2">
-                    ({alert.bank_name})
-                  </span>
-                </div>
-                <div className="text-right">
-                  <span className="text-xs font-bold text-rose-700 dark:text-rose-300">
-                    Total Inflow: {formatCurrency(alert.total_amount, alert.currency)}
-                  </span>
-                  <span className="text-xs text-muted-foreground ml-2">
-                    across {alert.case_count} cases
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-rose-200 dark:border-rose-900/40">
-                <span className="text-xs font-semibold text-muted-foreground">Connected Cases:</span>
-                {alert.cases.map((c) => (
-                  <span
-                    key={c.id}
-                    className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-background border border-border text-xs font-mono font-bold"
-                  >
-                    {c.reference}
-                    <Badge status={c.status} className="text-[10px] py-0 px-1.5">
-                      {c.status}
-                    </Badge>
-                  </span>
-                ))}
-              </div>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+      <FraudRingVisualizer alerts={alerts} />
 
       {/* Grid: Status Distribution & Workload */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

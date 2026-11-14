@@ -19,6 +19,10 @@ import {
   ChevronRight,
   PlusCircle,
   RefreshCw,
+  TrendingUp,
+  Clock,
+  AlertOctagon,
+  ArrowUpDown,
 } from 'lucide-react';
 
 const STATUS_TABS: { label: string; value: string }[] = [
@@ -42,6 +46,7 @@ export function CasesPage({ onOpenIntake }: CasesPageProps) {
 
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState(filters.search || '');
+  const [sortBy, setSortBy] = useState<'deadline' | 'amount_desc' | 'amount_asc' | 'created_desc'>('deadline');
 
   useEffect(() => {
     fetchCases();
@@ -55,6 +60,28 @@ export function CasesPage({ onOpenIntake }: CasesPageProps) {
   const handleOpenExtraction = async (extractionId: string) => {
     await fetchExtraction(extractionId);
   };
+
+  const totalClaimed = cases.reduce((acc, c) => acc + (c.amount || 0), 0);
+  const overdueCount = cases.filter((c) => c.deadline_state === 'overdue').length;
+  const dueSoonCount = cases.filter((c) => c.deadline_state === 'due_soon').length;
+  const aiPendingCount = cases.filter((c) => c.flags.ai_review_pending).length;
+
+  const sortedCases = [...cases].sort((a, b) => {
+    if (sortBy === 'amount_desc') return (b.amount || 0) - (a.amount || 0);
+    if (sortBy === 'amount_asc') return (a.amount || 0) - (b.amount || 0);
+    if (sortBy === 'created_desc') return new Date(b.reported_date).getTime() - new Date(a.reported_date).getTime();
+    const deadlineWeight = (c: CaseSummary) => {
+      if (c.deadline_state === 'overdue') return 0;
+      if (c.deadline_state === 'due_soon') return 1;
+      return 2;
+    };
+    const diff = deadlineWeight(a) - deadlineWeight(b);
+    if (diff !== 0) return diff;
+    if (a.deadline && b.deadline) {
+      return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+    }
+    return 0;
+  });
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
@@ -79,23 +106,84 @@ export function CasesPage({ onOpenIntake }: CasesPageProps) {
         </div>
       </div>
 
+      {/* Telemetry Summary Bar */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="p-3.5 rounded-xl border border-border bg-card shadow-xs flex items-center gap-3">
+          <div className="p-2.5 rounded-lg bg-primary/10 text-primary">
+            <TrendingUp className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Total Claims Value</p>
+            <p className="text-base font-bold font-mono text-foreground">{formatCurrency(totalClaimed, 'JPY')}</p>
+          </div>
+        </div>
+
+        <div className="p-3.5 rounded-xl border border-border bg-card shadow-xs flex items-center gap-3">
+          <div className="p-2.5 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400">
+            <BrainCircuit className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">AI Reviews Pending</p>
+            <p className="text-base font-bold font-mono text-foreground">{aiPendingCount} Documents</p>
+          </div>
+        </div>
+
+        <div className="p-3.5 rounded-xl border border-amber-500/20 bg-amber-500/5 shadow-xs flex items-center gap-3">
+          <div className="p-2.5 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
+            <Clock className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-[10px] text-amber-800 dark:text-amber-300 font-semibold uppercase tracking-wider">Due Soon (&lt;48h)</p>
+            <p className="text-base font-bold font-mono text-foreground">{dueSoonCount} Case(s)</p>
+          </div>
+        </div>
+
+        <div className="p-3.5 rounded-xl border border-rose-500/20 bg-rose-500/5 shadow-xs flex items-center gap-3">
+          <div className="p-2.5 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400">
+            <AlertOctagon className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-[10px] text-rose-700 dark:text-rose-300 font-semibold uppercase tracking-wider">Statutory Overdue</p>
+            <p className="text-base font-bold font-mono text-rose-700 dark:text-rose-300">{overdueCount} Case(s)</p>
+          </div>
+        </div>
+      </div>
+
       {/* Filter Ribbon: Banks & Search */}
       <div className="p-4 rounded-xl border border-border bg-card space-y-4 shadow-xs">
-        {/* Top Filter Row: Search & Bank Selector */}
+        {/* Top Filter Row: Search, Sort & Bank Selector */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-          {/* Search bar */}
-          <div className="relative flex-1 max-w-md">
-            <Search className="w-4 h-4 absolute left-3 top-2.5 text-muted-foreground" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setFilters({ search: e.target.value });
-              }}
-              placeholder="Search by reference (RFR-...), victim name, or bank..."
-              className="w-full pl-9 pr-3 py-1.5 text-xs bg-background border border-input rounded-md focus:outline-none focus:ring-1 focus:ring-primary font-medium"
-            />
+          <div className="flex items-center gap-2 flex-1 max-w-lg">
+            {/* Search bar */}
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 absolute left-3 top-2.5 text-muted-foreground" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setFilters({ search: e.target.value });
+                }}
+                placeholder="Search by reference (RFR-...), victim name, or bank..."
+                className="w-full pl-9 pr-3 py-1.5 text-xs bg-background border border-input rounded-md focus:outline-none focus:ring-1 focus:ring-primary font-medium"
+              />
+            </div>
+
+            {/* Sort selector */}
+            <div className="flex items-center gap-1.5 shrink-0 bg-background border border-input rounded-md px-2 py-1">
+              <ArrowUpDown className="w-3.5 h-3.5 text-muted-foreground" />
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                aria-label="Sort cases"
+                className="text-xs bg-transparent border-0 focus:outline-none font-medium cursor-pointer text-foreground"
+              >
+                <option value="deadline">Statutory Urgency</option>
+                <option value="amount_desc">Amount: High to Low</option>
+                <option value="amount_asc">Amount: Low to High</option>
+                <option value="created_desc">Most Recent</option>
+              </select>
+            </div>
           </div>
 
           {/* Bank selector pills */}
@@ -164,14 +252,14 @@ export function CasesPage({ onOpenIntake }: CasesPageProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-border text-xs">
-              {cases.length === 0 ? (
+              {sortedCases.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="py-12 text-center text-muted-foreground italic">
                     No cases match the selected filters.
                   </td>
                 </tr>
               ) : (
-                cases.map((c) => (
+                sortedCases.map((c) => (
                   <tr
                     key={c.id}
                     onClick={() => handleSelectCase(c)}

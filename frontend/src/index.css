@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  --background: hsl(210 20% 98%);
+  --background: hsl(210 24% 98%);
   --foreground: hsl(222.2 47% 11.2%);
 
   --card: hsl(0 0% 100%);
@@ -17,7 +17,7 @@
   --secondary-foreground: hsl(222.2 47% 11.2%);
 
   --muted: hsl(210 40% 96.1%);
-  --muted-foreground: hsl(215.4 16.3% 46.9%);
+  --muted-foreground: hsl(215.4 16.3% 44%);
 
   --accent: hsl(210 40% 96.1%);
   --accent-foreground: hsl(222.2 47% 11.2%);
@@ -25,11 +25,11 @@
   --destructive: hsl(0 84.2% 60.2%);
   --destructive-foreground: hsl(210 40% 98%);
 
-  --border: hsl(214.3 31.8% 91.4%);
-  --input: hsl(214.3 31.8% 91.4%);
+  --border: hsl(214.3 31.8% 90%);
+  --input: hsl(214.3 31.8% 90%);
   --ring: hsl(221.2 83.2% 53.3%);
 
-  --radius: 0.5rem;
+  --radius: 0.625rem;
 
   /* Custom banking relief status colors */
   --status-received: hsl(215 25% 45%);
@@ -114,5 +114,38 @@
     background-color: var(--background);
     color: var(--foreground);
     font-family: var(--font-sans);
+    background-image: radial-gradient(hsl(215 20% 85% / 0.25) 1px, transparent 1px);
+    background-size: 24px 24px;
+    letter-spacing: -0.011em;
   }
+}
+
+/* Hardware accelerated transition utilities */
+.motion-gpu {
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+/* Sleek subtle scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(215 16% 80% / 0.6);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(215 16% 65%);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: hsl(215 16% 30% / 0.6);
 }

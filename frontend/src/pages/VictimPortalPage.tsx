@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/Input';
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { CaseProgressStepper } from '@/components/cases/CaseProgressStepper';
 import {
   FileSpreadsheet,
   Send,
@@ -222,7 +223,13 @@ export function VictimPortalPage() {
             </Card>
           ) : (
             /* Logged-In Victim Workspace */
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className="space-y-6">
+              {/* Stepper Card */}
+              <div className="p-4 rounded-xl border border-border bg-card shadow-xs">
+                <CaseProgressStepper currentStatus={victimCase.status} closureReason={victimCase.closure_reason} />
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               {/* Left Column: Case Summary & Facts */}
               <div className="lg:col-span-5 space-y-5">
                 <Card className="p-5 space-y-4">
@@ -353,6 +360,32 @@ export function VictimPortalPage() {
                     ))}
                   </div>
 
+                  {/* Suggested Question Pills for Instant Demo */}
+                  <div className="px-4 py-2 border-t border-border/60 bg-muted/30 flex items-center gap-1.5 overflow-x-auto text-[11px]">
+                    <span className="text-muted-foreground font-semibold shrink-0">Ask:</span>
+                    <button
+                      type="button"
+                      onClick={() => setQuestionText('How long does Birch Regional Bank take to freeze the fraudulent account?')}
+                      className="px-2 py-0.5 rounded-full bg-background border border-border hover:border-teal-500 hover:text-teal-600 transition-colors whitespace-nowrap cursor-pointer"
+                    >
+                      Freezing procedures?
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setQuestionText('Will my bank compensate before the official 60-day notice ends?')}
+                      className="px-2 py-0.5 rounded-full bg-background border border-border hover:border-teal-500 hover:text-teal-600 transition-colors whitespace-nowrap cursor-pointer"
+                    >
+                      60-day notice payout?
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setQuestionText('What documents are required to support my wire transfer claim?')}
+                      className="px-2 py-0.5 rounded-full bg-background border border-border hover:border-teal-500 hover:text-teal-600 transition-colors whitespace-nowrap cursor-pointer"
+                    >
+                      Required documents?
+                    </button>
+                  </div>
+
                   {/* Question Input */}
                   <form onSubmit={handleSendChat} className="p-3 border-t border-border bg-card flex gap-2">
                     <input
@@ -374,6 +407,7 @@ export function VictimPortalPage() {
                   </form>
                 </Card>
               </div>
+            </div>
             </div>
           )}
         </>
