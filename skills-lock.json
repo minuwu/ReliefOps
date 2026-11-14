@@ -64,6 +64,13 @@
       "computedHash": "7d034b06630d89c13d4ac440529eb1832ac8643beddb62ba68fc05324e0a21f1",
       "installMode": "copy"
     },
+    "premium-frontend-ui": {
+      "source": "github/awesome-copilot",
+      "sourceType": "github",
+      "skillPath": "skills/premium-frontend-ui/SKILL.md",
+      "computedHash": "b7edf35b33931d15ea0c1d271f3c05d469e2b6923ed4df1c955d4da86287d9fb",
+      "installMode": "copy"
+    },
     "prisma-orm-setup": {
       "source": "prisma/skills",
       "sourceType": "github",
