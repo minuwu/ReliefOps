@@ -37,17 +37,17 @@ Then:
 
 ## 4. Per-Person Checklists
 
-| | Minhaz (`minuwu`) | Asif (`MdAsif-Hossain`) | Anim (`anim710`) | New teammate |
-| :--- | :--- | :--- | :--- | :--- |
-| **Role** | Frontend / Full-Stack / Architecture, repo owner | Backend / Services / Database | Backend / Services / Database (with Asif) | assigned at kickoff |
-| **Branch prefix** | `minhaz/*` | `asif/*` | `anim/*` | `<name>/*` |
-| **Work log** | [contributors/minhaz/WORK_LOG.md](contributors/minhaz/WORK_LOG.md) | [contributors/asif/WORK_LOG.md](contributors/asif/WORK_LOG.md) | [contributors/anim/WORK_LOG.md](contributors/anim/WORK_LOG.md) | `cp -r contributors/_template contributors/<name>` |
-| **Skills your agent loads** | `vercel-react-best-practices`, `nextjs-app-router-patterns`, `frontend-design`, `tailwind-v4-shadcn`, `deploy-to-vercel` | `fastapi`, `python-testing-patterns`, `supabase-postgres-best-practices`, `openapi-spec-generation` | `fastapi`, `python-testing-patterns`, `supabase-postgres-best-practices`, `openapi-spec-generation` | per role, see [docs/SKILLS.md §1](docs/SKILLS.md) |
-| **XREQs you answer** | `To: Frontend` / `To: Minhaz` | `To: Backend` / `To: Asif` | `To: Backend` / `To: Anim` | `To: <Team>` / `To: <name>` |
-| **You own** | `frontend/`, `AGENTS.md`, `docs/SKILLS.md`, graphify graph, PR merges | `backend/`, `docs/API_SPEC.md`, Swagger `/docs`, DB schema | `backend/` services agreed with Asif; keep `docs/API_SPEC.md` in sync | agreed at kickoff, recorded in AGENTS.md §5 |
-| **Hour-0 task** | Scaffold `frontend/` with mock toggle; deploy hello-world to Vercel | Scaffold `backend/` with CORS + `/api/health`; deploy to Render/Railway | Pair with Asif on `backend/` scaffold; claim first endpoint in WORK_LOG | run `scripts/setup`, read AGENTS.md, claim first task in WORK_LOG |
+| | Minhaz (`minuwu`) | Asif (`MdAsif-Hossain`) | Anim (`anim710`) | Galib (`Ga-lib`) | New teammate |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Role** | Frontend / Full-Stack / Architecture, repo owner | Backend / Services / Database | Backend / Services / Database (with Asif) | AI / LLM (model features, prompts, fallbacks) | assigned at kickoff |
+| **Branch prefix** | `minhaz/*` | `asif/*` | `anim/*` | `galib/*` | `<name>/*` |
+| **Work log** | [contributors/minhaz/WORK_LOG.md](contributors/minhaz/WORK_LOG.md) | [contributors/asif/WORK_LOG.md](contributors/asif/WORK_LOG.md) | [contributors/anim/WORK_LOG.md](contributors/anim/WORK_LOG.md) | [contributors/galib/WORK_LOG.md](contributors/galib/WORK_LOG.md) | `cp -r contributors/_template contributors/<name>` |
+| **Skills your agent loads** | `vercel-react-best-practices`, `nextjs-app-router-patterns`, `frontend-design`, `tailwind-v4-shadcn`, `deploy-to-vercel` | `fastapi`, `python-testing-patterns`, `supabase-postgres-best-practices`, `openapi-spec-generation` | `fastapi`, `python-testing-patterns`, `supabase-postgres-best-practices`, `openapi-spec-generation` | `fastapi`, `python-testing-patterns`; AI directives in AGENTS.md §4.3 | per role, see [docs/SKILLS.md §1](docs/SKILLS.md) |
+| **XREQs you answer** | `To: Frontend` / `To: Minhaz` | `To: Backend` / `To: Asif` | `To: Backend` / `To: Anim` | `To: AI` / `To: Galib` | `To: <Team>` / `To: <name>` |
+| **You own** | `frontend/`, `AGENTS.md`, `docs/SKILLS.md`, graphify graph, PR merges | `backend/`, `docs/API_SPEC.md`, Swagger `/docs`, DB schema | `backend/` services agreed with Asif; keep `docs/API_SPEC.md` in sync | `backend/app/prompts/`, AI services in `backend/` agreed with Asif and Anim | agreed at kickoff, recorded in AGENTS.md §5 |
+| **Hour-0 task** | Scaffold `frontend/` with mock toggle; deploy hello-world to Vercel | Scaffold `backend/` with CORS + `/api/health`; deploy to Render/Railway | Pair with Asif on `backend/` scaffold; claim first endpoint in WORK_LOG | Run `scripts/setup`; pick the model/provider and stub the AI endpoint with a deterministic fallback | run `scripts/setup`, read AGENTS.md, claim first task in WORK_LOG |
 
-Add a column when a teammate joins (AGENTS.md §5.5).
+Add a column when a teammate joins (AGENTS.md §5.6).
 
 ## 5. Hour-0 Kickoff Agenda (45 min)
 
