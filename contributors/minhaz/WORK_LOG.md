@@ -15,6 +15,7 @@ Use this log to share progress, planned work, and dependencies with the team. Up
   - State management stores: `useAuthStore` (role-based auth & quick-switch), `useCaseStore` (status transitions & notes), `useReviewQueueStore` (HITL extraction triage), and `useVictimSessionStore` (quarantined victim session & chatbot).
   - Core interfaces: Case Operations Roster (`/cases`), AI Document Extraction Review Queue (`/review-queue`), Supervisor Operations Dashboard (`/dashboard`), Immutable Audit Trail (`/audit-logs`), and Public Victim Portal (`/victim`).
 - Verified via full production build (`npm run build`, `tsc -b && vite build`) with zero typecheck or bundler errors.
+- Refined navigation tabs, enabled 1-click victim authentication for demo cases, and added 1-click clipboard copy for issued victim access codes.
 
 ### Next
 - Coordinate with Asif and Anim on testing live `/api/*` routes as backend endpoints become available.
