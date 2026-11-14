@@ -1,0 +1,68 @@
+{
+  ".githooks/pre-push": {
+    "mtime": 1794663261.4089472,
+    "seen": 1794665252.115134,
+    "ast_hash": "127e4f74da4b471c63d51ffb63d49bc6",
+    "semantic_hash": "127e4f74da4b471c63d51ffb63d49bc6"
+  },
+  "AGENTS.md": {
+    "mtime": 1794664082.8883512,
+    "seen": 1794665252.1151462,
+    "ast_hash": "ce514503d6ff11f9605e730306b0fa71",
+    "semantic_hash": "ce514503d6ff11f9605e730306b0fa71"
+  },
+  "Asif/WORK_LOG.md": {
+    "mtime": 1794663143.507615,
+    "seen": 1794665252.115152,
+    "ast_hash": "642e5e8eac49ab29172a83bf23021dd3",
+    "semantic_hash": "642e5e8eac49ab29172a83bf23021dd3"
+  },
+  "HACKATHON_PRESETUP.md": {
+    "mtime": 1794662994.0752716,
+    "seen": 1794665252.1151545,
+    "ast_hash": "819da4253b1cfbe60e76826d3915840f",
+    "semantic_hash": "819da4253b1cfbe60e76826d3915840f"
+  },
+  "Minhaz/WORK_LOG.md": {
+    "mtime": 1794663624.0078733,
+    "seen": 1794665252.1151564,
+    "ast_hash": "5a1c2b3ae0c406e9d41e05499d79794d",
+    "semantic_hash": "5a1c2b3ae0c406e9d41e05499d79794d"
+  },
+  "README.md": {
+    "mtime": 1794663674.1287422,
+    "seen": 1794665252.1151583,
+    "ast_hash": "8f064795d4f1d62d706a7b183a398ee1",
+    "semantic_hash": "8f064795d4f1d62d706a7b183a398ee1"
+  },
+  "TEAM_INSTRUCTIONS.md": {
+    "mtime": 1794663445.5407047,
+    "seen": 1794665252.11516,
+    "ast_hash": "7ec26ef5c785125c2e9bb61febb729b8",
+    "semantic_hash": "7ec26ef5c785125c2e9bb61febb729b8"
+  },
+  "docs/API_SPEC.md": {
+    "mtime": 1794663650.0013227,
+    "seen": 1794665252.115162,
+    "ast_hash": "92c8b25aa1c7ad3d7529f338ce313b59",
+    "semantic_hash": "92c8b25aa1c7ad3d7529f338ce313b59"
+  },
+  "docs/README.md": {
+    "mtime": 1794663658.144573,
+    "seen": 1794665252.1151633,
+    "ast_hash": "2218652596cea7a24673f41206253c46",
+    "semantic_hash": "2218652596cea7a24673f41206253c46"
+  },
+  "docs/plans/cross-functional-protocol-plan.md": {
+    "mtime": 1794663615.8476422,
+    "seen": 1794665252.1151655,
+    "ast_hash": "022016024838e0e9b6818364d132dbd4",
+    "semantic_hash": "022016024838e0e9b6818364d132dbd4"
+  },
+  "minhaz.md": {
+    "mtime": 1794664191.8509326,
+    "seen": 1794665252.1151671,
+    "ast_hash": "f5a601b22a5ffd97906d0b88b01519c6",
+    "semantic_hash": "f5a601b22a5ffd97906d0b88b01519c6"
+  }
+}

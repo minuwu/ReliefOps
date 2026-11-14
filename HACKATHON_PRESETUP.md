@@ -57,7 +57,12 @@ BJET-Hackathon/
 │   │   ├── services/     # Business logic / AI models / external APIs
 │   │   └── models/       # Data schemas (Pydantic / Prisma)
 ├── docs/
-│   └── API_SPEC.md       # Shared API contract (Source of Truth)
+│   ├── API_SPEC.md       # Shared API contract (Source of Truth)
+│   └── SKILLS.md         # Mandatory agent skill routing
+├── contributors/<name>/  # Per-person WORK_LOG.md
+├── .claude/skills/       # Committed agent skill packs
+├── graphify-out/         # Knowledge graph (query before grep)
+├── AGENTS.md             # Agent + team protocol
 ├── .gitignore
 └── README.md
 ```
@@ -95,7 +100,8 @@ Response (200 OK):
 - Create an API client layer with a toggle for mock data:
   ```ts
   // frontend/src/services/api.ts
-  const USE_MOCK = true;
+  // Env-driven; defaults ON so the UI works before the backend exists.
+  const USE_MOCK = (import.meta.env.VITE_USE_MOCK ?? 'true') === 'true';
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
   export async function analyzeDocument(payload: AnalyzeRequest): Promise<AnalyzeResponse> {
@@ -137,7 +143,7 @@ Response (200 OK):
 - Connect database, AI prompts, and external integrations.
 
 ### Step 3: Final Integration (Plug and Play)
-- Switch `USE_MOCK = false` in the frontend API service or update environment variables.
+- Set `VITE_USE_MOCK=false` (or `NEXT_PUBLIC_USE_MOCK=false`) in the frontend env.
 - Since both teams adhered to `API_SPEC.md`, integration typically takes under 30 minutes.
 
 ---
@@ -145,12 +151,17 @@ Response (200 OK):
 ## 5. Git & Team Rules for Speed
 
 1. **Simple Branch Strategy**:
-   - Do not use complex GitFlow. Use short-lived feature branches:
-     - `feat/frontend-dashboard`
-     - `feat/backend-ai-pipeline`
-   - Merge frequently into `main` after quick peer review.
+   - Do not use GitFlow. Short-lived branches named `<name>/<topic>`:
+     - `minhaz/dashboard-ui`
+     - `asif/ai-pipeline`
+   - PR to `main` after a quick peer review. No direct pushes to `main`. The pre-push hook syncs `origin/main` for you.
 2. **Deploy on Hour 2 (Not Hour 23)**:
    - Connect the repository to **Vercel** (frontend) and **Render / Railway** (backend) right away with dummy code.
    - Catch CORS issues, build errors, and missing environment variables early.
 3. **Environment Variables**:
    - Maintain a `.env.example` in both `frontend/` and `backend/` so teammates don't waste time diagnosing missing keys.
+4. **Agents Follow the Protocol**:
+   - Every coding agent reads [AGENTS.md](AGENTS.md): XREQ queue first, matching skill loaded ([docs/SKILLS.md](docs/SKILLS.md)), `graphify query` before grep.
+4. **Automated Pre-Push Hook (Mandatory for All Contributors)**:
+   - Run `sh scripts/setup.sh` (or `.\scripts\setup.ps1` on Windows) to enable the pre-push sync hook (`git config core.hooksPath .githooks`).
+   - Every `git push` automatically fetches and merges latest `origin/main` into your working branch so nobody pushes stale code or breaks teammates.

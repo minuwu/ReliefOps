@@ -1,6 +1,6 @@
 # Asif's Work Log
 
-Owner: Asif (`MdAsif-Hossain`)
+Owner: Asif (`MdAsif-Hossain`) — Role: Backend / Services / Database — Branches: `asif/*`
 
 Use this log to share progress, planned work, and dependencies with the team. Update it after each work session, keep the newest entry first, and use Bangladesh time (UTC+6). Link to relevant issues, commits, or pull requests when available.
 
