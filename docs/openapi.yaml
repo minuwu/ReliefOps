@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Fraud Relief Case API
-  version: 0.1.1
+  version: 0.2.0
   summary: Shared operations center for fraud-victim relief cases across five banks.
   description: |
     Machine-readable twin of [docs/API_SPEC.md](./API_SPEC.md). Change both in the same PR. Once Frontend
@@ -13,6 +13,10 @@ info:
     **Auth.** Call `POST /api/auth/login`, then send `Authorization: Bearer <token>`. Demo accounts (all synthetic,
     password `Demo@1234`): `operator1@opscenter.test`, `operator2@opscenter.test`, `supervisor@opscenter.test`,
     `viewer@bank-a.test`, `viewer@bank-b.test`.
+
+    **Victims** have no account. With the reference and access code from intake, `POST /api/victim/session` returns a
+    token that works only on `/api/victim/*` for that one case. Demo pairs: `RFR-2026-00042` / `K7QM-4XHP-2RTV`
+    (verified: contact details editable) and `RFR-2026-00051` / `M3PX-8KWN-5QDA` (received: everything editable).
 
     **Mock server (no backend needed).** `npx -y @stoplight/prism-cli@5.14.2 mock docs/openapi.yaml` serves this
     contract at `http://localhost:4010`. Add the header `Prefer: code=404` (any documented status) or
@@ -41,6 +45,8 @@ tags:
     description: Upload, AI extraction (suggestions only) and human review
   - name: dashboard
     description: Supervisor numbers and suspicious-pattern alerts
+  - name: victim
+    description: Victim self-service — view and edit their own case with reference + access code
 
 paths:
   /api/auth/login:
@@ -217,7 +223,8 @@ paths:
       operationId: submitIntake
       summary: Victim web form — creates a case in Received
       description: |
-        Public. Rate-limited per IP. Returns only the reference number, never internal IDs or case data.
+        Public. Rate-limited per IP. Returns the reference and a one-time `access_code` (only its hash is stored), never
+        internal IDs or case data. The victim needs both to view or edit their case (`/api/victim/*`).
         `account_number` is optional; when missing it shows up in the case's `flags.missing_fields`.
       security: []
       requestBody:
@@ -253,9 +260,10 @@ paths:
                 success: true
                 data:
                   reference: RFR-2026-00042
+                  access_code: K7QM-4XHP-2RTV
                   status: received
                   submitted_at: '2026-11-14T04:30:00Z'
-                message: Report received. Keep your reference number.
+                message: Report received. Keep your reference number and access code.
         '422':
           $ref: '#/components/responses/ValidationError'
         '429':
@@ -1057,6 +1065,188 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
 
+  /api/cases/{case_id}/victim-access:
+    parameters:
+      - $ref: '#/components/parameters/CaseId'
+    post:
+      tags: [cases]
+      operationId: issueVictimAccessCode
+      summary: Issue a new access code for the case's victim
+      description: |
+        For phone or paper cases (the victim has no code yet) or a lost code. The previous code and any open victim
+        session stop working. The code appears only in this response and is never logged. Audited as
+        `case.access_code_issued`.
+      responses:
+        '201':
+          description: New code
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VictimAccessResponse'
+              example:
+                success: true
+                data:
+                  reference: RFR-2026-00042
+                  access_code: R9TB-6NZE-3WFJ
+                message: Give this code to the victim. It is shown only once.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/victim/session:
+    post:
+      tags: [victim]
+      operationId: startVictimSession
+      summary: Victim opens their case with reference + access code
+      description: |
+        Returns a token that lasts 1 hour and works only on `/api/victim/*`, for this one case. A wrong reference and a
+        wrong code get the same 401, so nobody can test which references exist. After 5 failed attempts for one
+        reference or IP within 15 minutes → 429.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VictimSessionRequest'
+            example:
+              reference: RFR-2026-00042
+              access_code: K7QM-4XHP-2RTV
+      responses:
+        '200':
+          description: Session opened
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VictimSessionResponse'
+              example:
+                success: true
+                data:
+                  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.mock-victim-payload.mock-signature
+                  expires_at: '2026-11-14T05:30:00Z'
+                  case:
+                    reference: RFR-2026-00042
+                    bank_name: Birch Regional Bank
+                    status: verified
+                    closure_reason: null
+                    victim:
+                      name: Rina Example
+                      phone: '+81-90-0000-0042'
+                      email: rina.example@mail.test
+                      address: null
+                      preferred_language: ja
+                    amount: 250000
+                    currency: JPY
+                    transfer_date: '2026-10-28'
+                    account_number: '0012345'
+                    account_holder_name: Sample Trading LLC
+                    scam_type: impersonation
+                    description: Caller said they were from the tax office and asked me to pay a refund fee.
+                    missing_fields: []
+                    editable_fields: [victim.phone, victim.email, victim.address, victim.preferred_language]
+                    submitted_at: '2026-11-02T03:12:00Z'
+                    updated_at: '2026-11-14T04:30:00Z'
+                message: ok
+        '401':
+          description: Wrong reference or access code (same answer for both)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              example:
+                success: false
+                error:
+                  code: INVALID_CREDENTIALS
+                  message: Reference or access code is not correct
+                  details: {}
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /api/victim/case:
+    get:
+      tags: [victim]
+      operationId: getVictimCase
+      summary: The victim's own case (limited view)
+      description: Audited as `case.viewed` with actor type `victim`.
+      security:
+        - victimAuth: []
+      responses:
+        '200':
+          description: The victim's case
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VictimCaseResponse'
+              examples:
+                verified:
+                  $ref: '#/components/examples/VictimCaseVerified'
+                received:
+                  $ref: '#/components/examples/VictimCaseReceived'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    patch:
+      tags: [victim]
+      operationId: updateVictimCase
+      summary: Victim edits their own case
+      description: |
+        Send only changed fields. Contact details are editable until the case is closed; report details only while it
+        is `received`. The case's `editable_fields` lists exactly what is allowed now; anything else → `409 CASE_LOCKED`.
+        Each change is audited as `case.updated` with actor type `victim`.
+      security:
+        - victimAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VictimCaseUpdate'
+            examples:
+              contact:
+                summary: New phone and language (allowed until closed)
+                value:
+                  victim:
+                    phone: '+81-90-0000-0099'
+                    preferred_language: en
+              report:
+                summary: Fix the amount and add detail (only while received)
+                value:
+                  amount: 95000
+                  description: I sent 95,000 yen, not 90,000. The caller used the number 03-0000-0000.
+      responses:
+        '200':
+          description: Updated case
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VictimCaseResponse'
+              examples:
+                verified:
+                  $ref: '#/components/examples/VictimCaseVerified'
+                received:
+                  $ref: '#/components/examples/VictimCaseReceived'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: A field is locked at the case's current status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              example:
+                success: false
+                error:
+                  code: CASE_LOCKED
+                  message: These details are locked after verification. Please call the operations center to correct them.
+                  details:
+                    locked_fields: [amount]
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
 components:
   securitySchemes:
     bearerAuth:
@@ -1064,6 +1254,11 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: Token from `POST /api/auth/login`. Lasts 8 hours; no refresh in v0.1 — on any 401, go back to login.
+    victimAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Victim session token from `POST /api/victim/session`. Lasts 1 hour, covers one case, works only on `/api/victim/*`.
 
   parameters:
     CaseId:
@@ -1228,7 +1423,7 @@ components:
       enum: [timeout, ai_unavailable, unreadable_document, invalid_ai_output]
     ActorType:
       type: string
-      enum: [user, public, system, ai]
+      enum: [user, public, victim, system, ai]
     AuditAction:
       type: string
       enum:
@@ -1248,6 +1443,7 @@ components:
         - ai.review_accepted
         - ai.review_rejected
         - export.generated
+        - case.access_code_issued
     ErrorCode:
       type: string
       enum:
@@ -1258,6 +1454,7 @@ components:
         - RESOURCE_NOT_FOUND
         - INVALID_STATUS_TRANSITION
         - ALREADY_REVIEWED
+        - CASE_LOCKED
         - FILE_TOO_LARGE
         - VALIDATION_ERROR
         - MISSING_REQUIRED_INFO
@@ -2202,10 +2399,13 @@ components:
           properties:
             data:
               type: object
-              required: [reference, status, submitted_at]
+              required: [reference, access_code, status, submitted_at]
               properties:
                 reference:
                   type: string
+                access_code:
+                  type: string
+                  description: Shown only in this response. Needed with the reference for `POST /api/victim/session`.
                 status:
                   $ref: '#/components/schemas/CaseStatus'
                 submitted_at:
@@ -2323,7 +2523,259 @@ components:
               items:
                 $ref: '#/components/schemas/SharedAccountAlert'
 
+    # ---------- victim self-service ----------
+    VictimEditableField:
+      type: string
+      enum:
+        - victim.name
+        - victim.phone
+        - victim.email
+        - victim.address
+        - victim.preferred_language
+        - amount
+        - currency
+        - transfer_date
+        - account_number
+        - account_holder_name
+        - scam_type
+        - description
+    VictimCase:
+      type: object
+      description: |
+        What a victim sees about their own case. Deliberately absent: internal id, owner, deadline, notes, documents,
+        AI data and the audit trail.
+      required:
+        - reference
+        - bank_name
+        - status
+        - closure_reason
+        - victim
+        - amount
+        - currency
+        - transfer_date
+        - account_number
+        - account_holder_name
+        - scam_type
+        - description
+        - missing_fields
+        - editable_fields
+        - submitted_at
+        - updated_at
+      properties:
+        reference:
+          type: string
+          pattern: '^RFR-\d{4}-\d{5}$'
+        bank_name:
+          type: string
+        status:
+          $ref: '#/components/schemas/CaseStatus'
+        closure_reason:
+          oneOf:
+            - $ref: '#/components/schemas/ClosureReason'
+            - type: 'null'
+        victim:
+          $ref: '#/components/schemas/Victim'
+        amount:
+          type: [number, 'null']
+          minimum: 0
+        currency:
+          type: string
+          pattern: '^[A-Z]{3}$'
+        transfer_date:
+          oneOf:
+            - $ref: '#/components/schemas/CalendarDate'
+            - type: 'null'
+        account_number:
+          type: [string, 'null']
+        account_holder_name:
+          type: [string, 'null']
+        scam_type:
+          oneOf:
+            - $ref: '#/components/schemas/ScamType'
+            - type: 'null'
+        description:
+          type: [string, 'null']
+        missing_fields:
+          type: array
+          items:
+            $ref: '#/components/schemas/MissingField'
+        editable_fields:
+          type: array
+          description: What the victim may change right now. Build the edit form from this list.
+          items:
+            $ref: '#/components/schemas/VictimEditableField'
+        submitted_at:
+          $ref: '#/components/schemas/Timestamp'
+        updated_at:
+          $ref: '#/components/schemas/Timestamp'
+    VictimSessionRequest:
+      type: object
+      additionalProperties: false
+      required: [reference, access_code]
+      properties:
+        reference:
+          type: string
+          maxLength: 20
+        access_code:
+          type: string
+          minLength: 12
+          maxLength: 14
+          description: Not case-sensitive; dashes optional.
+    VictimCaseUpdate:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      description: Send only changed fields. Allowed fields depend on the case status (see `editable_fields`).
+      properties:
+        victim:
+          type: object
+          additionalProperties: false
+          minProperties: 1
+          properties:
+            name:
+              type: string
+              minLength: 1
+              maxLength: 200
+            phone:
+              type: [string, 'null']
+              minLength: 5
+              maxLength: 30
+            email:
+              type: [string, 'null']
+              format: email
+              maxLength: 254
+            address:
+              type: [string, 'null']
+              maxLength: 500
+            preferred_language:
+              $ref: '#/components/schemas/Language'
+        amount:
+          type: number
+          minimum: 0
+        currency:
+          type: string
+          pattern: '^[A-Z]{3}$'
+        transfer_date:
+          $ref: '#/components/schemas/CalendarDate'
+        account_number:
+          type: [string, 'null']
+          maxLength: 34
+        account_holder_name:
+          type: [string, 'null']
+          maxLength: 200
+        scam_type:
+          $ref: '#/components/schemas/ScamType'
+        description:
+          type: [string, 'null']
+          maxLength: 4000
+    VictimSessionResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessBase'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [token, expires_at, case]
+              properties:
+                token:
+                  type: string
+                expires_at:
+                  $ref: '#/components/schemas/Timestamp'
+                case:
+                  $ref: '#/components/schemas/VictimCase'
+    VictimCaseResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessBase'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: '#/components/schemas/VictimCase'
+    VictimAccessResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessBase'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [reference, access_code]
+              properties:
+                reference:
+                  type: string
+                access_code:
+                  type: string
+
   examples:
+    VictimCaseVerified:
+      summary: Verified case — the victim can change contact details only
+      value:
+        success: true
+        data:
+          reference: RFR-2026-00042
+          bank_name: Birch Regional Bank
+          status: verified
+          closure_reason: null
+          victim:
+            name: Rina Example
+            phone: '+81-90-0000-0042'
+            email: rina.example@mail.test
+            address: null
+            preferred_language: ja
+          amount: 250000
+          currency: JPY
+          transfer_date: '2026-10-28'
+          account_number: '0012345'
+          account_holder_name: Sample Trading LLC
+          scam_type: impersonation
+          description: Caller said they were from the tax office and asked me to pay a refund fee.
+          missing_fields: []
+          editable_fields: [victim.phone, victim.email, victim.address, victim.preferred_language]
+          submitted_at: '2026-11-02T03:12:00Z'
+          updated_at: '2026-11-14T04:30:00Z'
+        message: ok
+
+    VictimCaseReceived:
+      summary: Case still received — every victim field is editable
+      value:
+        success: true
+        data:
+          reference: RFR-2026-00051
+          bank_name: Cobalt Regional Bank
+          status: received
+          closure_reason: null
+          victim:
+            name: Nadia Testwood
+            phone: '+81-80-0000-0051'
+            email: null
+            address: null
+            preferred_language: bn
+          amount: 90000
+          currency: JPY
+          transfer_date: '2026-11-11'
+          account_number: null
+          account_holder_name: null
+          scam_type: null
+          description: Got an SMS that my card was locked and sent money to unlock it.
+          missing_fields: [account_number, scam_type, document]
+          editable_fields:
+            - victim.name
+            - victim.phone
+            - victim.email
+            - victim.address
+            - victim.preferred_language
+            - amount
+            - currency
+            - transfer_date
+            - account_number
+            - account_holder_name
+            - scam_type
+            - description
+          submitted_at: '2026-11-13T09:00:00Z'
+          updated_at: '2026-11-13T09:00:00Z'
+        message: ok
+
     LoginOk:
       summary: Operator logged in
       value:
