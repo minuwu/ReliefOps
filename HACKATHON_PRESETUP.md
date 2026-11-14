@@ -162,6 +162,6 @@ Response (200 OK):
    - Maintain a `.env.example` in both `frontend/` and `backend/` so teammates don't waste time diagnosing missing keys.
 4. **Agents Follow the Protocol**:
    - Every coding agent reads [AGENTS.md](AGENTS.md): XREQ queue first, matching skill loaded ([docs/SKILLS.md](docs/SKILLS.md)), `graphify query` before grep.
-4. **Automated Pre-Push Hook (Mandatory for All Contributors)**:
+5. **Automated Pre-Push Hook (Mandatory for All Contributors)**:
    - Run `sh scripts/setup.sh` (or `.\scripts\setup.ps1` on Windows) to enable the pre-push sync hook (`git config core.hooksPath .githooks`).
    - Every `git push` automatically fetches and merges latest `origin/main` into your working branch so nobody pushes stale code or breaks teammates.
