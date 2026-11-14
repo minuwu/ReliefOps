@@ -1,6 +1,7 @@
 # Backend, Database & DevOps Plan — Fraud Relief Case System
 
-**Owner** Asif (Backend / Database / DevOps) · **Status** draft v0.1 · **Updated** 2026-11-14
+**Owner** Asif (Backend / Database / DevOps) · **Status** draft v0.1.1 · **Updated** 2026-11-14
+**Team** Backend: Asif, Anim · AI: Galib · Frontend: Minhaz
 **Contract** [docs/API_SPEC.md](../API_SPEC.md) · **Progress log** [contributors/asif/WORK_LOG.md](../../contributors/asif/WORK_LOG.md)
 
 This file explains *why* the backend is built the way it is. The API contract shows *what* it exposes. When the two disagree, fix one of them in the same PR.
@@ -61,7 +62,7 @@ Status: **Agreed** = follows directly from the brief · **Proposed** = needs a y
 | D3 | The AI only suggests. Output goes to `ai_extractions`, and only a person's "accept" copies values onto the case. | Brief: "a human decides". | Agreed |
 | D4 | Closing a case as `paid_out` or `rejected` is supervisor-only. | A second person on every money decision. | Proposed |
 | D5 | Bank separation is enforced in three layers: token-scoped API queries, Postgres row-level security (RLS), and 404 (not 403) for cross-bank access. IDs are UUIDs. | Even a missing filter in code can't leak another bank's data. It's the answer to judge question 1. | Agreed |
-| D6 | Stack: FastAPI, Postgres 16, SQLAlchemy 2, Alembic, our own JWT login with seeded users, and Docker Compose. | Fits the committed skills. One command runs everything. We control RLS directly. Supabase would add a heavy local stack. | Proposed |
+| D6 | Stack: FastAPI, Postgres 16, SQLModel (built on SQLAlchemy 2, as the repo's `fastapi` skill recommends), Alembic, our own JWT login with seeded users, and Docker Compose. | Fits the committed skills. One command runs everything. We control RLS directly. Supabase would add a heavy local stack. | Proposed |
 | D7 | The AI call is synchronous with a 20 s timeout. On failure: rule-based fallback, then `failed`. An AI failure is never an HTTP error. | The demo can't hang, and there is always a manual path. | Agreed |
 | D8 | The audit log is append-only. The app's DB role can only `INSERT` and `SELECT` it, and a trigger blocks `UPDATE` and `DELETE`. | "Who did what and when" has to be trustworthy. | Agreed |
 | D9 | One history trail: `audit_log`. `cases` also stores `status_changed_at` and `closed_at` so metrics are fast. | No second history table to keep in sync. | Agreed |
@@ -130,6 +131,7 @@ Enums are Postgres enum types with the same values as API_SPEC §3.4.
 3. **Public intake can insert but never read.** It runs with `app.role = 'public'`. An insert policy allows creating a case, and no read policy matches.
 4. **API layer.** Repositories also filter by scope. "Doesn't exist" and "not yours" both return the same `404`.
 5. **Files, totals and exports run under the same scoped session.** That covers the dashboard counts, CSV exports and alerts, so a count can't leak another bank's data either.
+6. **Login and tokens.** Rate-limit failed logins per IP and per email (`429 RATE_LIMITED`). Tokens are HS256 JWTs, and decoding checks the algorithm, expiry, issuer and audience. CORS origins come from `CORS_ORIGINS` and are never credentialed (bearer tokens only, no cookies). These follow ECC's `python/fastapi.md` security rules.
 
 **Proof we'll show** (pytest, run in CI and live in the demo if asked):
 - `viewer@bank-a` → `GET` a `bank_b` case → `404`.
@@ -216,7 +218,7 @@ backend/
 │   ├── security.py      # password hashing, JWT, current-user dependency
 │   ├── routers/         # health, auth, intake, cases, documents, extractions, dashboard, audit
 │   ├── services/        # case_workflow (transitions, deadlines), audit, ai_extraction (+ rules fallback), storage, seed
-│   ├── models/          # SQLAlchemy tables + Pydantic schemas (mirror API_SPEC §4)
+│   ├── models/          # SQLModel tables + Pydantic schemas (mirror API_SPEC §4)
 │   └── prompts/         # versioned AI prompts (owned by the AI owner, per AGENTS.md §4.3)
 ├── migrations/          # Alembic: tables, enums, RLS policies, audit trigger, app_user grants
 ├── tests/               # pytest: bank separation, transitions, review flow, AI-down path
@@ -232,7 +234,7 @@ docker-compose.yml       # repo root
 
 | Hour | Brief checkpoint | Backend deliverable |
 | :--- | :--- | :--- |
-| 0–2 | Scope, wireframes, data model | API contract v0.1 ✅, this plan ✅, skeleton, `docker compose` with Postgres, `/api/health` deployed |
+| 0–2 | Scope, wireframes, data model | API contract v0.1.1 ✅, OpenAPI file + no-backend mock ✅, this plan ✅, skeleton, `docker compose` with Postgres, `/api/health` deployed |
 | 2–10 | Intake + DB working; AI tried on a few documents | Migrations with RLS and the audit trigger **from the first migration**. Seed. Login. Intake and cases endpoints live. AI interface stub + rule-based fallback. |
 | 10–14 | One end-to-end happy path | Upload → extract → review → case updated |
 | 14–30 | Roles, separation, audit | Status changes and deadlines, review queue, dashboard, audit endpoints, separation tests passing |
@@ -247,5 +249,6 @@ The brief schedules separation at hour 30. We build it at hours 2–10 because a
 
 1. **D2:** do operators see all banks, or only banks assigned to them?
 2. **D6:** FastAPI + Postgres, or Supabase?
-3. Who owns the AI module and the labelled test set (API_SPEC §7)? Which AI provider? We need the key in `.env`.
+3. ~~Who owns the AI module?~~ **Galib** owns the AI module and the labelled test set (API_SPEC §7). Still open: which AI provider (its key goes in `.env`).
 4. Which frontend framework? It decides the `frontend/` layout: Next.js App Router uses `src/app/`, not `src/pages/`.
+5. How do Asif and Anim split backend work? Suggested split: Asif takes database, RLS, migrations, seed and devops; Anim takes the routers in API_SPEC §6.

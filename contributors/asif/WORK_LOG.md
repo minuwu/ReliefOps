@@ -4,6 +4,49 @@ Owner: Asif (`MdAsif-Hossain`) — Role: Backend / Services / Database — Branc
 
 Use this log to share progress, planned work, and dependencies with the team. Update it after each work session, keep the newest entry first, and use Bangladesh time (UTC+6). Link to relevant issues, commits, or pull requests when available.
 
+## 2026-11-14 (session 2)
+
+### Completed
+- Added [docs/openapi.yaml](../../docs/openapi.yaml), the machine-readable OpenAPI 3.1 version of the contract:
+  - all 23 endpoints and schemas
+  - examples, including the AI-low-confidence, rule-based-fallback and AI-down paths
+- Validated it with `npx -y @redocly/cli@2.78.0 lint docs/openapi.yaml`:
+  - the description is valid
+  - every example matches its schema
+  - 5 warnings, all expected: localhost server URLs, no license field, no 4xx responses on `/health` and `/banks`
+- Mock API with no backend: `npx -y @stoplight/prism-cli@5.14.2 mock docs/openapi.yaml` serves the contract at `http://localhost:4010`. I checked:
+  - health and login responses
+  - `401` when there's no token
+  - the case list with a `status` filter
+  - the AI-failed, fallback and `ai_down` examples via `Prefer`
+  - a forced `404`, and the `422` envelope
+  - a CORS preflight from `localhost:5173`
+- API_SPEC v0.1.1:
+  - links to openapi.yaml and adds the mock section (§9.1)
+  - login can return `429`
+  - names Galib as AI owner (§7)
+- backend-plan:
+  - team split (Backend: Asif, Anim; AI: Galib; Frontend: Minhaz)
+  - SQLModel instead of plain SQLAlchemy, per the `fastapi` skill
+  - login, JWT and CORS hardening, per ECC's FastAPI rules
+  - updated open questions
+- Installed ECC 2.2.3 locally (core profile, project scope, hooks on) as described in docs/SKILLS.md §6. `doctor` reports OK. ECC is machine-local and gitignored.
+- Reviewed the branch's earlier commits (`fdc6808`, `f8b772b`):
+  - compared with `main`, the branch changes only the contract, plan, work log, backend skeleton and knowledge graph
+  - no attribution trailers
+
+### Next
+- Kickoff answers for backend-plan §10: AI provider, backend split with Anim, frontend framework.
+- Open the PR `asif/api-contract` → `main`.
+- Then start the backend from the contract (not before the team agrees the contract).
+
+### Blockers / handoff
+- **Minhaz (Frontend):** run the mock (API_SPEC §9.1) and point the API base URL at `http://localhost:4010`. Use the `Prefer` headers to build the error and AI-down screens.
+- **Galib (AI):** API_SPEC §7 is the interface; backend-plan §6 is the accuracy plan.
+- **Anim (Backend):** API_SPEC §6 lists the endpoints; backend-plan §4–5 covers the data model and bank separation.
+
+---
+
 ## 2026-11-14
 
 ### Completed
