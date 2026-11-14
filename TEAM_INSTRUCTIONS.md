@@ -12,7 +12,7 @@ cd BJET-Hackathon
 sh scripts/setup.sh            # Windows: powershell -ExecutionPolicy Bypass -File scripts\setup.ps1
 ```
 
-`setup` enables the pre-push sync hook, checks git/node/python/graphify, lists installed skills, and verifies your git identity.
+`setup` enables the pre-push sync hook, checks git/node/python/graphify, installs the pinned ECC workflow layer into `.claude/` (agents, commands, rules, hooks; see [docs/SKILLS.md §6](docs/SKILLS.md#6-ecc-everything-claude-code--workflow-harness)), lists installed skills, and verifies your git identity. Restart Claude Code after setup so ECC hooks load.
 
 Then:
 1. Read [AGENTS.md](AGENTS.md) — Section 2 (XREQ queue) and your team's section in 4.
