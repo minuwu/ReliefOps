@@ -1,0 +1,2735 @@
+openapi: 3.1.0
+info:
+  title: Fraud Relief Case API
+  version: 0.1.1
+  summary: Shared operations center for fraud-victim relief cases across five banks.
+  description: |
+    Machine-readable twin of [docs/API_SPEC.md](./API_SPEC.md). Change both in the same PR. Once Frontend
+    depends on an endpoint, change it only through an `XREQ` (AGENTS.md §2).
+
+    **Envelope.** Every JSON response is `{ "success": true, "data": ..., "message": "..." }` or
+    `{ "success": false, "error": { "code", "message", "details" } }`.
+
+    **Auth.** Call `POST /api/auth/login`, then send `Authorization: Bearer <token>`. Demo accounts (all synthetic,
+    password `Demo@1234`): `operator1@opscenter.test`, `operator2@opscenter.test`, `supervisor@opscenter.test`,
+    `viewer@bank-a.test`, `viewer@bank-b.test`.
+
+    **Mock server (no backend needed).** `npx -y @stoplight/prism-cli@5.14.2 mock docs/openapi.yaml` serves this
+    contract at `http://localhost:4010`. Add the header `Prefer: code=404` (any documented status) or
+    `Prefer: example=failed` (any example name below) to get a specific response.
+servers:
+  - url: http://localhost:4010
+    description: Contract mock (Prism, served from this file)
+  - url: http://localhost:8000
+    description: Local backend (once built)
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: auth
+    description: Login and current user
+  - name: reference
+    description: Health, banks and staff lists
+  - name: intake
+    description: Public victim web form
+  - name: cases
+    description: Case list, detail, edits, status changes, assignment and notes
+  - name: audit
+    description: Case history and the append-only audit log
+  - name: documents-ai
+    description: Upload, AI extraction (suggestions only) and human review
+  - name: dashboard
+    description: Supervisor numbers and suspicious-pattern alerts
+
+paths:
+  /api/auth/login:
+    post:
+      tags: [auth]
+      operationId: login
+      summary: Log in and get a token
+      description: Rate-limited per IP and email. Successful and failed logins are both audited.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              email: operator1@opscenter.test
+              password: Demo@1234
+      responses:
+        '200':
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+              examples:
+                operator:
+                  $ref: '#/components/examples/LoginOk'
+        '401':
+          description: Wrong email or password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              example:
+                success: false
+                error:
+                  code: INVALID_CREDENTIALS
+                  message: Invalid email or password
+                  details: {}
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /api/auth/me:
+    get:
+      tags: [auth]
+      operationId: getMe
+      summary: The logged-in user
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+              example:
+                success: true
+                data:
+                  id: 11111111-1111-4111-8111-111111111111
+                  name: Operator One
+                  email: operator1@opscenter.test
+                  role: operator
+                  bank_id: null
+                message: ok
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/health:
+    get:
+      tags: [reference]
+      operationId: getHealth
+      summary: Server, database and AI status
+      description: When `ai` is not `available`, show a banner such as "AI offline — enter fields manually".
+      security: []
+      responses:
+        '200':
+          description: Status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              examples:
+                healthy:
+                  summary: Everything up
+                  value:
+                    success: true
+                    data:
+                      status: healthy
+                      db: ok
+                      ai: available
+                      timestamp: '2026-11-14T04:30:00Z'
+                    message: ok
+                ai_down:
+                  summary: AI provider unreachable (manual entry mode)
+                  value:
+                    success: true
+                    data:
+                      status: healthy
+                      db: ok
+                      ai: unavailable
+                      timestamp: '2026-11-14T04:30:00Z'
+                    message: ok
+
+  /api/banks:
+    get:
+      tags: [reference]
+      operationId: listBanks
+      summary: All five banks (intake form dropdown)
+      security: []
+      responses:
+        '200':
+          description: Banks
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BankListResponse'
+              example:
+                success: true
+                data:
+                  - id: bank_a
+                    name: Aster Regional Bank
+                  - id: bank_b
+                    name: Birch Regional Bank
+                  - id: bank_c
+                    name: Cobalt Regional Bank
+                  - id: bank_d
+                    name: Dune Regional Bank
+                  - id: bank_e
+                    name: Ember Regional Bank
+                message: ok
+
+  /api/users:
+    get:
+      tags: [reference]
+      operationId: listUsers
+      summary: Staff list (assign-owner dropdown)
+      description: Operator and supervisor only. Not paginated.
+      parameters:
+        - name: role
+          in: query
+          schema:
+            $ref: '#/components/schemas/Role'
+      responses:
+        '200':
+          description: Users
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserListResponse'
+              example:
+                success: true
+                data:
+                  - id: 11111111-1111-4111-8111-111111111111
+                    name: Operator One
+                    email: operator1@opscenter.test
+                    role: operator
+                    bank_id: null
+                  - id: 33333333-3333-4333-8333-333333333333
+                    name: Operator Two
+                    email: operator2@opscenter.test
+                    role: operator
+                    bank_id: null
+                message: ok
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/intake:
+    post:
+      tags: [intake]
+      operationId: submitIntake
+      summary: Victim web form — creates a case in Received
+      description: |
+        Public. Rate-limited per IP. Returns only the reference number, never internal IDs or case data.
+        `account_number` is optional; when missing it shows up in the case's `flags.missing_fields`.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntakeRequest'
+            example:
+              bank_id: bank_b
+              victim:
+                name: Rina Example
+                phone: '+81-90-0000-0042'
+                email: rina.example@mail.test
+                address: null
+                preferred_language: ja
+              amount: 250000
+              currency: JPY
+              transfer_date: '2026-10-28'
+              account_number: '0012345'
+              account_holder_name: Sample Trading LLC
+              scam_type: impersonation
+              description: Caller said they were from the tax office and asked me to pay a refund fee.
+              consent: true
+      responses:
+        '201':
+          description: Report received
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntakeReceiptResponse'
+              example:
+                success: true
+                data:
+                  reference: RFR-2026-00042
+                  status: received
+                  submitted_at: '2026-11-14T04:30:00Z'
+                message: Report received. Keep your reference number.
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /api/cases:
+    get:
+      tags: [cases]
+      operationId: listCases
+      summary: Case list / board
+      description: |
+        Board view: `page_size=100`, then group rows by `status`.
+        "My overdue cases" reminders: `assigned_to=me&deadline_state=overdue`.
+        For `bank_viewer`, results are always their own bank and `bank_id` is ignored.
+      parameters:
+        - name: status
+          in: query
+          description: One or more statuses, comma-separated (e.g. `received,verified`).
+          style: form
+          explode: false
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/CaseStatus'
+        - $ref: '#/components/parameters/BankIdFilter'
+        - name: assigned_to
+          in: query
+          description: A user id, `me`, or `unassigned`.
+          schema:
+            type: string
+          example: me
+        - name: deadline_state
+          in: query
+          schema:
+            type: string
+            enum: [on_track, due_soon, overdue]
+        - name: scam_type
+          in: query
+          schema:
+            $ref: '#/components/schemas/ScamType'
+        - name: q
+          in: query
+          description: Searches reference, victim name and account number.
+          schema:
+            type: string
+            maxLength: 100
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [deadline, reported_date, amount, updated_at]
+            default: deadline
+        - name: order
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: asc
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: A page of case summaries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaseSummaryPageResponse'
+              examples:
+                board:
+                  $ref: '#/components/examples/CaseListOk'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    post:
+      tags: [cases]
+      operationId: createCase
+      summary: Create a case from a phone call or paper report
+      description: |
+        Operator or supervisor. Only `bank_id`, `channel` and `victim.name` are required; everything else can be filled
+        later by hand or through an AI extraction. An operator may only assign themselves.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CaseCreate'
+            example:
+              bank_id: bank_b
+              channel: paper
+              victim:
+                name: Rina Example
+              reported_date: '2026-11-10'
+              assigned_operator_id: 11111111-1111-4111-8111-111111111111
+      responses:
+        '201':
+          description: Case created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaseResponse'
+              examples:
+                created:
+                  $ref: '#/components/examples/CaseOk'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/cases/{case_id}:
+    parameters:
+      - $ref: '#/components/parameters/CaseId'
+    get:
+      tags: [cases]
+      operationId: getCase
+      summary: Full case
+      description: Writes a `case.viewed` audit entry. A case from another bank returns 404, exactly like a missing one.
+      responses:
+        '200':
+          description: The case
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaseResponse'
+              examples:
+                verified_case:
+                  $ref: '#/components/examples/CaseOk'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [cases]
+      operationId: updateCase
+      summary: Edit case fields
+      description: |
+        Send only changed fields. `deadline` (with `deadline_reason`) is supervisor-only. Status, bank and owner are not
+        editable here — use `/transition` and `/assign`. Every changed field is audited with old and new value.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CaseUpdate'
+            example:
+              amount: 260000
+              victim:
+                phone: '+81-90-0000-0043'
+      responses:
+        '200':
+          description: Updated case
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaseResponse'
+              examples:
+                updated:
+                  $ref: '#/components/examples/CaseOk'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/cases/{case_id}/transition:
+    parameters:
+      - $ref: '#/components/parameters/CaseId'
+    post:
+      tags: [cases]
+      operationId: transitionCase
+      summary: Change status
+      description: |
+        Forward one step, back one step (`note` required), or close (`closure_reason` and `note` required).
+        `paid_out` and `rejected` are supervisor-only; `paid_out` only from `payout_review`. A case can't leave
+        `received` until it has contact, amount, transfer date, account number, scam type and one document.
+        Render the buttons from the case's `allowed_transitions` / `allowed_closure_reasons`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransitionRequest'
+            examples:
+              forward:
+                summary: Next step
+                value:
+                  to_status: account_check
+              close_withdrawn:
+                summary: Close (victim withdrew)
+                value:
+                  to_status: closed
+                  closure_reason: withdrawn
+                  note: Victim withdrew the claim by phone.
+      responses:
+        '200':
+          description: Status changed; the case has a new deadline
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaseResponse'
+              examples:
+                moved:
+                  $ref: '#/components/examples/CaseOk'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Money closure by a non-supervisor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              example:
+                success: false
+                error:
+                  code: FORBIDDEN
+                  message: Only a supervisor can close a case as paid_out or rejected
+                  details: {}
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Not allowed from the current status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              example:
+                success: false
+                error:
+                  code: INVALID_STATUS_TRANSITION
+                  message: Can't move from verified to payout_review
+                  details:
+                    from: verified
+                    to: payout_review
+                    allowed: [account_check, received, closed]
+        '422':
+          description: Missing information, or an invalid body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              examples:
+                missing_info:
+                  summary: Case can't leave Received yet
+                  value:
+                    success: false
+                    error:
+                      code: MISSING_REQUIRED_INFO
+                      message: Case is missing information needed to leave Received
+                      details:
+                        missing_fields: [account_number, document]
+                validation:
+                  summary: Note missing when moving back
+                  value:
+                    success: false
+                    error:
+                      code: VALIDATION_ERROR
+                      message: Request has invalid fields
+                      details:
+                        fields:
+                          - field: note
+                            message: Required when moving a case back a step
+
+  /api/cases/{case_id}/assign:
+    parameters:
+      - $ref: '#/components/parameters/CaseId'
+    post:
+      tags: [cases]
+      operationId: assignCase
+      summary: Assign or unassign the owner
+      description: Supervisors assign anyone. Operators may only assign or unassign themselves. Send `null` to unassign.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignRequest'
+            example:
+              operator_id: 11111111-1111-4111-8111-111111111111
+      responses:
+        '200':
+          description: Updated case
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaseResponse'
+              examples:
+                assigned:
+                  $ref: '#/components/examples/CaseOk'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/cases/{case_id}/notes:
+    parameters:
+      - $ref: '#/components/parameters/CaseId'
+    post:
+      tags: [cases]
+      operationId: addNote
+      summary: Add a note
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NoteCreate'
+            example:
+              body: Called the bank; the account is frozen as of today.
+      responses:
+        '201':
+          description: Note added
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NoteResponse'
+              example:
+                success: true
+                data:
+                  id: a0a0a0a0-0000-4000-8000-000000000002
+                  body: Called the bank; the account is frozen as of today.
+                  author:
+                    id: 11111111-1111-4111-8111-111111111111
+                    name: Operator One
+                  created_at: '2026-11-14T04:35:00Z'
+                message: Note added
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/cases/{case_id}/history:
+    parameters:
+      - $ref: '#/components/parameters/CaseId'
+    get:
+      tags: [audit]
+      operationId: getCaseHistory
+      summary: The case's audit trail (newest first), or a CSV export
+      description: '`format=csv` returns a `text/csv` download and writes an `export.generated` audit entry.'
+      parameters:
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [json, csv]
+            default: json
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: A page of audit entries (JSON) or a CSV file
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditEntryPageResponse'
+              examples:
+                history:
+                  $ref: '#/components/examples/AuditPageOk'
+            text/csv:
+              schema:
+                type: string
+              example: |
+                at,actor_name,actor_role,action,summary
+                2026-11-05T06:12:00Z,Operator One,operator,case.status_changed,Status Received → Verified
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/audit-logs:
+    get:
+      tags: [audit]
+      operationId: listAuditLogs
+      summary: Global audit log (newest first)
+      description: Supervisor sees all banks; bank viewer sees only their own bank. Append-only — nothing edits or deletes it.
+      parameters:
+        - name: case_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: actor_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: action
+          in: query
+          schema:
+            $ref: '#/components/schemas/AuditAction'
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: A page of audit entries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditEntryPageResponse'
+              examples:
+                recent:
+                  $ref: '#/components/examples/AuditPageOk'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/cases/{case_id}/documents:
+    parameters:
+      - $ref: '#/components/parameters/CaseId'
+    post:
+      tags: [documents-ai]
+      operationId: uploadDocument
+      summary: Upload a document (PDF, PNG, JPG or TXT, max 10 MB)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [file, doc_type]
+              properties:
+                file:
+                  type: string
+                  contentMediaType: application/octet-stream
+                  description: PDF, PNG, JPG or TXT, max 10 MB
+                doc_type:
+                  $ref: '#/components/schemas/DocumentType'
+            encoding:
+              file:
+                contentType: application/pdf, image/png, image/jpeg, text/plain
+      responses:
+        '201':
+          description: Uploaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentResponse'
+              example:
+                success: true
+                data:
+                  id: d0c0d0c0-0000-4000-8000-000000000001
+                  case_id: 7f3c2a9e-5b1d-4c8e-9a10-2d6f8b4e1c33
+                  filename: transfer_receipt_00042.pdf
+                  doc_type: transfer_receipt
+                  mime_type: application/pdf
+                  size_bytes: 48211
+                  uploaded_by:
+                    id: 11111111-1111-4111-8111-111111111111
+                    name: Operator One
+                  uploaded_at: '2026-11-03T01:05:00Z'
+                  latest_extraction: null
+                message: Document uploaded
+        '400':
+          description: Unsupported or empty file
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              example:
+                success: false
+                error:
+                  code: BAD_REQUEST
+                  message: Unsupported file type. Use PDF, PNG, JPG or TXT.
+                  details: {}
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '413':
+          description: Over 10 MB
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              example:
+                success: false
+                error:
+                  code: FILE_TOO_LARGE
+                  message: File is larger than 10 MB
+                  details: {}
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/documents/{document_id}/file:
+    parameters:
+      - $ref: '#/components/parameters/DocumentId'
+    get:
+      tags: [documents-ai]
+      operationId: downloadDocument
+      summary: Download the raw file
+      description: |
+        Needs the bearer header, so fetch it, turn it into a blob and use an object URL; a plain `<a href>` won't send the
+        token. Audited as `document.downloaded`.
+      responses:
+        '200':
+          description: The raw file with its own Content-Type
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                contentMediaType: application/octet-stream
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/documents/{document_id}/extract:
+    parameters:
+      - $ref: '#/components/parameters/DocumentId'
+    post:
+      tags: [documents-ai]
+      operationId: extractDocument
+      summary: Run AI extraction (suggestions only — a person must review)
+      description: |
+        Synchronous: the server waits up to 20 s for the AI (use a 30 s fetch timeout). Always `201`, even when the AI
+        fails — check `status` and `source`. Nothing reaches the case until `POST /api/extractions/{id}/review` accepts it.
+        Re-running is allowed; the older pending extraction is auto-rejected as "superseded".
+      responses:
+        '201':
+          description: Extraction result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExtractionResponse'
+              examples:
+                low_confidence:
+                  $ref: '#/components/examples/ExtractionLowConfidence'
+                fallback:
+                  $ref: '#/components/examples/ExtractionFallback'
+                failed:
+                  $ref: '#/components/examples/ExtractionFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/extractions/{extraction_id}:
+    parameters:
+      - $ref: '#/components/parameters/ExtractionId'
+    get:
+      tags: [documents-ai]
+      operationId: getExtraction
+      summary: One extraction
+      responses:
+        '200':
+          description: The extraction
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExtractionResponse'
+              examples:
+                low_confidence:
+                  $ref: '#/components/examples/ExtractionLowConfidence'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/extractions/{extraction_id}/review:
+    parameters:
+      - $ref: '#/components/parameters/ExtractionId'
+    post:
+      tags: [documents-ai]
+      operationId: reviewExtraction
+      summary: A person accepts (possibly edited) values or rejects the suggestion
+      description: |
+        Accept: only the fields listed in `fields` are written to the case, so a partial accept is fine. The audit entry
+        stores each field's AI value next to the final value — that is how AI accuracy is measured on real reviews.
+        Reject: `note` required; the case is unchanged.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewRequest'
+            examples:
+              accept:
+                summary: Accept, with the account number checked
+                value:
+                  decision: accept
+                  fields:
+                    amount: 250000
+                    transfer_date: '2026-10-28'
+                    account_number: '0012345'
+                  note: Checked the account number against the scan.
+              reject:
+                summary: Reject
+                value:
+                  decision: reject
+                  note: Wrong document — this is another victim's receipt.
+      responses:
+        '200':
+          description: Review saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewResultResponse'
+              examples:
+                accepted:
+                  $ref: '#/components/examples/ReviewAccepted'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Already accepted or rejected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              example:
+                success: false
+                error:
+                  code: ALREADY_REVIEWED
+                  message: This extraction is already accepted
+                  details: {}
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/review-queue:
+    get:
+      tags: [documents-ai]
+      operationId: listReviewQueue
+      summary: Extractions waiting for a person (low confidence first, then oldest)
+      parameters:
+        - name: lane
+          in: query
+          schema:
+            $ref: '#/components/schemas/ReviewLane'
+        - $ref: '#/components/parameters/BankIdFilter'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: A page of queue items
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewQueuePageResponse'
+              example:
+                success: true
+                data:
+                  items:
+                    - extraction_id: e0e0e0e0-0000-4000-8000-000000000001
+                      case_id: 7f3c2a9e-5b1d-4c8e-9a10-2d6f8b4e1c33
+                      case_reference: RFR-2026-00042
+                      bank_id: bank_b
+                      bank_name: Birch Regional Bank
+                      document_id: d0c0d0c0-0000-4000-8000-000000000001
+                      document_filename: transfer_receipt_00042.pdf
+                      source: llm
+                      overall_confidence: 0.62
+                      review_lane: low_confidence
+                      assigned_operator:
+                        id: 11111111-1111-4111-8111-111111111111
+                        name: Operator One
+                      created_at: '2026-11-03T01:06:00Z'
+                  page: 1
+                  page_size: 20
+                  total: 1
+                message: ok
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/dashboard/stats:
+    get:
+      tags: [dashboard]
+      operationId: getDashboardStats
+      summary: Supervisor numbers
+      description: |
+        Supervisor (all banks, or one with `bank_id`) or bank viewer (always their own bank; `workload` is empty).
+        Suggested headline tiles: `open_cases`, `overdue_cases`, `avg_handling_days`, `ai_low_confidence_pending`.
+      parameters:
+        - $ref: '#/components/parameters/BankIdFilter'
+      responses:
+        '200':
+          description: Stats
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardStatsResponse'
+              example:
+                success: true
+                data:
+                  scope:
+                    bank_id: null
+                    label: All banks
+                  open_cases: 27
+                  overdue_cases: 6
+                  due_soon_cases: 4
+                  unassigned_cases: 3
+                  avg_handling_days: 182.4
+                  ai_review_pending: 5
+                  ai_low_confidence_pending: 2
+                  cases_by_status:
+                    received: 5
+                    verified: 6
+                    account_check: 7
+                    notice_published: 5
+                    payout_review: 4
+                    closed: 3
+                  workload:
+                    - operator:
+                        id: 11111111-1111-4111-8111-111111111111
+                        name: Operator One
+                      open_cases: 14
+                      overdue_cases: 4
+                    - operator:
+                        id: 33333333-3333-4333-8333-333333333333
+                        name: Operator Two
+                      open_cases: 10
+                      overdue_cases: 2
+                  generated_at: '2026-11-14T04:30:00Z'
+                message: ok
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/alerts/shared-accounts:
+    get:
+      tags: [dashboard]
+      operationId: listSharedAccountAlerts
+      summary: Accounts that appear in several cases (supervisor only)
+      description: Matching uses `(bank_id, account_number)`, so it never compares data across banks.
+      parameters:
+        - name: min_cases
+          in: query
+          schema:
+            type: integer
+            minimum: 2
+            maximum: 50
+            default: 2
+      responses:
+        '200':
+          description: Alerts, most cases first
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SharedAccountAlertListResponse'
+              example:
+                success: true
+                data:
+                  - bank_id: bank_a
+                    bank_name: Aster Regional Bank
+                    account_number: '0012345'
+                    case_count: 3
+                    total_amount: 1450000
+                    currency: JPY
+                    cases:
+                      - id: 0a1b2c3d-1111-4a2b-8c3d-000000000017
+                        reference: RFR-2026-00017
+                        status: account_check
+                      - id: 0a1b2c3d-1111-4a2b-8c3d-000000000022
+                        reference: RFR-2026-00022
+                        status: verified
+                      - id: 0a1b2c3d-1111-4a2b-8c3d-000000000031
+                        reference: RFR-2026-00031
+                        status: received
+                message: ok
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Token from `POST /api/auth/login`. Lasts 8 hours; no refresh in v0.1 — on any 401, go back to login.
+
+  parameters:
+    CaseId:
+      name: case_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: 7f3c2a9e-5b1d-4c8e-9a10-2d6f8b4e1c33
+    DocumentId:
+      name: document_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: d0c0d0c0-0000-4000-8000-000000000001
+    ExtractionId:
+      name: extraction_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: e0e0e0e0-0000-4000-8000-000000000001
+    BankIdFilter:
+      name: bank_id
+      in: query
+      description: Narrow to one bank. Ignored for `bank_viewer` (always their own bank).
+      schema:
+        $ref: '#/components/schemas/BankId'
+    Page:
+      name: page
+      in: query
+      description: Page number, starting at 1.
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSize:
+      name: page_size
+      in: query
+      description: Items per page (max 100).
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+
+  responses:
+    Unauthorized:
+      description: Missing, invalid or expired token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          example:
+            success: false
+            error:
+              code: UNAUTHORIZED
+              message: Missing bearer token
+              details: {}
+    Forbidden:
+      description: Your role can't do this
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          example:
+            success: false
+            error:
+              code: FORBIDDEN
+              message: Your role can't do this
+              details: {}
+    NotFound:
+      description: Doesn't exist, or belongs to another bank (deliberately the same answer)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          example:
+            success: false
+            error:
+              code: RESOURCE_NOT_FOUND
+              message: Case not found
+              details: {}
+    ValidationError:
+      description: A field failed validation
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          example:
+            success: false
+            error:
+              code: VALIDATION_ERROR
+              message: Request has invalid fields
+              details:
+                fields:
+                  - field: victim.email
+                    message: Not a valid email address
+    RateLimited:
+      description: Too many requests from this address
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          example:
+            success: false
+            error:
+              code: RATE_LIMITED
+              message: Too many attempts. Try again in a few minutes.
+              details: {}
+
+  schemas:
+    # ---------- enums (API_SPEC §3.4) ----------
+    BankId:
+      type: string
+      enum: [bank_a, bank_b, bank_c, bank_d, bank_e]
+    Role:
+      type: string
+      enum: [operator, supervisor, bank_viewer]
+    CaseStatus:
+      type: string
+      enum: [received, verified, account_check, notice_published, payout_review, closed]
+    ClosureReason:
+      type: string
+      enum: [paid_out, rejected, withdrawn]
+    DeadlineState:
+      type: string
+      enum: [on_track, due_soon, overdue, none]
+    ScamType:
+      type: string
+      enum: [phishing, impersonation, investment, romance, lottery_prize, job_offer, other]
+    IntakeChannel:
+      type: string
+      enum: [web_form, phone, paper]
+    Language:
+      type: string
+      enum: [en, ja, bn]
+    DocumentType:
+      type: string
+      enum: [intake_form, transfer_receipt, bank_statement, police_report, id_document, other]
+    MissingField:
+      type: string
+      enum: [victim_contact, amount, transfer_date, account_number, scam_type, document]
+    ExtractionStatus:
+      type: string
+      enum: [pending_review, accepted, rejected, failed]
+    ExtractionSource:
+      type: string
+      enum: [llm, rules_fallback]
+    ReviewLane:
+      type: string
+      enum: [standard, low_confidence]
+    ExtractableField:
+      type: string
+      enum: [victim_name, victim_phone, victim_email, amount, currency, transfer_date, account_number, account_holder_name, scam_type]
+    ExtractionErrorReason:
+      type: string
+      enum: [timeout, ai_unavailable, unreadable_document, invalid_ai_output]
+    ActorType:
+      type: string
+      enum: [user, public, system, ai]
+    AuditAction:
+      type: string
+      enum:
+        - auth.login
+        - auth.login_failed
+        - case.created
+        - case.viewed
+        - case.updated
+        - case.status_changed
+        - case.assigned
+        - case.deadline_changed
+        - note.added
+        - document.uploaded
+        - document.downloaded
+        - ai.extraction_completed
+        - ai.extraction_failed
+        - ai.review_accepted
+        - ai.review_rejected
+        - export.generated
+    ErrorCode:
+      type: string
+      enum:
+        - BAD_REQUEST
+        - UNAUTHORIZED
+        - INVALID_CREDENTIALS
+        - FORBIDDEN
+        - RESOURCE_NOT_FOUND
+        - INVALID_STATUS_TRANSITION
+        - ALREADY_REVIEWED
+        - FILE_TOO_LARGE
+        - VALIDATION_ERROR
+        - MISSING_REQUIRED_INFO
+        - RATE_LIMITED
+        - INTERNAL_ERROR
+
+    # ---------- shared value types ----------
+    Timestamp:
+      type: string
+      format: date-time
+      description: ISO 8601, UTC.
+    CalendarDate:
+      type: string
+      format: date
+    FieldValue:
+      description: A value read from a document; its type depends on the field.
+      type: [string, number, 'null']
+
+    # ---------- envelopes ----------
+    SuccessBase:
+      type: object
+      required: [success, message]
+      properties:
+        success:
+          type: boolean
+          const: true
+        message:
+          type: string
+    ErrorEnvelope:
+      type: object
+      required: [success, error]
+      properties:
+        success:
+          type: boolean
+          const: false
+        error:
+          type: object
+          required: [code, message, details]
+          properties:
+            code:
+              $ref: '#/components/schemas/ErrorCode'
+            message:
+              type: string
+            details:
+              type: object
+              description: |
+                Extra context. VALIDATION_ERROR: `{ fields: [{ field, message }] }`. MISSING_REQUIRED_INFO:
+                `{ missing_fields: [] }`. INVALID_STATUS_TRANSITION: `{ from, to, allowed: [] }`.
+    PageMeta:
+      type: object
+      required: [page, page_size, total]
+      properties:
+        page:
+          type: integer
+          minimum: 1
+        page_size:
+          type: integer
+          minimum: 1
+        total:
+          type: integer
+          minimum: 0
+
+    # ---------- reference ----------
+    Bank:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          $ref: '#/components/schemas/BankId'
+        name:
+          type: string
+    UserRef:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+    User:
+      type: object
+      required: [id, name, email, role, bank_id]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          $ref: '#/components/schemas/Role'
+        bank_id:
+          description: Set only for `bank_viewer`.
+          oneOf:
+            - $ref: '#/components/schemas/BankId'
+            - type: 'null'
+    Health:
+      type: object
+      required: [status, db, ai, timestamp]
+      properties:
+        status:
+          type: string
+          enum: [healthy]
+        db:
+          type: string
+          enum: [ok, unavailable]
+        ai:
+          type: string
+          enum: [available, unavailable, disabled]
+          description: '`unavailable` = provider not reachable; `disabled` = no API key set.'
+        timestamp:
+          $ref: '#/components/schemas/Timestamp'
+
+    # ---------- cases ----------
+    Victim:
+      type: object
+      required: [name, phone, email, address, preferred_language]
+      properties:
+        name:
+          type: string
+        phone:
+          type: [string, 'null']
+        email:
+          type: [string, 'null']
+        address:
+          type: [string, 'null']
+        preferred_language:
+          $ref: '#/components/schemas/Language'
+    CaseFlags:
+      type: object
+      required: [missing_fields, ai_review_pending, shared_account_case_count]
+      properties:
+        missing_fields:
+          type: array
+          items:
+            $ref: '#/components/schemas/MissingField'
+        ai_review_pending:
+          type: boolean
+          description: A document has an extraction waiting for review.
+        shared_account_case_count:
+          type: integer
+          minimum: 0
+          description: OTHER cases at the same bank with the same account_number (0 = none).
+    CaseSummary:
+      type: object
+      description: One row in the case list or board.
+      required:
+        - id
+        - reference
+        - bank_id
+        - bank_name
+        - victim_name
+        - amount
+        - currency
+        - scam_type
+        - status
+        - deadline
+        - deadline_state
+        - assigned_operator
+        - reported_date
+        - updated_at
+        - flags
+      properties:
+        id:
+          type: string
+          format: uuid
+        reference:
+          type: string
+          pattern: '^RFR-\d{4}-\d{5}$'
+        bank_id:
+          $ref: '#/components/schemas/BankId'
+        bank_name:
+          type: string
+        victim_name:
+          type: string
+        amount:
+          type: [number, 'null']
+          minimum: 0
+        currency:
+          type: string
+          pattern: '^[A-Z]{3}$'
+        scam_type:
+          oneOf:
+            - $ref: '#/components/schemas/ScamType'
+            - type: 'null'
+        status:
+          $ref: '#/components/schemas/CaseStatus'
+        deadline:
+          description: Deadline of the current stage; null when closed.
+          oneOf:
+            - $ref: '#/components/schemas/Timestamp'
+            - type: 'null'
+        deadline_state:
+          $ref: '#/components/schemas/DeadlineState'
+        assigned_operator:
+          oneOf:
+            - $ref: '#/components/schemas/UserRef'
+            - type: 'null'
+        reported_date:
+          $ref: '#/components/schemas/CalendarDate'
+        updated_at:
+          $ref: '#/components/schemas/Timestamp'
+        flags:
+          $ref: '#/components/schemas/CaseFlags'
+    Case:
+      description: Full case. `victim_name` mirrors `victim.name`.
+      allOf:
+        - $ref: '#/components/schemas/CaseSummary'
+        - type: object
+          required:
+            - victim
+            - transfer_date
+            - account_number
+            - account_holder_name
+            - description
+            - channel
+            - closure_reason
+            - created_at
+            - closed_at
+            - allowed_transitions
+            - allowed_closure_reasons
+            - documents
+            - notes
+          properties:
+            victim:
+              $ref: '#/components/schemas/Victim'
+            transfer_date:
+              oneOf:
+                - $ref: '#/components/schemas/CalendarDate'
+                - type: 'null'
+            account_number:
+              type: [string, 'null']
+              description: The account the money was SENT TO (the one checked and frozen).
+            account_holder_name:
+              type: [string, 'null']
+            description:
+              type: [string, 'null']
+              description: What happened, in the victim's words.
+            channel:
+              $ref: '#/components/schemas/IntakeChannel'
+            closure_reason:
+              oneOf:
+                - $ref: '#/components/schemas/ClosureReason'
+                - type: 'null'
+            created_at:
+              $ref: '#/components/schemas/Timestamp'
+            closed_at:
+              oneOf:
+                - $ref: '#/components/schemas/Timestamp'
+                - type: 'null'
+            allowed_transitions:
+              type: array
+              description: For the current user. Render the status buttons from this list.
+              items:
+                $ref: '#/components/schemas/CaseStatus'
+            allowed_closure_reasons:
+              type: array
+              description: Empty unless `closed` is in `allowed_transitions`.
+              items:
+                $ref: '#/components/schemas/ClosureReason'
+            documents:
+              type: array
+              items:
+                $ref: '#/components/schemas/DocumentMeta'
+            notes:
+              type: array
+              description: Newest first.
+              items:
+                $ref: '#/components/schemas/Note'
+    Note:
+      type: object
+      required: [id, body, author, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        body:
+          type: string
+        author:
+          $ref: '#/components/schemas/UserRef'
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
+
+    # ---------- documents & AI ----------
+    ExtractionBrief:
+      type: object
+      required: [id, status, overall_confidence, review_lane]
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/ExtractionStatus'
+        overall_confidence:
+          type: [number, 'null']
+          minimum: 0
+          maximum: 1
+        review_lane:
+          oneOf:
+            - $ref: '#/components/schemas/ReviewLane'
+            - type: 'null'
+    DocumentMeta:
+      type: object
+      required: [id, case_id, filename, doc_type, mime_type, size_bytes, uploaded_by, uploaded_at, latest_extraction]
+      properties:
+        id:
+          type: string
+          format: uuid
+        case_id:
+          type: string
+          format: uuid
+        filename:
+          type: string
+        doc_type:
+          $ref: '#/components/schemas/DocumentType'
+        mime_type:
+          type: string
+          enum: [application/pdf, image/png, image/jpeg, text/plain]
+        size_bytes:
+          type: integer
+          minimum: 1
+          maximum: 10485760
+        uploaded_by:
+          $ref: '#/components/schemas/UserRef'
+        uploaded_at:
+          $ref: '#/components/schemas/Timestamp'
+        latest_extraction:
+          oneOf:
+            - $ref: '#/components/schemas/ExtractionBrief'
+            - type: 'null'
+    ExtractedField:
+      type: object
+      required: [name, value, confidence, evidence, current_case_value, final_value]
+      properties:
+        name:
+          $ref: '#/components/schemas/ExtractableField'
+        value:
+          $ref: '#/components/schemas/FieldValue'
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        evidence:
+          type: [string, 'null']
+          description: Short quote from the document that supports the value.
+        current_case_value:
+          $ref: '#/components/schemas/FieldValue'
+        final_value:
+          description: What the person approved; null until reviewed.
+          $ref: '#/components/schemas/FieldValue'
+    Extraction:
+      type: object
+      required:
+        - id
+        - document_id
+        - case_id
+        - case_reference
+        - bank_id
+        - status
+        - source
+        - model
+        - prompt_version
+        - overall_confidence
+        - review_lane
+        - fields
+        - missing_fields
+        - error
+        - created_at
+        - reviewed_by
+        - reviewed_at
+        - review_note
+      properties:
+        id:
+          type: string
+          format: uuid
+        document_id:
+          type: string
+          format: uuid
+        case_id:
+          type: string
+          format: uuid
+        case_reference:
+          type: string
+        bank_id:
+          $ref: '#/components/schemas/BankId'
+        status:
+          $ref: '#/components/schemas/ExtractionStatus'
+        source:
+          $ref: '#/components/schemas/ExtractionSource'
+        model:
+          type: [string, 'null']
+          description: Null for `rules_fallback`.
+        prompt_version:
+          type: [string, 'null']
+        overall_confidence:
+          type: [number, 'null']
+          minimum: 0
+          maximum: 1
+          description: Lowest field confidence; null when failed.
+        review_lane:
+          description: Below the threshold (default 0.75) or rules_fallback → `low_confidence`. Null when failed.
+          oneOf:
+            - $ref: '#/components/schemas/ReviewLane'
+            - type: 'null'
+        fields:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExtractedField'
+        missing_fields:
+          type: array
+          description: Fields not found in the document.
+          items:
+            $ref: '#/components/schemas/ExtractableField'
+        error:
+          oneOf:
+            - type: object
+              required: [reason, message]
+              properties:
+                reason:
+                  $ref: '#/components/schemas/ExtractionErrorReason'
+                message:
+                  type: string
+            - type: 'null'
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
+        reviewed_by:
+          oneOf:
+            - $ref: '#/components/schemas/UserRef'
+            - type: 'null'
+        reviewed_at:
+          oneOf:
+            - $ref: '#/components/schemas/Timestamp'
+            - type: 'null'
+        review_note:
+          type: [string, 'null']
+    ReviewQueueItem:
+      type: object
+      required:
+        - extraction_id
+        - case_id
+        - case_reference
+        - bank_id
+        - bank_name
+        - document_id
+        - document_filename
+        - source
+        - overall_confidence
+        - review_lane
+        - assigned_operator
+        - created_at
+      properties:
+        extraction_id:
+          type: string
+          format: uuid
+        case_id:
+          type: string
+          format: uuid
+        case_reference:
+          type: string
+        bank_id:
+          $ref: '#/components/schemas/BankId'
+        bank_name:
+          type: string
+        document_id:
+          type: string
+          format: uuid
+        document_filename:
+          type: string
+        source:
+          $ref: '#/components/schemas/ExtractionSource'
+        overall_confidence:
+          type: [number, 'null']
+          minimum: 0
+          maximum: 1
+        review_lane:
+          $ref: '#/components/schemas/ReviewLane'
+        assigned_operator:
+          oneOf:
+            - $ref: '#/components/schemas/UserRef'
+            - type: 'null'
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
+
+    # ---------- audit & dashboard ----------
+    AuditEntry:
+      type: object
+      required: [id, at, actor, action, case_id, case_reference, bank_id, summary, changes, metadata]
+      properties:
+        id:
+          type: string
+          format: uuid
+        at:
+          $ref: '#/components/schemas/Timestamp'
+        actor:
+          type: object
+          required: [type, id, name, role]
+          properties:
+            type:
+              $ref: '#/components/schemas/ActorType'
+            id:
+              type: [string, 'null']
+            name:
+              type: string
+              description: e.g. "Operator One", "Web intake form", "AI extractor".
+            role:
+              oneOf:
+                - $ref: '#/components/schemas/Role'
+                - type: 'null'
+        action:
+          $ref: '#/components/schemas/AuditAction'
+        case_id:
+          type: [string, 'null']
+        case_reference:
+          type: [string, 'null']
+        bank_id:
+          oneOf:
+            - $ref: '#/components/schemas/BankId'
+            - type: 'null'
+        summary:
+          type: string
+          description: Human-readable, e.g. "Status Received → Verified".
+        changes:
+          description: Field → `{ from, to }`.
+          type: [object, 'null']
+          additionalProperties:
+            type: object
+            required: [from, to]
+            properties:
+              from: {}
+              to: {}
+        metadata:
+          type: [object, 'null']
+    DashboardStats:
+      type: object
+      required:
+        - scope
+        - open_cases
+        - overdue_cases
+        - due_soon_cases
+        - unassigned_cases
+        - avg_handling_days
+        - ai_review_pending
+        - ai_low_confidence_pending
+        - cases_by_status
+        - workload
+        - generated_at
+      properties:
+        scope:
+          type: object
+          required: [bank_id, label]
+          properties:
+            bank_id:
+              description: Null = all banks.
+              oneOf:
+                - $ref: '#/components/schemas/BankId'
+                - type: 'null'
+            label:
+              type: string
+        open_cases:
+          type: integer
+          minimum: 0
+        overdue_cases:
+          type: integer
+          minimum: 0
+        due_soon_cases:
+          type: integer
+          minimum: 0
+        unassigned_cases:
+          type: integer
+          minimum: 0
+        avg_handling_days:
+          type: [number, 'null']
+          description: Closed cases, closed_at − reported_date. Null if none closed yet.
+        ai_review_pending:
+          type: integer
+          minimum: 0
+        ai_low_confidence_pending:
+          type: integer
+          minimum: 0
+        cases_by_status:
+          type: object
+          required: [received, verified, account_check, notice_published, payout_review, closed]
+          properties:
+            received:
+              type: integer
+            verified:
+              type: integer
+            account_check:
+              type: integer
+            notice_published:
+              type: integer
+            payout_review:
+              type: integer
+            closed:
+              type: integer
+        workload:
+          type: array
+          description: Empty for bank_viewer.
+          items:
+            type: object
+            required: [operator, open_cases, overdue_cases]
+            properties:
+              operator:
+                $ref: '#/components/schemas/UserRef'
+              open_cases:
+                type: integer
+                minimum: 0
+              overdue_cases:
+                type: integer
+                minimum: 0
+        generated_at:
+          $ref: '#/components/schemas/Timestamp'
+    SharedAccountAlert:
+      type: object
+      required: [bank_id, bank_name, account_number, case_count, total_amount, currency, cases]
+      properties:
+        bank_id:
+          $ref: '#/components/schemas/BankId'
+        bank_name:
+          type: string
+        account_number:
+          type: string
+        case_count:
+          type: integer
+          minimum: 2
+        total_amount:
+          type: number
+          minimum: 0
+        currency:
+          type: string
+        cases:
+          type: array
+          items:
+            type: object
+            required: [id, reference, status]
+            properties:
+              id:
+                type: string
+                format: uuid
+              reference:
+                type: string
+              status:
+                $ref: '#/components/schemas/CaseStatus'
+
+    # ---------- request bodies (unknown fields are rejected) ----------
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          minLength: 3
+          maxLength: 254
+        password:
+          type: string
+          minLength: 1
+          maxLength: 200
+    VictimInput:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        phone:
+          type: [string, 'null']
+          minLength: 5
+          maxLength: 30
+        email:
+          type: [string, 'null']
+          format: email
+          maxLength: 254
+        address:
+          type: [string, 'null']
+          maxLength: 500
+        preferred_language:
+          $ref: '#/components/schemas/Language'
+    IntakeVictim:
+      description: Like VictimInput, but needs a phone or an email.
+      allOf:
+        - $ref: '#/components/schemas/VictimInput'
+      anyOf:
+        - required: [phone]
+          properties:
+            phone:
+              type: string
+        - required: [email]
+          properties:
+            email:
+              type: string
+    IntakeRequest:
+      type: object
+      additionalProperties: false
+      required: [bank_id, victim, amount, transfer_date, scam_type, consent]
+      properties:
+        bank_id:
+          $ref: '#/components/schemas/BankId'
+        victim:
+          $ref: '#/components/schemas/IntakeVictim'
+        amount:
+          type: number
+          minimum: 0
+        currency:
+          type: string
+          pattern: '^[A-Z]{3}$'
+          default: JPY
+        transfer_date:
+          $ref: '#/components/schemas/CalendarDate'
+        account_number:
+          type: [string, 'null']
+          maxLength: 34
+        account_holder_name:
+          type: [string, 'null']
+          maxLength: 200
+        scam_type:
+          $ref: '#/components/schemas/ScamType'
+        description:
+          type: [string, 'null']
+          maxLength: 4000
+        consent:
+          type: boolean
+          const: true
+          description: The victim agrees to their data being processed.
+    CaseCreate:
+      type: object
+      additionalProperties: false
+      required: [bank_id, channel, victim]
+      properties:
+        bank_id:
+          $ref: '#/components/schemas/BankId'
+        channel:
+          $ref: '#/components/schemas/IntakeChannel'
+        victim:
+          $ref: '#/components/schemas/VictimInput'
+        amount:
+          type: [number, 'null']
+          minimum: 0
+        currency:
+          type: string
+          pattern: '^[A-Z]{3}$'
+          default: JPY
+        transfer_date:
+          oneOf:
+            - $ref: '#/components/schemas/CalendarDate'
+            - type: 'null'
+        account_number:
+          type: [string, 'null']
+          maxLength: 34
+        account_holder_name:
+          type: [string, 'null']
+          maxLength: 200
+        scam_type:
+          oneOf:
+            - $ref: '#/components/schemas/ScamType'
+            - type: 'null'
+        description:
+          type: [string, 'null']
+          maxLength: 4000
+        reported_date:
+          description: Defaults to today.
+          oneOf:
+            - $ref: '#/components/schemas/CalendarDate'
+            - type: 'null'
+        assigned_operator_id:
+          type: [string, 'null']
+          format: uuid
+    CaseUpdate:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      description: Send only changed fields.
+      properties:
+        victim:
+          type: object
+          additionalProperties: false
+          properties:
+            name:
+              type: string
+              minLength: 1
+              maxLength: 200
+            phone:
+              type: [string, 'null']
+              maxLength: 30
+            email:
+              type: [string, 'null']
+              format: email
+            address:
+              type: [string, 'null']
+              maxLength: 500
+            preferred_language:
+              $ref: '#/components/schemas/Language'
+        amount:
+          type: [number, 'null']
+          minimum: 0
+        currency:
+          type: string
+          pattern: '^[A-Z]{3}$'
+        transfer_date:
+          oneOf:
+            - $ref: '#/components/schemas/CalendarDate'
+            - type: 'null'
+        account_number:
+          type: [string, 'null']
+          maxLength: 34
+        account_holder_name:
+          type: [string, 'null']
+          maxLength: 200
+        scam_type:
+          oneOf:
+            - $ref: '#/components/schemas/ScamType'
+            - type: 'null'
+        description:
+          type: [string, 'null']
+          maxLength: 4000
+        deadline:
+          description: Supervisor only; requires `deadline_reason`.
+          $ref: '#/components/schemas/Timestamp'
+        deadline_reason:
+          type: string
+          minLength: 1
+          maxLength: 200
+      dependentRequired:
+        deadline: [deadline_reason]
+    TransitionRequest:
+      type: object
+      additionalProperties: false
+      required: [to_status]
+      properties:
+        to_status:
+          $ref: '#/components/schemas/CaseStatus'
+        note:
+          type: [string, 'null']
+          maxLength: 4000
+          description: Required when moving back a step or closing.
+        closure_reason:
+          description: Required when `to_status` is `closed`.
+          oneOf:
+            - $ref: '#/components/schemas/ClosureReason'
+            - type: 'null'
+    AssignRequest:
+      type: object
+      additionalProperties: false
+      required: [operator_id]
+      properties:
+        operator_id:
+          description: Null to unassign.
+          type: [string, 'null']
+          format: uuid
+    NoteCreate:
+      type: object
+      additionalProperties: false
+      required: [body]
+      properties:
+        body:
+          type: string
+          minLength: 1
+          maxLength: 4000
+    ReviewRequest:
+      type: object
+      additionalProperties: false
+      required: [decision]
+      properties:
+        decision:
+          type: string
+          enum: [accept, reject]
+        fields:
+          type: object
+          description: Accept only — the values the person approves, keyed by ExtractableField.
+          propertyNames:
+            $ref: '#/components/schemas/ExtractableField'
+          additionalProperties:
+            $ref: '#/components/schemas/FieldValue'
+        note:
+          type: [string, 'null']
+          maxLength: 4000
+          description: Required when rejecting.
+
+    # ---------- response bodies ----------
+    LoginResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessBase'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [token, expires_at, user]
+              properties:
+                token:
+                  type: string
+                expires_at:
+                  $ref: '#/components/schemas/Timestamp'
+                user:
+                  $ref: '#/components/schemas/User'
+    UserResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessBase'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: '#/components/schemas/User'
+    UserListResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessBase'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/User'
+    HealthResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessBase'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: '#/components/schemas/Health'
+    BankListResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessBase'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/Bank'
+    IntakeReceiptResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessBase'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [reference, status, submitted_at]
+              properties:
+                reference:
+                  type: string
+                status:
+                  $ref: '#/components/schemas/CaseStatus'
+                submitted_at:
+                  $ref: '#/components/schemas/Timestamp'
+    CaseSummaryPageResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessBase'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              allOf:
+                - $ref: '#/components/schemas/PageMeta'
+                - type: object
+                  required: [items]
+                  properties:
+                    items:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/CaseSummary'
+    CaseResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessBase'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: '#/components/schemas/Case'
+    NoteResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessBase'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: '#/components/schemas/Note'
+    AuditEntryPageResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessBase'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              allOf:
+                - $ref: '#/components/schemas/PageMeta'
+                - type: object
+                  required: [items]
+                  properties:
+                    items:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/AuditEntry'
+    DocumentResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessBase'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: '#/components/schemas/DocumentMeta'
+    ExtractionResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessBase'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: '#/components/schemas/Extraction'
+    ReviewResultResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessBase'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [extraction, case]
+              properties:
+                extraction:
+                  $ref: '#/components/schemas/Extraction'
+                case:
+                  $ref: '#/components/schemas/Case'
+    ReviewQueuePageResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessBase'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              allOf:
+                - $ref: '#/components/schemas/PageMeta'
+                - type: object
+                  required: [items]
+                  properties:
+                    items:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/ReviewQueueItem'
+    DashboardStatsResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessBase'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: '#/components/schemas/DashboardStats'
+    SharedAccountAlertListResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessBase'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/SharedAccountAlert'
+
+  examples:
+    LoginOk:
+      summary: Operator logged in
+      value:
+        success: true
+        data:
+          token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.mock-payload.mock-signature
+          expires_at: '2026-11-14T12:30:00Z'
+          user:
+            id: 11111111-1111-4111-8111-111111111111
+            name: Operator One
+            email: operator1@opscenter.test
+            role: operator
+            bank_id: null
+        message: Login successful
+
+    CaseListOk:
+      summary: Three cases from different banks and stages
+      value:
+        success: true
+        data:
+          items:
+            - id: 0a1b2c3d-1111-4a2b-8c3d-000000000017
+              reference: RFR-2026-00017
+              bank_id: bank_a
+              bank_name: Aster Regional Bank
+              victim_name: Haruto Sample
+              amount: 480000
+              currency: JPY
+              scam_type: investment
+              status: account_check
+              deadline: '2026-11-12T02:00:00Z'
+              deadline_state: overdue
+              assigned_operator:
+                id: 33333333-3333-4333-8333-333333333333
+                name: Operator Two
+              reported_date: '2026-09-30'
+              updated_at: '2026-11-02T02:00:00Z'
+              flags:
+                missing_fields: []
+                ai_review_pending: false
+                shared_account_case_count: 2
+            - id: 7f3c2a9e-5b1d-4c8e-9a10-2d6f8b4e1c33
+              reference: RFR-2026-00042
+              bank_id: bank_b
+              bank_name: Birch Regional Bank
+              victim_name: Rina Example
+              amount: 250000
+              currency: JPY
+              scam_type: impersonation
+              status: verified
+              deadline: '2026-11-19T04:30:00Z'
+              deadline_state: on_track
+              assigned_operator:
+                id: 11111111-1111-4111-8111-111111111111
+                name: Operator One
+              reported_date: '2026-11-02'
+              updated_at: '2026-11-14T04:30:00Z'
+              flags:
+                missing_fields: []
+                ai_review_pending: false
+                shared_account_case_count: 2
+            - id: 0a1b2c3d-3333-4a2b-8c3d-000000000051
+              reference: RFR-2026-00051
+              bank_id: bank_c
+              bank_name: Cobalt Regional Bank
+              victim_name: Nadia Testwood
+              amount: 90000
+              currency: JPY
+              scam_type: null
+              status: received
+              deadline: '2026-11-15T09:00:00Z'
+              deadline_state: due_soon
+              assigned_operator: null
+              reported_date: '2026-11-13'
+              updated_at: '2026-11-13T09:00:00Z'
+              flags:
+                missing_fields: [account_number, scam_type, document]
+                ai_review_pending: false
+                shared_account_case_count: 0
+          page: 1
+          page_size: 20
+          total: 3
+        message: ok
+
+    CaseOk:
+      summary: A verified case seen by an operator
+      value:
+        success: true
+        data:
+          id: 7f3c2a9e-5b1d-4c8e-9a10-2d6f8b4e1c33
+          reference: RFR-2026-00042
+          bank_id: bank_b
+          bank_name: Birch Regional Bank
+          victim_name: Rina Example
+          victim:
+            name: Rina Example
+            phone: '+81-90-0000-0042'
+            email: rina.example@mail.test
+            address: null
+            preferred_language: ja
+          amount: 250000
+          currency: JPY
+          transfer_date: '2026-10-28'
+          account_number: '0012345'
+          account_holder_name: Sample Trading LLC
+          scam_type: impersonation
+          description: Caller said they were from the tax office and asked me to pay a refund fee.
+          channel: web_form
+          status: verified
+          deadline: '2026-11-19T04:30:00Z'
+          deadline_state: on_track
+          assigned_operator:
+            id: 11111111-1111-4111-8111-111111111111
+            name: Operator One
+          reported_date: '2026-11-02'
+          closure_reason: null
+          created_at: '2026-11-02T03:12:00Z'
+          updated_at: '2026-11-14T04:30:00Z'
+          closed_at: null
+          flags:
+            missing_fields: []
+            ai_review_pending: false
+            shared_account_case_count: 2
+          allowed_transitions: [account_check, received, closed]
+          allowed_closure_reasons: [withdrawn]
+          documents:
+            - id: d0c0d0c0-0000-4000-8000-000000000001
+              case_id: 7f3c2a9e-5b1d-4c8e-9a10-2d6f8b4e1c33
+              filename: transfer_receipt_00042.pdf
+              doc_type: transfer_receipt
+              mime_type: application/pdf
+              size_bytes: 48211
+              uploaded_by:
+                id: 11111111-1111-4111-8111-111111111111
+                name: Operator One
+              uploaded_at: '2026-11-03T01:05:00Z'
+              latest_extraction:
+                id: e0e0e0e0-0000-4000-8000-000000000001
+                status: accepted
+                overall_confidence: 0.62
+                review_lane: low_confidence
+          notes:
+            - id: a0a0a0a0-0000-4000-8000-000000000001
+              body: Victim confirmed the transfer by phone.
+              author:
+                id: 11111111-1111-4111-8111-111111111111
+                name: Operator One
+              created_at: '2026-11-04T02:00:00Z'
+        message: ok
+
+    AuditPageOk:
+      summary: Two audit entries
+      value:
+        success: true
+        data:
+          items:
+            - id: b1b1b1b1-0000-4000-8000-000000000008
+              at: '2026-11-05T06:20:00Z'
+              actor:
+                type: user
+                id: 11111111-1111-4111-8111-111111111111
+                name: Operator One
+                role: operator
+              action: ai.review_accepted
+              case_id: 7f3c2a9e-5b1d-4c8e-9a10-2d6f8b4e1c33
+              case_reference: RFR-2026-00042
+              bank_id: bank_b
+              summary: Accepted AI suggestion (3 fields, 1 edited)
+              changes:
+                account_number:
+                  from: null
+                  to: '0012345'
+              metadata:
+                extraction_id: e0e0e0e0-0000-4000-8000-000000000001
+                fields:
+                  - name: account_number
+                    ai_value: '0012345'
+                    final_value: '0012345'
+                    edited: false
+            - id: b1b1b1b1-0000-4000-8000-000000000007
+              at: '2026-11-05T06:12:00Z'
+              actor:
+                type: user
+                id: 11111111-1111-4111-8111-111111111111
+                name: Operator One
+                role: operator
+              action: case.status_changed
+              case_id: 7f3c2a9e-5b1d-4c8e-9a10-2d6f8b4e1c33
+              case_reference: RFR-2026-00042
+              bank_id: bank_b
+              summary: Status Received → Verified
+              changes:
+                status:
+                  from: received
+                  to: verified
+              metadata: null
+          page: 1
+          page_size: 20
+          total: 2
+        message: ok
+
+    ExtractionLowConfidence:
+      summary: AI answered; account number unclear on the scan (00I2345)
+      value:
+        success: true
+        data:
+          id: e0e0e0e0-0000-4000-8000-000000000001
+          document_id: d0c0d0c0-0000-4000-8000-000000000001
+          case_id: 7f3c2a9e-5b1d-4c8e-9a10-2d6f8b4e1c33
+          case_reference: RFR-2026-00042
+          bank_id: bank_b
+          status: pending_review
+          source: llm
+          model: example-model
+          prompt_version: extract-v1
+          overall_confidence: 0.62
+          review_lane: low_confidence
+          fields:
+            - name: amount
+              value: 250000
+              confidence: 0.95
+              evidence: 'Transfer amount: ¥250,000'
+              current_case_value: null
+              final_value: null
+            - name: transfer_date
+              value: '2026-10-28'
+              confidence: 0.91
+              evidence: 'Date: 2026/10/28'
+              current_case_value: null
+              final_value: null
+            - name: account_number
+              value: '0012345'
+              confidence: 0.62
+              evidence: A/C No. 00I2345
+              current_case_value: null
+              final_value: null
+          missing_fields: [victim_phone, victim_email]
+          error: null
+          created_at: '2026-11-03T01:06:00Z'
+          reviewed_by: null
+          reviewed_at: null
+          review_note: null
+        message: Extraction ready for review
+
+    ExtractionFallback:
+      summary: AI timed out; rule-based fallback found two fields (always low confidence)
+      value:
+        success: true
+        data:
+          id: e0e0e0e0-0000-4000-8000-000000000003
+          document_id: d0c0d0c0-0000-4000-8000-000000000001
+          case_id: 7f3c2a9e-5b1d-4c8e-9a10-2d6f8b4e1c33
+          case_reference: RFR-2026-00042
+          bank_id: bank_b
+          status: pending_review
+          source: rules_fallback
+          model: null
+          prompt_version: null
+          overall_confidence: 0.6
+          review_lane: low_confidence
+          fields:
+            - name: amount
+              value: 250000
+              confidence: 0.6
+              evidence: 'Transfer amount: ¥250,000'
+              current_case_value: null
+              final_value: null
+            - name: transfer_date
+              value: '2026-10-28'
+              confidence: 0.6
+              evidence: 'Date: 2026/10/28'
+              current_case_value: null
+              final_value: null
+          missing_fields: [victim_name, victim_phone, victim_email, currency, account_number, account_holder_name, scam_type]
+          error:
+            reason: timeout
+            message: AI did not answer within 20 seconds; values came from simple pattern matching.
+          created_at: '2026-11-03T01:07:00Z'
+          reviewed_by: null
+          reviewed_at: null
+          review_note: null
+        message: Extraction ready for review
+
+    ExtractionFailed:
+      summary: AI down and nothing could be read — enter fields manually
+      value:
+        success: true
+        data:
+          id: e0e0e0e0-0000-4000-8000-000000000002
+          document_id: d0c0d0c0-0000-4000-8000-000000000001
+          case_id: 7f3c2a9e-5b1d-4c8e-9a10-2d6f8b4e1c33
+          case_reference: RFR-2026-00042
+          bank_id: bank_b
+          status: failed
+          source: rules_fallback
+          model: null
+          prompt_version: null
+          overall_confidence: null
+          review_lane: null
+          fields: []
+          missing_fields: [victim_name, victim_phone, victim_email, amount, currency, transfer_date, account_number, account_holder_name, scam_type]
+          error:
+            reason: ai_unavailable
+            message: AI service did not respond and no fields could be read. Enter the fields manually.
+          created_at: '2026-11-03T01:08:00Z'
+          reviewed_by: null
+          reviewed_at: null
+          review_note: null
+        message: AI could not read this document — enter the fields manually
+
+    ReviewAccepted:
+      summary: Operator accepted three fields
+      value:
+        success: true
+        data:
+          extraction:
+            id: e0e0e0e0-0000-4000-8000-000000000001
+            document_id: d0c0d0c0-0000-4000-8000-000000000001
+            case_id: 7f3c2a9e-5b1d-4c8e-9a10-2d6f8b4e1c33
+            case_reference: RFR-2026-00042
+            bank_id: bank_b
+            status: accepted
+            source: llm
+            model: example-model
+            prompt_version: extract-v1
+            overall_confidence: 0.62
+            review_lane: low_confidence
+            fields:
+              - name: amount
+                value: 250000
+                confidence: 0.95
+                evidence: 'Transfer amount: ¥250,000'
+                current_case_value: null
+                final_value: 250000
+              - name: transfer_date
+                value: '2026-10-28'
+                confidence: 0.91
+                evidence: 'Date: 2026/10/28'
+                current_case_value: null
+                final_value: '2026-10-28'
+              - name: account_number
+                value: '0012345'
+                confidence: 0.62
+                evidence: A/C No. 00I2345
+                current_case_value: null
+                final_value: '0012345'
+            missing_fields: [victim_phone, victim_email]
+            error: null
+            created_at: '2026-11-03T01:06:00Z'
+            reviewed_by:
+              id: 11111111-1111-4111-8111-111111111111
+              name: Operator One
+            reviewed_at: '2026-11-03T01:10:00Z'
+            review_note: Checked the account number against the scan.
+          case:
+            id: 7f3c2a9e-5b1d-4c8e-9a10-2d6f8b4e1c33
+            reference: RFR-2026-00042
+            bank_id: bank_b
+            bank_name: Birch Regional Bank
+            victim_name: Rina Example
+            victim:
+              name: Rina Example
+              phone: '+81-90-0000-0042'
+              email: rina.example@mail.test
+              address: null
+              preferred_language: ja
+            amount: 250000
+            currency: JPY
+            transfer_date: '2026-10-28'
+            account_number: '0012345'
+            account_holder_name: Sample Trading LLC
+            scam_type: impersonation
+            description: Caller said they were from the tax office and asked me to pay a refund fee.
+            channel: web_form
+            status: received
+            deadline: '2026-11-04T03:12:00Z'
+            deadline_state: on_track
+            assigned_operator:
+              id: 11111111-1111-4111-8111-111111111111
+              name: Operator One
+            reported_date: '2026-11-02'
+            closure_reason: null
+            created_at: '2026-11-02T03:12:00Z'
+            updated_at: '2026-11-03T01:10:00Z'
+            closed_at: null
+            flags:
+              missing_fields: []
+              ai_review_pending: false
+              shared_account_case_count: 2
+            allowed_transitions: [verified, closed]
+            allowed_closure_reasons: [withdrawn]
+            documents:
+              - id: d0c0d0c0-0000-4000-8000-000000000001
+                case_id: 7f3c2a9e-5b1d-4c8e-9a10-2d6f8b4e1c33
+                filename: transfer_receipt_00042.pdf
+                doc_type: transfer_receipt
+                mime_type: application/pdf
+                size_bytes: 48211
+                uploaded_by:
+                  id: 11111111-1111-4111-8111-111111111111
+                  name: Operator One
+                uploaded_at: '2026-11-03T01:05:00Z'
+                latest_extraction:
+                  id: e0e0e0e0-0000-4000-8000-000000000001
+                  status: accepted
+                  overall_confidence: 0.62
+                  review_lane: low_confidence
+            notes: []
+        message: Review saved

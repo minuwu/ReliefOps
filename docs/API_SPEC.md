@@ -1,8 +1,10 @@
 # API Specification (Shared Contract)
 
-**Version** 0.1.0 (draft) · **Updated** 2026-11-14 · **Owner** Asif (Backend)
+**Version** 0.1.1 (draft) · **Updated** 2026-11-14 · **Owner** Asif (Backend)
 
-This is the **single source of truth** for the API between Frontend, Backend and AI. Build against it now using mocks. After v0.1.0, any change goes through an `XREQ` in [AGENTS.md](../AGENTS.md). Never rename a field silently.
+This is the **single source of truth** for the API between Frontend, Backend and AI. Build against it now using mocks. From now on, any change goes through an `XREQ` in [AGENTS.md](../AGENTS.md). Never rename a field silently.
+
+A machine-readable copy of this contract is in [openapi.yaml](openapi.yaml) (OpenAPI 3.1). Use it to run a mock API with no backend (§9) or to generate TypeScript types.
 
 The reasons behind these choices (data model, security, AI safety, devops) are in [plans/backend-plan.md](plans/backend-plan.md). Decision numbers like **D1** refer to that file.
 
@@ -39,7 +41,9 @@ If you disagree with one of these, file an `XREQ` before building on it.
 | Item | Rule |
 | :--- | :--- |
 | Base URL (local) | `http://localhost:8000` |
-| Swagger | `http://localhost:8000/docs` · raw schema at `/openapi.json` |
+| Swagger | `http://localhost:8000/docs` · raw schema at `/openapi.json` (once the backend exists) |
+| Contract file | [docs/openapi.yaml](openapi.yaml), OpenAPI 3.1, validated with `npx -y @redocly/cli@2.78.0 lint docs/openapi.yaml` |
+| Mock API (no backend) | `http://localhost:4010`, served from `openapi.yaml` (see §9). Point the frontend's API base URL here until the backend is live. |
 | Format | JSON, UTF-8, `snake_case` keys. File upload is the only `multipart/form-data` request. |
 | Auth | `Authorization: Bearer <token>` on every endpoint not marked **public**. A token lasts 8 hours and there is no refresh in v0.1. On any `401`, send the user back to the login screen. |
 | IDs | UUID strings. Banks use fixed short IDs: `bank_a` to `bank_e`. |
@@ -92,7 +96,7 @@ FastAPI's validation errors (422) are converted to this format:
 | 413 | `FILE_TOO_LARGE` | Upload is over 10 MB |
 | 422 | `VALIDATION_ERROR` | A field failed validation. `details.fields[]` |
 | 422 | `MISSING_REQUIRED_INFO` | The case lacks information needed for this status change. `details.missing_fields[]` |
-| 429 | `RATE_LIMITED` | Too many public intake submissions from one IP |
+| 429 | `RATE_LIMITED` | Too many public intake submissions, or too many failed logins, from one IP |
 | 500 | `INTERNAL_ERROR` | Unexpected server error |
 
 **An AI failure is never returned as an HTTP error.** If the AI times out or is down, the extraction request still succeeds, and the returned extraction has `status: "failed"` or `source: "rules_fallback"` (see 6.5).
@@ -445,7 +449,7 @@ Response `200`:
 }
 ```
 
-Errors: `401 INVALID_CREDENTIALS`, `422 VALIDATION_ERROR`. Successful and failed logins are both audited.
+Errors: `401 INVALID_CREDENTIALS`, `422 VALIDATION_ERROR`, `429 RATE_LIMITED` (too many failed attempts from one IP or for one email). Successful and failed logins are both audited.
 
 #### `GET /api/auth/me` · logged in
 
@@ -862,7 +866,7 @@ Matching uses `(bank_id, account_number)`, so it never compares data across bank
 
 ## 7. AI module interface (Backend ↔ AI)
 
-Whoever builds the AI implements one function. Backend calls it and handles everything around it.
+Galib (AI / LLM) implements one function. Backend calls it and handles everything around it.
 
 ```python
 # backend/app/services/ai_extraction.py
@@ -881,7 +885,7 @@ def extract_fields(file_bytes: bytes, mime_type: str, doc_type: str) -> dict:
     """
 ```
 
-| AI owns | Backend owns |
+| AI (Galib) owns | Backend (Asif, Anim) owns |
 | :--- | :--- |
 | Prompt files in `backend/app/prompts/` (versioned) | 20 s timeout, rule-based fallback, retries |
 | Per-field `confidence` and `evidence` | `overall_confidence`, `review_lane`, threshold setting |
@@ -926,6 +930,32 @@ Emails use the `.test` domain and phone numbers use `0000` blocks.
 - Show a banner when `GET /api/health` returns `ai` other than `"available"`.
 - Show a `404` on a case page as "Case not found". It's also what a viewer from another bank sees, which is the correct behaviour.
 
+### 9.1 Mock API from the contract (no backend needed)
+
+Run this from the repo root (Node 18+):
+
+```bash
+npx -y @stoplight/prism-cli@5.14.2 mock docs/openapi.yaml
+```
+
+It serves every endpoint at **`http://localhost:4010`**, with the envelope, examples and error shapes from this contract. Set `VITE_API_URL` / `NEXT_PUBLIC_API_URL` to that address and `USE_MOCK=false`. When the backend is live, change only the URL to `http://localhost:8000`.
+
+To get a specific response, send a `Prefer` header:
+
+| Header | You get |
+| :--- | :--- |
+| `Prefer: code=404` | The 404 envelope. Works with any status listed for that endpoint. |
+| `Prefer: example=failed` | The AI-down extraction, on `POST /api/documents/{id}/extract` |
+| `Prefer: example=fallback` | The rule-based fallback extraction (low confidence) |
+| `Prefer: example=ai_down` | `ai: "unavailable"` from `GET /api/health`, for the banner |
+| `Prefer: code=422, example=missing_info` | `422 MISSING_REQUIRED_INFO` from `/transition` |
+
+**What the mock does not do:**
+- It doesn't remember anything. A `POST` or `PATCH` returns the example, not your data.
+- It accepts any bearer token, but a request with no token gets `401`.
+- It doesn't filter by role or bank. Separation is the real backend's job (backend-plan §5).
+- An invalid body returns `422` with the contract's example error, not the field that actually failed.
+
 ---
 
 ## 10. How to update this file
@@ -933,10 +963,12 @@ Emails use the `.test` domain and phone numbers use `0000` blocks.
 1. Need a new endpoint or field? **File an `XREQ`** in [AGENTS.md](../AGENTS.md) with the exact JSON.
 2. Backend implements it, updates the endpoint's status in §5, and marks the `XREQ` `[RESOLVED]`.
 3. Once Frontend has checked the integration, set the status to `LIVE`.
-4. Agents: load `.claude/skills/openapi-spec-generation` before editing this file. Keep it in sync with the backend's `/openapi.json`.
+4. **Change [openapi.yaml](openapi.yaml) in the same PR** and run `npx -y @redocly/cli@2.78.0 lint docs/openapi.yaml`. It must say the description is valid.
+5. Agents: load `.claude/skills/openapi-spec-generation` before editing this file. Once the backend exists, keep both files in sync with its `/openapi.json`.
 
 ### Changelog
 
 | Version | Date | Change |
 | :--- | :--- | :--- |
+| 0.1.1 | 2026-11-14 | Added the machine-readable [openapi.yaml](openapi.yaml) and the no-backend mock (§9.1). Login can now return `429 RATE_LIMITED`. Named Galib as the AI owner (§7). |
 | 0.1.0 | 2026-11-14 | First full contract for the fraud-relief case system. Login `role` changed from `admin` to `operator` / `supervisor` / `bank_viewer`, and `bank_id` added to the user. |

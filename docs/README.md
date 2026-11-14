@@ -15,6 +15,7 @@ Welcome to the documentation hub for **BJET-Hackathon**. All architectural plans
 | **[HACKATHON_PRESETUP.md](../HACKATHON_PRESETUP.md)** | Architecture options, stack recommendation, contract-first guide | Entire Team |
 | **[docs/SKILLS.md](SKILLS.md)** | Mandatory agent skill packs: routing table, catalog, how to add | AI Agents & Developers |
 | **[docs/API_SPEC.md](../docs/API_SPEC.md)** | Shared API contract ledger, data models & endpoints | Frontend & Backend |
+| └── [openapi.yaml](../docs/openapi.yaml) | Machine-readable contract (OpenAPI 3.1); runs as a mock API at `localhost:4010` with no backend | Frontend, Backend & AI |
 | **[docs/plans/](../docs/plans/)** | Architecture plans, RFCs, and agent design artifacts | Product & Architecture |
 | ├── [cross-functional-protocol-plan.md](../docs/plans/cross-functional-protocol-plan.md) | Architectural plan for cross-functional queue & agent priority | Architecture & Agents |
 | └── [backend-plan.md](../docs/plans/backend-plan.md) | Backend, database & devops plan: decisions, data model, bank separation, AI failure plan, milestones | Backend, AI & Frontend |
