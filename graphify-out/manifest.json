@@ -1,68 +1,122 @@
 {
   ".githooks/pre-push": {
-    "mtime": 1794663261.4089472,
-    "seen": 1794665252.115134,
-    "ast_hash": "127e4f74da4b471c63d51ffb63d49bc6",
-    "semantic_hash": "127e4f74da4b471c63d51ffb63d49bc6"
+    "mtime": 1794666250.7619731,
+    "ast_hash": "48c458b89b07a3f0cfaed2744bbe39a7",
+    "semantic_hash": ""
   },
   "AGENTS.md": {
-    "mtime": 1794664082.8883512,
-    "seen": 1794665252.1151462,
-    "ast_hash": "ce514503d6ff11f9605e730306b0fa71",
-    "semantic_hash": "ce514503d6ff11f9605e730306b0fa71"
-  },
-  "Asif/WORK_LOG.md": {
-    "mtime": 1794663143.507615,
-    "seen": 1794665252.115152,
-    "ast_hash": "642e5e8eac49ab29172a83bf23021dd3",
-    "semantic_hash": "642e5e8eac49ab29172a83bf23021dd3"
+    "mtime": 1794666250.7629745,
+    "ast_hash": "59576cd06be53170897c8bfdebd473c2",
+    "semantic_hash": ""
   },
   "HACKATHON_PRESETUP.md": {
-    "mtime": 1794662994.0752716,
-    "seen": 1794665252.1151545,
-    "ast_hash": "819da4253b1cfbe60e76826d3915840f",
-    "semantic_hash": "819da4253b1cfbe60e76826d3915840f"
-  },
-  "Minhaz/WORK_LOG.md": {
-    "mtime": 1794663624.0078733,
-    "seen": 1794665252.1151564,
-    "ast_hash": "5a1c2b3ae0c406e9d41e05499d79794d",
-    "semantic_hash": "5a1c2b3ae0c406e9d41e05499d79794d"
+    "mtime": 1794666250.7629745,
+    "ast_hash": "8b3968d74343b3ac423c1e3e2437ef55",
+    "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1794663674.1287422,
-    "seen": 1794665252.1151583,
-    "ast_hash": "8f064795d4f1d62d706a7b183a398ee1",
-    "semantic_hash": "8f064795d4f1d62d706a7b183a398ee1"
+    "mtime": 1794666250.7639737,
+    "ast_hash": "cd31bef61f41bc6f64560065228a4dcd",
+    "semantic_hash": ""
   },
   "TEAM_INSTRUCTIONS.md": {
-    "mtime": 1794663445.5407047,
-    "seen": 1794665252.11516,
-    "ast_hash": "7ec26ef5c785125c2e9bb61febb729b8",
-    "semantic_hash": "7ec26ef5c785125c2e9bb61febb729b8"
+    "mtime": 1794666250.7639737,
+    "ast_hash": "665df6f7a19bd3b19c2122e6e36f28a5",
+    "semantic_hash": ""
   },
   "docs/API_SPEC.md": {
-    "mtime": 1794663650.0013227,
-    "seen": 1794665252.115162,
-    "ast_hash": "92c8b25aa1c7ad3d7529f338ce313b59",
-    "semantic_hash": "92c8b25aa1c7ad3d7529f338ce313b59"
+    "mtime": 1794667893.833298,
+    "ast_hash": "8e0c4970aa0c849a9412cf4fdedc016c",
+    "semantic_hash": ""
   },
   "docs/README.md": {
-    "mtime": 1794663658.144573,
-    "seen": 1794665252.1151633,
-    "ast_hash": "2218652596cea7a24673f41206253c46",
-    "semantic_hash": "2218652596cea7a24673f41206253c46"
+    "mtime": 1794667972.2408466,
+    "ast_hash": "d016f24fdc57b97c565cab7e55486792",
+    "semantic_hash": ""
   },
   "docs/plans/cross-functional-protocol-plan.md": {
-    "mtime": 1794663615.8476422,
-    "seen": 1794665252.1151655,
-    "ast_hash": "022016024838e0e9b6818364d132dbd4",
-    "semantic_hash": "022016024838e0e9b6818364d132dbd4"
+    "mtime": 1794666250.7654476,
+    "ast_hash": "78ca726284b47be4bf9410e1e0ae38e8",
+    "semantic_hash": ""
   },
-  "minhaz.md": {
-    "mtime": 1794664191.8509326,
-    "seen": 1794665252.1151671,
-    "ast_hash": "f5a601b22a5ffd97906d0b88b01519c6",
-    "semantic_hash": "f5a601b22a5ffd97906d0b88b01519c6"
+  "backend/app/__init__.py": {
+    "mtime": 1794667894.8371477,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "backend/app/models/__init__.py": {
+    "mtime": 1794667894.8371477,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "backend/app/routers/__init__.py": {
+    "mtime": 1794667894.8371477,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "backend/app/services/__init__.py": {
+    "mtime": 1794667894.8371477,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "scripts/setup.ps1": {
+    "mtime": 1794666250.7669523,
+    "ast_hash": "0216422dfc475195066234fc9f15ba68",
+    "semantic_hash": ""
+  },
+  "scripts/setup.sh": {
+    "mtime": 1794666250.7669523,
+    "ast_hash": "d43279ad963d6ee17bb2278d206012d6",
+    "semantic_hash": ""
+  },
+  ".github/copilot-instructions.md": {
+    "mtime": 1794666250.7619731,
+    "ast_hash": "2a66f6e86b234c105fe7effc7afae3fc",
+    "semantic_hash": ""
+  },
+  ".github/workflows/verify-branch-sync.yml": {
+    "mtime": 1794666250.7619731,
+    "ast_hash": "4dc4f1eb28db914e4da27222d060c95b",
+    "semantic_hash": ""
+  },
+  "CLAUDE.md": {
+    "mtime": 1794666250.7629745,
+    "ast_hash": "2a66f6e86b234c105fe7effc7afae3fc",
+    "semantic_hash": ""
+  },
+  "GEMINI.md": {
+    "mtime": 1794666250.7629745,
+    "ast_hash": "2a66f6e86b234c105fe7effc7afae3fc",
+    "semantic_hash": ""
+  },
+  "contributors/README.md": {
+    "mtime": 1794666250.7639737,
+    "ast_hash": "274a49c02032c1b0c27f507b6315eb2a",
+    "semantic_hash": ""
+  },
+  "contributors/_template/WORK_LOG.md": {
+    "mtime": 1794666250.7639737,
+    "ast_hash": "3b066d2dc99abb980fafb1e81ca3884c",
+    "semantic_hash": ""
+  },
+  "contributors/asif/WORK_LOG.md": {
+    "mtime": 1794667971.4244332,
+    "ast_hash": "7e3aa22b042964899858ac05a0d2ab46",
+    "semantic_hash": ""
+  },
+  "contributors/minhaz/WORK_LOG.md": {
+    "mtime": 1794666250.7639737,
+    "ast_hash": "3cd843328b6a08ca3b5f57ac99cfa964",
+    "semantic_hash": ""
+  },
+  "docs/SKILLS.md": {
+    "mtime": 1794666250.7654476,
+    "ast_hash": "88425b6b97de75d8e84b60494ccaa6d7",
+    "semantic_hash": ""
+  },
+  "docs/plans/backend-plan.md": {
+    "mtime": 1794667949.45582,
+    "ast_hash": "1a157b4d490e742babda179f9a46fb4f",
+    "semantic_hash": ""
   }
 }
