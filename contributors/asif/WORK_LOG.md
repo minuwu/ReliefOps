@@ -4,6 +4,26 @@ Owner: Asif (`MdAsif-Hossain`) — Role: Backend / Services / Database — Branc
 
 Use this log to share progress, planned work, and dependencies with the team. Update it after each work session, keep the newest entry first, and use Bangladesh time (UTC+6). Link to relevant issues, commits, or pull requests when available.
 
+## 2026-11-14 (session 6)
+
+### Completed
+- Wrote [contributors/galib/suggested_by_backend_team.md](../galib/suggested_by_backend_team.md), the AI suggestions for Galib:
+  - who owns what
+  - extraction (confidence, evidence, the injection test, held-out measurement)
+  - the case assistant (synthetic bluebooks with a `victim_facing`/`staff_only` tag, how to split them, answer rules, golden set, leak and refusal tests)
+  - cost limits and failure behaviour
+  - open questions and an hour-by-hour order
+- Reviewed the whole system (22 findings) and then the backend in depth. The backend review found:
+  - migrations and seed would run as `app_user`
+  - background jobs have no database scope
+  - database connections would be held open during 20 s AI calls
+  - tests that run as superuser would skip the database rules, among others
+
+### Next
+- Apply the agreed fixes to the plan and the contract (v0.4.0).
+
+---
+
 ## 2026-11-14 (session 5)
 
 ### Completed
