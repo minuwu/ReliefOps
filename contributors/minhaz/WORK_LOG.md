@@ -4,6 +4,32 @@ Owner: Minhaz (`minuwu`) — Role: Frontend / Full-Stack / Architecture — Bran
 
 Use this log to share progress, planned work, and dependencies with the team. Update it after each work session, keep the newest entry first, and use Bangladesh time (UTC+6). Link to relevant issues, commits, or pull requests when available.
 
+## 2026-11-14 (evening) — repo quality pass
+
+### Completed
+- Repo-wide cleanup: all doc links relative (were absolute `file:///` paths that only worked on one machine); removed `initial.md` and the `minhaz.md` stub.
+- Contributor logs moved to `contributors/<name>/WORK_LOG.md` with `contributors/_template/` for newcomers.
+- `AGENTS.md` rewritten: Step 0 (XREQ) + Step 1 (mandatory skills) + Step 2 (graphify first); fake `XREQ-001` proof replaced by a labelled example; `USE_MOCK` toggle bug fixed; branch rule `<name>/<topic>` → PR, no direct `main` pushes.
+- Agent pointer files added: `CLAUDE.md`, `GEMINI.md`, `.cursor/rules/agents.mdc`, `.github/copilot-instructions.md`.
+- 13 skills installed into `.claude/skills/` (pinned in `skills-lock.json`); catalog + routing in `docs/SKILLS.md`.
+- `docs/API_SPEC.md` made self-consistent (every endpoint uses the envelope; status legend added).
+- `.gitignore` fixed (no longer ignores `lib/`; graphify machine-specific files excluded), `.gitattributes` added (LF for hooks/scripts).
+- Pre-push hook hardened: refuses dirty tree, blocks direct push to `main`, clearer re-push message.
+- `scripts/setup.sh` / `scripts/setup.ps1` one-shot onboarding; `TEAM_INSTRUCTIONS.md` now a real human guide with per-person checklists.
+- Knowledge graph built with graphify (`graphify-out/`), committed for agent use.
+
+### Next
+- Hour-0: scaffold `frontend/` with env-driven mock toggle; deploy hello-world to Vercel.
+- Agree stack with Asif (HACKATHON_PRESETUP §2) and fill `docs/API_SPEC.md` with real endpoints.
+
+### Blockers / handoff
+- Asif: run `scripts/setup`, read `AGENTS.md` §4.2 and `docs/SKILLS.md`, scaffold `backend/` with CORS + `/api/health`.
+
+### Related issues / commits / PRs
+- [AGENTS.md](../../AGENTS.md) · [docs/SKILLS.md](../../docs/SKILLS.md) · [TEAM_INSTRUCTIONS.md](../../TEAM_INSTRUCTIONS.md)
+
+---
+
 ## 2026-11-14
 
 ### Completed
