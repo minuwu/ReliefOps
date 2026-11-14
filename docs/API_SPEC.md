@@ -1,6 +1,6 @@
 # API Specification (Shared Contract)
 
-**Version** 0.4.0 (draft) · **Updated** 2026-11-14 · **Owner** Asif (Backend)
+**Version** 0.4.1 (draft) · **Updated** 2026-11-14 · **Owner** Asif (Backend)
 
 This is the **single source of truth** for the API between Frontend, Backend and AI. Build against it now using mocks. From now on, any change goes through an `XREQ` in [AGENTS.md](../AGENTS.md). Never rename a field silently.
 
@@ -308,6 +308,7 @@ interface User {
   role: Role;
   bank_id: string | null;            // set only for bank_viewer
   email_verified: boolean;
+  is_active: boolean;                // false once a supervisor deactivates the user (§6.1)
 }
 
 interface Victim {
@@ -639,14 +640,15 @@ Response `200`:
       "email": "operator1@opscenter.test",
       "role": "operator",
       "bank_id": null,
-      "email_verified": true
+      "email_verified": true,
+      "is_active": true
     }
   },
   "message": "Login successful"
 }
 ```
 
-Staff and victims use the same login. Errors: `401 INVALID_CREDENTIALS`, `403 EMAIL_NOT_VERIFIED` (victim), `422 VALIDATION_ERROR`, `429 RATE_LIMITED` (5 failed attempts per IP or email within 15 minutes). Successful and failed logins are both audited.
+Staff and victims use the same login. A deactivated account gets the same `401 INVALID_CREDENTIALS` as a wrong password. Errors: `401 INVALID_CREDENTIALS`, `403 EMAIL_NOT_VERIFIED` (victim), `422 VALIDATION_ERROR`, `429 RATE_LIMITED` (5 failed attempts per IP or email within 15 minutes). Successful and failed logins are both audited.
 
 #### `GET /api/auth/me` · logged in
 
@@ -700,11 +702,13 @@ Response `200`: `data` is `Invitation[]`.
 
 #### `POST /api/invitations/{invitation_id}/revoke` · supervisor
 
-Response `200`: `data` is the `Invitation` with `status: "revoked"`. Errors: `404`, `409` (already accepted).
+Only a `pending` invitation can be revoked. Response `200`: `data` is the `Invitation` with `status: "revoked"`.
+
+Errors: `404`, and `409 INVALID_STATUS_TRANSITION` when it's no longer pending (accepted, revoked or expired), with `details: { "from": "accepted", "to": "revoked", "allowed": [] }`.
 
 #### `PATCH /api/users/{user_id}` · supervisor
 
-`{ "is_active": false }` → `200`, `data` is the `User`. Deactivating ends all of that user's sessions. A supervisor can't deactivate themselves (`422`).
+`{ "is_active": false }` → `200`, `data` is the `User` with `is_active: false`. Deactivating ends all of that user's sessions; `{ "is_active": true }` reactivates. A supervisor can't deactivate themselves (`422`).
 
 ---
 
@@ -730,7 +734,7 @@ Response `200`: `data` is `Bank[]` (all five banks, for the intake form's dropdo
 
 #### `GET /api/users?role=operator` · operator, supervisor
 
-Response `200`: `data` is `User[]`, not paginated. Used for the "assign owner" dropdown.
+Response `200`: `data` is `User[]`, not paginated. Used for the "assign owner" dropdown. Only active users are returned; a supervisor can add `include_inactive=true` to also see deactivated users (the user-management screen, for reactivation). Operators can't use `include_inactive`; it's ignored for them.
 
 ---
 
@@ -738,7 +742,7 @@ Response `200`: `data` is `User[]`, not paginated. Used for the "assign owner" d
 
 #### `POST /api/victim/cases` · victim (verified email) · rate-limited
 
-The victim's report form. It creates a case in `received` with `channel: "web_form"`, linked to the victim's account. `victim.email` defaults to the account email.
+The victim's report form. It creates a case in `received` with `channel: "web_form"`, linked to the victim's account. If `victim.email` is left out or `null`, the server fills in the account's verified email, so the case always has a contact.
 
 Request:
 ```json
@@ -762,7 +766,7 @@ Request:
 }
 ```
 
-- **Required:** `bank_id`, `victim.name`, `victim.phone` or `victim.email`, `amount`, `transfer_date`, `scam_type`, and `consent: true`.
+- **Required:** `bank_id`, `victim.name`, `amount`, `transfer_date`, `scam_type`, and `consent: true`. `victim.phone` and `victim.email` are optional because the email defaults to the account's.
 - **Optional:** `account_number`, since the victim may not know it yet. A missing account number shows up in `flags.missing_fields`.
 
 Response `201`: `data` is the new `VictimCase` (§4). The frontend should disable the submit button while sending; repeated reports are flagged with `flags.possible_duplicate` for staff.
@@ -1059,10 +1063,10 @@ To accept, send the values the person approves (edited or not). **Only the field
 }
 ```
 
-To reject, send a note. The case is unchanged.
+To reject, send a note. The case is unchanged, but `expected_version` is still required (like every review, §1).
 
 ```json
-{ "decision": "reject", "note": "Wrong document — this is another victim's receipt." }
+{ "decision": "reject", "expected_version": 3, "note": "Wrong document — this is another victim's receipt." }
 ```
 
 Response `200`:
@@ -1435,6 +1439,7 @@ To get a specific response, send a `Prefer` header:
 
 | Version | Date | Change |
 | :--- | :--- | :--- |
+| 0.4.1 | 2026-11-15 | Fixes where this file and `openapi.yaml` disagreed. Additive only. Reject-review example now sends `expected_version` (it was always required). `POST /api/victim/cases` no longer requires a phone or email, since `victim.email` defaults to the account's verified email. Revoking a non-pending invitation now returns a documented `409 INVALID_STATUS_TRANSITION`. `User` gains `is_active`; `GET /api/users` gains `include_inactive` (supervisor) so deactivated users can be found and reactivated; deactivated logins get `401 INVALID_CREDENTIALS`. |
 | 0.4.0 | 2026-11-14 | **Breaking for victim screens.** Accounts for everyone (D15): victim sign-up, email verification, logout, forgot/reset password, staff invitations, deactivation; victim routes are now `/api/victim/cases/...`; access codes, `/api/intake` and `/api/victim/session` removed. Also: `version` + `expected_version` → `409 STALE_CASE`; `409 CASE_CLOSED`; PATCH rules; realistic stage durations; money as JSON numbers; `Retry-After`; `payout_amount`; `possible_duplicate`; bluebook `audience`; download headers; deduplicated view audit; opaque tokens; no path versioning. |
 | 0.3.0 | 2026-11-14 | Case assistant (RAG, D14): victim chat (§6.7), staff chat view and reply, and per-bank bluebook management (§6.8); rules in §3.6; AI interface in §7.2. New: `flags.victim_question_pending`, `rag` in health, chat and bluebook audit actions. Additive only. |
 | 0.2.0 | 2026-11-14 | Victim self-service (§3.5, §6.7): `POST /api/victim/session`, `GET`/`PATCH /api/victim/case`, and staff `POST /api/cases/{id}/victim-access`. Intake now also returns `access_code`. New: error `CASE_LOCKED`, actor type `victim`, audit action `case.access_code_issued`. Additive only; nothing existing was renamed or removed. |

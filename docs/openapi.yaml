@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Fraud Relief Case API
-  version: 0.4.0
+  version: 0.4.1
   summary: Shared operations center for fraud-victim relief cases across five banks.
   description: 'Machine-readable twin of [docs/API_SPEC.md](./API_SPEC.md). Change both in the same PR.
 
@@ -124,6 +124,7 @@ paths:
                   role: operator
                   bank_id: null
                   email_verified: true
+                  is_active: true
                 message: ok
         '401':
           $ref: '#/components/responses/Unauthorized'
@@ -439,7 +440,7 @@ paths:
       - auth
       operationId: revokeInvitation
       summary: Revoke a pending invitation (supervisor)
-      description: The link stops working.
+      description: The link stops working. Only a `pending` invitation can be revoked; any other status returns 409.
       responses:
         '200':
           description: Revoked
@@ -466,6 +467,21 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '409':
+          description: The invitation is no longer pending (already accepted, revoked or expired)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              example:
+                success: false
+                error:
+                  code: INVALID_STATUS_TRANSITION
+                  message: This invitation was already accepted and can't be revoked
+                  details:
+                    from: accepted
+                    to: revoked
+                    allowed: []
   /api/users/{user_id}:
     parameters:
     - name: user_id
@@ -504,6 +520,7 @@ paths:
                   role: operator
                   bank_id: null
                   email_verified: true
+                  is_active: false
                 message: User deactivated
         '401':
           $ref: '#/components/responses/Unauthorized'
@@ -584,13 +601,20 @@ paths:
       tags:
       - reference
       operationId: listUsers
-      summary: Staff list (assign-owner dropdown)
-      description: Operator and supervisor only. Not paginated.
+      summary: Staff list (assign-owner dropdown, user management)
+      description: Operator and supervisor only. Not paginated. Returns active users only, unless a supervisor passes `include_inactive=true`
+        to see deactivated users too (for reactivation).
       parameters:
       - name: role
         in: query
         schema:
           $ref: '#/components/schemas/Role'
+      - name: include_inactive
+        in: query
+        description: Supervisor only; ignored for operators.
+        schema:
+          type: boolean
+          default: false
       responses:
         '200':
           description: Users
@@ -607,12 +631,14 @@ paths:
                   role: operator
                   bank_id: null
                   email_verified: true
+                  is_active: true
                 - id: 33333333-3333-4333-8333-333333333333
                   name: Operator Two
                   email: operator2@opscenter.test
                   role: operator
                   bank_id: null
                   email_verified: true
+                  is_active: true
                 message: ok
         '401':
           $ref: '#/components/responses/Unauthorized'
@@ -1848,8 +1874,8 @@ paths:
       - victim
       operationId: createVictimCase
       summary: Victim submits a fraud report (verified email)
-      description: Creates a case in received, linked to the account of the victim. Disable the submit button while sending;
-        repeats are flagged with possible_duplicate.
+      description: Creates a case in received, linked to the account of the victim. `victim.email` defaults to the account's
+        verified email when omitted or null. Disable the submit button while sending; repeats are flagged with possible_duplicate.
       requestBody:
         required: true
         content:
@@ -2561,6 +2587,7 @@ components:
       - role
       - bank_id
       - email_verified
+      - is_active
       properties:
         id:
           type: string
@@ -2579,6 +2606,10 @@ components:
           - type: 'null'
         email_verified:
           type: boolean
+        is_active:
+          type: boolean
+          description: False once a supervisor deactivates the user (`PATCH /api/users/{user_id}`). A deactivated user can't
+            log in.
     Health:
       type: object
       required:
@@ -3319,20 +3350,10 @@ components:
         preferred_language:
           $ref: '#/components/schemas/Language'
     IntakeVictim:
-      description: Like VictimInput, but needs a phone or an email.
+      description: Like VictimInput. If `email` is omitted or null, the server sets it to the account's verified email, so
+        the case always has a contact and phone and email are both optional here.
       allOf:
       - $ref: '#/components/schemas/VictimInput'
-      anyOf:
-      - required:
-        - phone
-        properties:
-          phone:
-            type: string
-      - required:
-        - email
-        properties:
-          email:
-            type: string
     IntakeRequest:
       type: object
       additionalProperties: false
@@ -4670,6 +4691,7 @@ components:
             role: operator
             bank_id: null
             email_verified: true
+            is_active: true
         message: Login successful
     CaseListOk:
       summary: Three cases from different banks and stages
