@@ -11,6 +11,7 @@ sh scripts/setup.sh      # Windows: powershell -ExecutionPolicy Bypass -File scr
 
 | Read | Why |
 | :--- | :--- |
+| [docs/problem-statements/hackathon-1-safer-banking/](docs/problem-statements/hackathon-1-safer-banking/README.md) | **The problem we are solving**: brief, MVP, rules, judging |
 | [TEAM_INSTRUCTIONS.md](TEAM_INSTRUCTIONS.md) | Human onboarding, daily loop, per-person checklists, kickoff agenda |
 | [AGENTS.md](AGENTS.md) | **Agent protocol**: `XREQ` cross-team queue (Step 0), mandatory skills (Step 1), graph-first (Step 2), git rules |
 | [docs/SKILLS.md](docs/SKILLS.md) | Which skill an agent must load for which task; how to add more |

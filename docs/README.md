@@ -15,14 +15,17 @@ Welcome to the documentation hub for **BJET-Hackathon**. All architectural plans
 | **[HACKATHON_PRESETUP.md](../HACKATHON_PRESETUP.md)** | Architecture options, stack recommendation, contract-first guide | Entire Team |
 | **[docs/SKILLS.md](SKILLS.md)** | Mandatory agent skill packs: routing table, catalog, how to add | AI Agents & Developers |
 | **[docs/API_SPEC.md](../docs/API_SPEC.md)** | Shared API contract ledger, data models & endpoints | Frontend & Backend |
+| **[docs/diagrams/](../docs/diagrams/)** | Excalidraw diagrams (`use-cases.excalidraw`: use cases derived from the API spec) | Entire Team |
 | **[docs/plans/](../docs/plans/)** | Architecture plans, RFCs, and agent design artifacts | Product & Architecture |
 | ├── [cross-functional-protocol-plan.md](../docs/plans/cross-functional-protocol-plan.md) | Architectural plan for cross-functional queue & agent priority | Architecture & Agents |
 | └── [backend-plan.md](../docs/plans/backend-plan.md) | Backend, database & devops plan: decisions, data model, bank separation, AI failure plan, milestones | Backend, AI & Frontend |
-| **[docs/problem-statements/](../docs/problem-statements/)** | Hackathon problem statements | Entire Team |
-| └── [hackathon-1-safer-banking](../docs/problem-statements/hackathon-1-safer-banking/Hackathon_1_Explained.md) | Practice brief: shared scam-relief operations center for 5 banks (MVP, rules, judging) | Entire Team |
+| **[docs/problem-statements/](../docs/problem-statements/)** | Hackathon problem statements (what we are building and how it is judged) | Entire Team |
+| └── [hackathon-1-safer-banking/](../docs/problem-statements/hackathon-1-safer-banking/README.md) | Practice brief: shared scam-relief operations center for 5 banks (MVP, rules, judging) | Entire Team |
 | **[contributors/](../contributors/)** | One folder per teammate with `WORK_LOG.md`; `_template/` for newcomers | Entire Team |
 | **[contributors/minhaz/WORK_LOG.md](../contributors/minhaz/WORK_LOG.md)** | Minhaz's active sprint log & handoffs | Minhaz & Collaborators |
 | **[contributors/asif/WORK_LOG.md](../contributors/asif/WORK_LOG.md)** | Asif's active sprint log & handoffs | Asif & Collaborators |
+| **[contributors/anim/WORK_LOG.md](../contributors/anim/WORK_LOG.md)** | Anim's active sprint log & handoffs | Anim & Collaborators |
+| **[contributors/galib/WORK_LOG.md](../contributors/galib/WORK_LOG.md)** | Galib's active sprint log & handoffs | Galib & Collaborators |
 
 ---
 
