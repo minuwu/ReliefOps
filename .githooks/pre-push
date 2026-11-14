@@ -19,6 +19,19 @@ echo "=========================================================="
 echo " [pre-push hook] Syncing repo before push: branch '$branch'..."
 echo "=========================================================="
 
+# Refuse to auto-merge over uncommitted changes: a merge would mix them in or fail halfway.
+if ! git diff-index --quiet HEAD -- 2>/dev/null; then
+    echo " [pre-push hook] ERROR: uncommitted changes in working tree."
+    echo " Commit or stash them, then push again."
+    exit 1
+fi
+
+# Never auto-merge into main; main only moves via pull requests.
+if [ "$branch" = "main" ]; then
+    echo " [pre-push hook] ERROR: direct push to 'main' is blocked. Open a PR from a '<name>/<topic>' branch."
+    exit 1
+fi
+
 # Fetch latest from remote
 git fetch "$remote" 2>/dev/null
 
@@ -56,8 +69,13 @@ if [ "$merged_anything" -eq 1 ]; then
     echo " [pre-push hook] New changes merged into $branch successfully."
     echo " [pre-push hook] Updating push target to include new merge commit..."
     export PRE_PUSH_RUNNING=1
-    git push "$remote" "$branch"
-    exit 1  # Abort original stale push instance since new push completed
+    if git push "$remote" "$branch"; then
+        echo " [pre-push hook] Push completed with merged changes."
+        echo " [pre-push hook] The 'failed to push' line below is expected: the original, stale push is cancelled."
+    else
+        echo " [pre-push hook] ERROR: re-push failed. Fix and run git push again."
+    fi
+    exit 1  # Abort the original (stale) push; the re-push above already delivered the merge commit.
 fi
 
 echo " [pre-push hook] Branch '$branch' is fully synced with $remote. Proceeding with push."
