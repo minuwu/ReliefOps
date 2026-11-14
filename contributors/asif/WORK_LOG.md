@@ -4,6 +4,22 @@ Owner: Asif (`MdAsif-Hossain`) — Role: Backend / Services / Database — Branc
 
 Use this log to share progress, planned work, and dependencies with the team. Update it after each work session, keep the newest entry first, and use Bangladesh time (UTC+6). Link to relevant issues, commits, or pull requests when available.
 
+## 2026-11-14 (session 8)
+
+### Completed
+- Installed the `backend-design-review` skill into the repo (`npx skills add … -a claude-code --copy -y`), read it in full (Markdown only, no scripts) and registered it in docs/SKILLS.md.
+- Wrote [docs/plans/backend-design-review.md](../../docs/plans/backend-design-review.md): 0 new critical, 5 high, 8 medium, 6 low; 16 action items with owners and phases.
+  - **H1:** circuit breaker for the AI provider.
+  - **H2:** align the plan with guide v1.1 (database users, enums, HNSW, file table, `version`).
+  - **H3:** apply contract v0.4.0.
+  - **H4:** check the user against the database on every request, plus `token_version`.
+  - **H5:** decide D2.
+
+### Next
+- One PR (Minhaz approves): contract v0.4.0 + plan alignment + versioning decision + shared 500 response (review items 1–5).
+
+---
+
 ## 2026-11-14 (session 7)
 
 ### Completed

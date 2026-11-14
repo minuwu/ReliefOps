@@ -18,6 +18,7 @@ Welcome to the documentation hub for **BJET-Hackathon**. All architectural plans
 | └── [openapi.yaml](../docs/openapi.yaml) | Machine-readable contract (OpenAPI 3.1); runs as a mock API at `localhost:4010` with no backend | Frontend, Backend & AI |
 | **[docs/plans/](../docs/plans/)** | Architecture plans, RFCs, and agent design artifacts | Product & Architecture |
 | ├── [cross-functional-protocol-plan.md](../docs/plans/cross-functional-protocol-plan.md) | Architectural plan for cross-functional queue & agent priority | Architecture & Agents |
+| ├── [backend-design-review.md](../docs/plans/backend-design-review.md) | Backend design review (severity-rated findings, action items) | Backend |
 | ├── [backend-development-guide.md](../docs/plans/backend-development-guide.md) | How Asif and Anim build and test the backend: work split, phases, CRUD recipe, testing (pytest, curl, contract), Definition of Done | Backend |
 | └── [backend-plan.md](../docs/plans/backend-plan.md) | Backend, database & devops plan: decisions, data model, bank separation, AI failure plan, milestones | Backend, AI & Frontend |
 | **[docs/problem-statements/](../docs/problem-statements/)** | Hackathon problem statements | Entire Team |
