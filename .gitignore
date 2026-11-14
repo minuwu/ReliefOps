@@ -67,3 +67,4 @@ graphify-out/.graphify_root
 graphify-out/.graphify_*.json
 graphify-out/.graphify_*.txt
 graphify-out/.needs_update
+!graphify-out/.graphify_build.json
