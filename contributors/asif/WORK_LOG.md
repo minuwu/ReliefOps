@@ -4,6 +4,22 @@ Owner: Asif (`MdAsif-Hossain`) — Role: Backend / Services / Database — Branc
 
 Use this log to share progress, planned work, and dependencies with the team. Update it after each work session, keep the newest entry first, and use Bangladesh time (UTC+6). Link to relevant issues, commits, or pull requests when available.
 
+## 2026-11-14 (session 7)
+
+### Completed
+- Wrote [docs/plans/backend-development-guide.md](../../docs/plans/backend-development-guide.md):
+  - work split between Asif and Anim, by area and by file
+  - phases with hour-14 and hour-30 gates
+  - setup, layers and shared interfaces, 13 endpoint rules, the CRUD recipe and database rules
+  - testing: unit, API, database rules, permission table, AI failure, Prism contract proxy, curl for Git Bash and PowerShell, smoke script
+  - Definition of Done; contract changes C1–C11 for v0.4.0
+- Merged `asif/api-contract` into `main`: contract v0.3.0, openapi.yaml, backend plan, the updated use-case diagram, Galib's suggestions, this guide.
+
+### Next
+- Phase 0: contract v0.4.0 (C1–C4, C7) and agreeing the shared interfaces with Anim.
+
+---
+
 ## 2026-11-14 (session 6)
 
 ### Completed
