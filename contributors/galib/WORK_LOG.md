@@ -4,6 +4,29 @@ Owner: Galib (`Ga-lib`) — Role: AI / LLM — Branches: `galib/*`
 
 Update after each work session. Newest entry first. Bangladesh time (UTC+6). Link commits/PRs/XREQs.
 
+## 2026-11-15 — case assistant AI functions, bluebooks and eval (D14, API_SPEC §7.2)
+
+### Completed
+- `backend/app/services/rag.py`: `split_bluebook` (numbered sections; bold-only headings in PDFs so wrapped "3 January…" lines stay body text; title starts each passage), `embed` (Gemini `gemini-embedding-001`, 768-dim, unit length, `task="query"` for questions), `answer` (Groq gpt-oss-120b → qwen3.8-27b → Gemini 3.1 Flash-Lite, 15 s budget).
+- Code checks on every answer: grounded must cite passages it was given, else `no_answer` + staff; refused/no_answer cite nothing; disclaimer always once; ≤120 words; "talk to a person" goes to staff without a model; case context allow-listed again (no names, phones, accounts reach the model).
+- `backend/app/services/ai_quota.py`: shared rate-limit memory for extraction and chat (Gemini `retryDelay`, Groq "try again in Xs").
+- Prompts `answer-v1`, `answer-v2` (v2: never claim something is NOT offered unless a passage says so).
+- `backend/seed_data/bluebooks/`: 5 synthetic bluebooks (2 pages, 14 sections each, deliberate differences), `kb_passages.json` fixture (70 passages with vectors) and a README for the seed.
+- `backend/eval/assistant/`: 30 golden, 10 cross-bank leak, 5 refusal, 1 staff question; scorer with in-memory bank-filtered hybrid retrieval.
+- Tests: 108 passed.
+
+### Measured (prompt v2)
+- Retrieval: right section in top 3, **30 of 30**. Grounded with right citation and fact: **29 of 30** (miss = all models rate-limited).
+- **Cross-bank leaks: 0 of 10**; 10 of 10 returned `no_answer`.
+- Refusals 4 of 5: "How much money will I get back?" was answered without a promise instead of refused; team to decide.
+- Median answer 0.9 s.
+
+### Next
+- Asif: `kb_passages` table (`vector(768)`), seed from `kb_passages.json`, call `rag.embed(..., task="query")` and `rag.answer(...)`; `passages_only` on `AIUnavailableError`.
+- Bluebooks are 2 pages, not the 4–6 in backend-plan §6; extend if judges need it.
+
+---
+
 ## 2026-11-15 — labelled eval set and measured accuracy (XREQ-002, step 3)
 
 ### Completed

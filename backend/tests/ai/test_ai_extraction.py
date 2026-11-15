@@ -10,6 +10,7 @@ from typing import Any
 import pytest
 
 from app.services import ai_extraction as ai
+from app.services import ai_quota
 from app.services import extraction_engine as engine
 from app.services.ai_errors import AIUnavailableError
 
@@ -52,7 +53,7 @@ def providers(monkeypatch: pytest.MonkeyPatch) -> Fakes:
     monkeypatch.setattr(ai, "CHAIN", (ai.Provider("fake", "first", 5), ai.Provider("fake", "second", 5)))
     monkeypatch.setitem(ai.ASKERS, "fake", fakes.ask)
     monkeypatch.setattr(ai, "_load_env", lambda: None)
-    monkeypatch.setattr(ai, "_used_up", {})
+    ai_quota.reset()
     return fakes
 
 
@@ -231,4 +232,4 @@ def test_a_used_up_model_is_skipped_until_its_reset(providers: Fakes) -> None:
 def test_other_errors_do_not_mark_a_model_used_up(providers: Fakes) -> None:
     providers.replies["first"] = RuntimeError("503 UNAVAILABLE high demand")
     ai.extract_fields(SLIP_TEXT.encode(), "text/plain", "x")
-    assert "first" not in ai._used_up
+    assert ai_quota.seconds_left("first") == 0

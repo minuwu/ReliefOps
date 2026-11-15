@@ -37,6 +37,7 @@ from functools import cache
 from pathlib import Path
 from typing import Any, Final
 
+from app.services import ai_quota
 from app.services.ai_errors import AIUnavailableError
 
 PROMPT_VERSION: Final = "extract-v2"  # v2: keep company markers in names; masked/unclear values left out
@@ -335,21 +336,6 @@ def build_fields(answer: dict[str, Any], local_text: str) -> list[dict[str, Any]
 # at its cap. An abandoned call finishes in the background; its answer is discarded.
 _POOL: Final = ThreadPoolExecutor(max_workers=8, thread_name_prefix="ai-provider")
 
-# Free tiers cap requests per model (Gemini: 20/day). After a 429 we skip that model until the reset
-# the provider reports, instead of spending budget on a certain failure. Per process; resets on restart.
-_used_up: dict[str, float] = {}
-QUOTA_DEFAULT_WAIT: Final = 60.0
-QUOTA_MAX_WAIT: Final = 24 * 3600.0
-
-
-def _note_quota(model: str, message: str) -> None:
-    if "429" not in message and "RESOURCE_EXHAUSTED" not in message and "rate limit" not in message.lower():
-        return
-    delay = re.search(r"retryDelay'?\"?:\s*'?\"?(\d+(?:\.\d+)?)s", message)
-    wait = min(float(delay.group(1)), QUOTA_MAX_WAIT) if delay else QUOTA_DEFAULT_WAIT
-    _used_up[model] = time.monotonic() + wait
-
-
 def extract_fields(file_bytes: bytes, mime_type: str, doc_type: str) -> dict[str, Any]:
     """API_SPEC §7.1. Returns {"fields": [...], "model": ..., "prompt_version": ...}.
 
@@ -362,8 +348,8 @@ def extract_fields(file_bytes: bytes, mime_type: str, doc_type: str) -> dict[str
     page = read_document(file_bytes, mime_type)
     errors: list[str] = []
     for provider in CHAIN:
-        if (until := _used_up.get(provider.model, 0.0)) > time.monotonic():
-            errors.append(f"{provider.model}: quota used up, {int(until - time.monotonic())} s left")
+        if wait := ai_quota.seconds_left(provider.model):  # rate-limited earlier: skip, don't spend budget
+            errors.append(f"{provider.model}: quota used up, {int(wait)} s left")
             continue
         left = BUDGET_SECONDS - (time.monotonic() - started)
         if left < MIN_ATTEMPT_SECONDS:
@@ -376,7 +362,7 @@ def extract_fields(file_bytes: bytes, mime_type: str, doc_type: str) -> dict[str
             errors.append(f"{provider.model}: {exc}")
             continue
         except Exception as exc:  # noqa: BLE001 - rate limit, overload, timeout, bad JSON: try the next one
-            _note_quota(provider.model, str(exc))
+            ai_quota.note_failure(provider.model, str(exc))
             errors.append(f"{provider.model}: {type(exc).__name__} {str(exc)[:60]}".rstrip())
             continue
         return {"fields": build_fields(answer, page.text), "model": provider.model, "prompt_version": PROMPT_VERSION}
