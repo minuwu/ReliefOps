@@ -313,19 +313,19 @@ Provides the showstopper feature for hackathon judging: uncovering organized cri
 
 ```mermaid
 flowchart TD
-    Start([Agent Initiated]) --> Step0[Step 0: Read AGENTS.md Section 2]
-    Step0 --> CheckQueue{Any PENDING request<br/>for my team?}
-    CheckQueue -- YES --> Claim[Mark IN_PROGRESS]
-    Claim --> Skill1[Step 1: Load matching skill]
-    Skill1 --> Implement[Implement endpoint / model / UI]
-    Implement --> Verify[Verify: test or curl]
-    Verify --> Document[Fill Fulfillment, mark RESOLVED]
-    Document --> Commit[Commit: fix: fulfill XREQ-XXX]
-    Commit --> Backlog[Resume backlog]
-    CheckQueue -- NO --> Skill2[Step 1: Load matching skill]
-    Skill2 --> Graph[Step 2: graphify query for context]
-    Graph --> ReadLog[Read contributor WORK_LOG.md + task]
-    ReadLog --> Work[Execute planned work]
+    Start(["Agent Initiated"]) --> Step0["Step 0: Read AGENTS.md Section 2"]
+    Step0 --> CheckQueue{"Any PENDING request<br/>for my team?"}
+    CheckQueue -- YES --> Claim["Mark IN_PROGRESS"]
+    Claim --> Skill1["Step 1: Load matching skill"]
+    Skill1 --> Implement["Implement endpoint / model / UI"]
+    Implement --> Verify["Verify: test or curl"]
+    Verify --> Document["Fill Fulfillment, mark RESOLVED"]
+    Document --> Commit["Commit: fix: fulfill XREQ-XXX"]
+    Commit --> Backlog["Resume backlog"]
+    CheckQueue -- NO --> Skill2["Step 1: Load matching skill"]
+    Skill2 --> Graph["Step 2: graphify query for context"]
+    Graph --> ReadLog["Read contributor WORK_LOG.md + task"]
+    ReadLog --> Work["Execute planned work"]
 ```
 
 ### 3.1 Step 0 — Check the XREQ Queue

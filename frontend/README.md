@@ -1,7 +1,6 @@
 # ReliefOps — Frontend Client
 
-> 🚀 **Live Production Deployment**: **[https://reliefops.web.app](https://reliefops.web.app)**  
-> 📦 **GitHub Release**: **[v1.0.0 Releases](https://github.com/minuwu/BJET-Hackathon/releases)**
+> 🚀 **Live Production Deployment**: **[https://reliefops.web.app](https://reliefops.web.app)**
 
 Production-grade, accessible, and responsive user interface for the **Multi-Bank Fraud Victim Relief Operations Center**, built strictly to the shared API contract in [`docs/API_SPEC.md`](../docs/API_SPEC.md) (v0.3.0).
 

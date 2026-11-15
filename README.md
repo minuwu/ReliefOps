@@ -1,8 +1,7 @@
 # 🛡️ ReliefOps — Shared Operations Hub for Furikomi Scam Relief
 
 > **Act on Special Measures Concerning Relief for Victims of Transfer Frauds (Act No. 133 of 2007)**  
-> 🚀 **Live Production Deployment**: **[https://reliefops.web.app](https://reliefops.web.app)** *(Mirror: [https://reliefops.firebaseapp.com](https://reliefops.firebaseapp.com))*  
-> 📦 **GitHub Release**: **[v1.0.0 Releases](https://github.com/minuwu/BJET-Hackathon/releases)**
+> 🚀 **Live Production Deployment**: **[https://reliefops.web.app](https://reliefops.web.app)** *(Mirror: [https://reliefops.firebaseapp.com](https://reliefops.firebaseapp.com))*
 
 Monorepo for the team: frontend, backend, AI, docs, and the agent protocol that keeps three workstreams unblocked. Contract-first parallel development, automated pre-push sync, committed agent skills, and a knowledge graph for agentic coding.
 

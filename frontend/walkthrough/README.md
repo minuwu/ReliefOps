@@ -2,8 +2,7 @@
 ### End-to-End Scenario Walkthrough & Interactive Demo Guide
 > **Japanese Furikomi Fraud Relief Act (Law No. 133 / 振り込め詐欺救済法)**  
 > *A unified, multi-tenant operations center shared across 5 regional banks, featuring Human-In-The-Loop AI vision OCR, real-time syndicate graph detection, and strict zero-leakage bank privacy.*  
-> 🚀 **Live Production App**: **[https://reliefops.web.app](https://reliefops.web.app)** *(Mirror: [https://reliefops.firebaseapp.com](https://reliefops.firebaseapp.com))*  
-> 📦 **GitHub Release**: **[v1.0.0 Releases](https://github.com/minuwu/BJET-Hackathon/releases)**
+> 🚀 **Live Production App**: **[https://reliefops.web.app](https://reliefops.web.app)** *(Mirror: [https://reliefops.firebaseapp.com](https://reliefops.firebaseapp.com))*
 
 ---
 
@@ -61,33 +60,33 @@ The web application features an **In-App Demo Walkthrough & Scenario Launcher**:
 ```mermaid
 flowchart TD
     subgraph Citizens["Public Internet (Citizen Domain)"]
-        V[Victim / Citizen] -->|Files Claim / Uploads Voucher| VP[Victim Portal /victim]
-        VP -->|1-Click PIN Auth| VT[6-Stage Progress Tracker & 2-Way Chat]
+        V["Victim / Citizen"] -->|"Files Claim & Uploads Voucher"| VP["Victim Portal (/victim)"]
+        VP -->|"1-Click PIN Auth"| VT["6-Stage Progress Tracker & 2-Way Chat"]
     end
 
     subgraph Gateway["Zero-Trust Multi-Tenant Gateway"]
-        VP -->|Sanitized Ingestion| API[FastAPI / Operations Hub Engine]
-        API -->|Role & Tenant Boundary Check| RBAC{Tenant RBAC Guard}
+        VP -->|"Sanitized Ingestion"| API["FastAPI / Operations Hub Engine"]
+        API -->|"Role & Tenant Boundary Check"| RBAC{"Tenant RBAC Guard"}
     end
 
     subgraph InternalOps["Shared Operations Center (5-Bank Hub)"]
-        RBAC -->|Operator Role| CW[Case Workstation /cases]
-        RBAC -->|Operator Role| HITL[HITL AI OCR Review Queue /review]
-        RBAC -->|Supervisor Role| CT[Supervisor Control Tower /dashboard]
-        RBAC -->|Bank Scoped Role| BV[Bank Tenant View Aster/Birch Only]
-        RBAC -->|Auditor Role| AL[Regulatory Audit Ledger /audit]
+        RBAC -->|"Operator Role"| CW["Case Workstation (/cases)"]
+        RBAC -->|"Operator Role"| HITL["HITL AI OCR Review Queue (/review)"]
+        RBAC -->|"Supervisor Role"| CT["Supervisor Control Tower (/dashboard)"]
+        RBAC -->|"Bank Scoped Role"| BV["Bank Tenant View (Aster/Birch Only)"]
+        RBAC -->|"Auditor Role"| AL["Regulatory Audit Ledger (/audit)"]
     end
 
     subgraph AI_Engine["Rule D3 AI Safeguards"]
-        CW -->|Voucher Image| OCR[Vision OCR Model]
-        OCR -->|Extracted Fields + Confidence %| HITL
-        HITL -->|Certified Operator Verification| API
+        CW -->|"Voucher Image"| OCR["Vision OCR Model"]
+        OCR -->|"Extracted Fields & Confidence Score"| HITL
+        HITL -->|"Certified Operator Verification"| API
     end
 
     subgraph CoreLedger["Consortium Data Tier"]
-        API --> DB[(Relief Database)]
-        API --> RING[Cross-Bank Fraud Syndicate Graph Engine]
-        API --> AUDIT[Tamper-Evident Immutable Audit Log]
+        API --> DB[("Relief Database")]
+        API --> RING["Cross-Bank Fraud Syndicate Graph Engine"]
+        API --> AUDIT["Tamper-Evident Immutable Audit Log"]
     end
 ```
 
@@ -115,16 +114,16 @@ Panicked, Haruto rushed to an ATM and wired the funds. Two hours later, upon cal
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Victim as Haruto Tanaka (Victim)
-    participant Portal as Citizen Portal (/victim)
-    participant Hub as Shared Operations Hub
-    participant AI as AI Vision OCR
+    actor Victim as "Haruto Tanaka (Victim)"
+    participant Portal as "Citizen Portal (/victim)"
+    participant Hub as "Shared Operations Hub"
+    participant AI as "AI Vision OCR"
 
-    Victim->>Portal: Enters Case ID RFR-2026-00042 & PIN
+    Victim->>Portal: Enters Case ID RFR-2026-00042 and PIN
     Portal->>Hub: Authenticates claim token
-    Hub-->>Portal: Returns verified claim & frozen funds status
+    Hub-->>Portal: Returns verified claim and frozen funds status
     Victim->>Portal: Observes 6-Stage Progress Stepper (Status: VERIFIED)
-    Victim->>Portal: Reads alert: ¥520,000 frozen at Birch Regional Bank
+    Victim->>Portal: Reads alert: 520,000 JPY frozen at Birch Regional Bank
     Victim->>Portal: Submits query in 2-Way Operator Chat
     Portal->>Hub: Relays message to assigned triage operator
 ```
@@ -162,17 +161,17 @@ Victims arriving without an existing claim can switch to the **`FILE REPORT`** t
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Op as Aoi Sato (Operator One)
-    participant UI as Case Workstation (/cases)
-    participant Drawer as Case Detail Drawer
-    participant Bank as Recipient Bank Desk
+    actor Op as "Aoi Sato (Operator One)"
+    participant UI as "Case Workstation (/cases)"
+    participant Drawer as "Case Detail Drawer"
+    participant Bank as "Recipient Bank Desk"
 
-    Op->>UI: Filters by SLA State: "Overdue" & "Approaching Deadline"
+    Op->>UI: Filters by SLA State: Overdue and Approaching Deadline
     UI-->>Op: Displays prioritized triage queue with ticking timers
-    Op->>UI: Clicks Case RFR-2026-00042 (Haruto Tanaka)
+    Op->>UI: Selects Case RFR-2026-00042 (Haruto Tanaka)
     UI->>Drawer: Opens Case Detail Drawer with full metadata
     Op->>Drawer: Inspects scammer account 9876543210 (Birch Bank)
-    Op->>Drawer: Clicks "Advance Status to Account Check"
+    Op->>Drawer: Advances Status to Account Check
     Drawer->>Bank: Dispatches emergency freeze notification
 ```
 
@@ -201,19 +200,19 @@ The AI vision OCR pipeline parsed the image, correctly extracting the transfer a
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Auditor as Operator Two (HITL Auditor)
-    participant Queue as HITL Review Queue (/review)
-    participant Modal as Optical Workbench Modal
-    participant Engine as Case Ledger
+    actor Auditor as "Operator Two (HITL Auditor)"
+    participant Queue as "HITL Review Queue (/review)"
+    participant Modal as "Optical Workbench Modal"
+    participant Engine as "Case Ledger"
 
-    Auditor->>Queue: Navigates to Low Confidence Lane (<85%)
+    Auditor->>Queue: Navigates to Low Confidence Lane (Under 85%)
     Queue-->>Auditor: Highlights voucher DOC-2026-0089 (68% Confidence)
-    Auditor->>Queue: Clicks "OPEN REVIEW WORKBENCH"
-    Queue->>Modal: Renders Facsimile (Left) + Extracted Fields (Right)
+    Auditor->>Queue: Clicks Open Review Workbench
+    Queue->>Modal: Renders Facsimile (Left) and Extracted Fields (Right)
     Auditor->>Modal: Inspects optical bounding box over account digits
-    Auditor->>Modal: Corrects ambiguous digit to "9876543210"
-    Auditor->>Modal: Clicks "APPROVE & CERTIFY HITL EXTRACTION"
-    Modal->>Engine: Commits verified values + logs operator audit trail
+    Auditor->>Modal: Corrects ambiguous digit to 9876543210
+    Auditor->>Modal: Clicks Approve and Certify HITL Extraction
+    Modal->>Engine: Commits verified values and logs operator audit trail
 ```
 
 #### 🎯 Goal & What the User Experiences
@@ -239,17 +238,17 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Sup as Supervisor Sarah
-    participant Tower as Control Tower (/dashboard)
-    participant Graph as Syndicate Graph Visualizer
-    participant Banks as 5 Regional Banks
+    actor Sup as "Supervisor Sarah"
+    participant Tower as "Control Tower (/dashboard)"
+    participant Graph as "Syndicate Graph Visualizer"
+    participant Banks as "5 Regional Banks"
 
     Sup->>Tower: Inspects Executive Bento Metrics Grid
-    Tower-->>Sup: 38 Active Cases, ¥84.2M Protected, 3 Overdue Cases
+    Tower-->>Sup: 38 Active Cases, 84.2M JPY Protected, 3 Overdue Cases
     Sup->>Tower: Reviews Urgent SLA Breaches Carousel
     Sup->>Graph: Inspects Cross-Bank Fraud Syndicate Topology
-    Graph-->>Sup: Exposes Mule Account 9876543210 linked across Birch & Aster Banks
-    Sup->>Graph: Clicks "FREEZE ACROSS ALL BANKS"
+    Graph-->>Sup: Exposes Mule Account 9876543210 linked across Birch and Aster Banks
+    Sup->>Graph: Clicks Freeze Across All Banks
     Graph->>Banks: Broadcasts simultaneous multi-bank account freeze order
 ```
 
@@ -276,18 +275,18 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Officer as Birch Compliance Officer
-    participant UI as Application Interface
-    participant Auth as Tenant Isolation Guard
-    participant DB as Multi-Tenant Database
+    actor Officer as "Birch Compliance Officer"
+    participant UI as "Application Interface"
+    participant Auth as "Tenant Isolation Guard"
+    participant DB as "Multi-Tenant Database"
 
-    Officer->>UI: Switches Role to "Birch Compliance" (viewer@bank-b.test)
-    UI->>Auth: Sets Session Tenant to "bank_b"
-    Auth-->>UI: Displays "TENANT: BANK_B" indicator in Navbar
+    Officer->>UI: Switches Role to Birch Compliance
+    UI->>Auth: Sets Session Tenant to bank_b
+    Auth-->>UI: Displays TENANT: BANK_B indicator in Navbar
     Officer->>UI: Navigates to Case Workstation (/cases)
-    UI->>DB: Queries cases with WHERE bank_id = 'bank_b'
-    DB-->>UI: Returns ONLY Birch Bank claims (Aster/Cobalt/Dune/Ember suppressed)
-    Officer->>UI: Inspects frozen mule balance (¥520,000) for pro-rata payout
+    UI->>DB: Queries cases scoped to bank_id equals bank_b
+    DB-->>UI: Returns only Birch Bank claims (other banks suppressed)
+    Officer->>UI: Inspects frozen mule balance (520,000 JPY) for pro-rata payout
 ```
 
 #### 🎯 Goal & What the User Experiences
@@ -309,15 +308,15 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     autonumber
-    actor FSA as Kenzo Mori (FSA Inspector)
-    participant UI as Regulatory Audit Ledger (/audit)
-    participant Chain as Immutable Hash Chain
+    actor FSA as "Kenzo Mori (FSA Inspector)"
+    participant UI as "Regulatory Audit Ledger (/audit)"
+    participant Chain as "Immutable Hash Chain"
 
     FSA->>UI: Opens Audit Ledger tab
     UI->>Chain: Reads tamper-evident chronological event log
     UI-->>FSA: Displays timestamped actor actions (User, AI, Victim, System)
     FSA->>UI: Filters for OCR Extraction events
-    UI-->>FSA: Demonstrates that every AI extraction is paired with a certified Human Operator verification event
+    UI-->>FSA: Demonstrates that every AI extraction is paired with human verification
     FSA->>UI: Verifies cryptographic hash continuity
 ```
 

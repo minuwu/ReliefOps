@@ -168,19 +168,19 @@ Highlight strengths and good design decisions:
 
 ### Current Architecture
 
-```mermaid
+```text
 [Mermaid diagram of current design]
 ```
 
 ### Proposed Improvements
 
-```mermaid
+```text
 [Mermaid diagram with recommended changes highlighted]
 ```
 
 ### Data Flow
 
-```mermaid
+```text
 sequenceDiagram
     [Sequence diagrams showing improved data flows]
 ```

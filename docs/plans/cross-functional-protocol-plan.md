@@ -17,16 +17,16 @@ This protocol creates a **machine-readable and human-friendly operating system**
 ```mermaid
 flowchart TD
     subgraph RepoRoot ["Repository Root (BJET-Hackathon)"]
-        AgentsMD["AGENTS.md / TEAM_INSTRUCTIONS.md\n(Universal Agent Entrypoint & Protocol)"]
-        PrePush[".githooks/pre-push\n(Automatic remote sync)"]
-        Presetup["HACKATHON_PRESETUP.md\n(Contract-first guide)"]
+        AgentsMD["AGENTS.md / TEAM_INSTRUCTIONS.md<br/>(Universal Agent Entrypoint and Protocol)"]
+        PrePush[".githooks/pre-push<br/>(Automatic remote sync)"]
+        Presetup["HACKATHON_PRESETUP.md<br/>(Contract-first guide)"]
     end
 
     subgraph AgentsDirective ["Coding Agent Startup Sequence"]
         A0["Agent Session Starts"] --> A1["Step 0: Read AGENTS.md"]
-        A1 --> A2{"Check Active Cross-Functional Queue\nPending requests for my team?"}
-        A2 -- "YES (P0 / P1)" --> A3["MAXIMUM PRIORITY MODE\n1. Mark [IN_PROGRESS]\n2. Implement contract/endpoint/mock\n3. Mark [RESOLVED] + Provide proof"]
-        A2 -- "NO" --> A4["NORMAL MODE\nProceed to Contributor WORK_LOG.md\nand assigned feature backlog"]
+        A1 --> A2{"Check Active Cross-Functional Queue<br/>Pending requests for my team?"}
+        A2 -- "YES (P0 / P1)" --> A3["MAXIMUM PRIORITY MODE<br/>1. Mark IN_PROGRESS<br/>2. Implement contract/endpoint/mock<br/>3. Mark RESOLVED and Provide proof"]
+        A2 -- "NO" --> A4["NORMAL MODE<br/>Proceed to Contributor WORK_LOG.md<br/>and assigned feature backlog"]
     end
 
     subgraph ContributorSpaces ["Per-Contributor Spaces"]

@@ -214,33 +214,33 @@ What remains:
 
 ```mermaid
 flowchart LR
-    C[Client] -->|Bearer token| MW[Middleware<br/>request ID · rate limit · idempotency]
-    MW --> AUTH[security.py<br/>verify JWT + load user<br/>is_active · role · bank · token_version]
-    AUTH -->|401/403| SEC[(security_events)]
-    AUTH --> R[Router]
-    R --> S[Service]
-    S --> REPO[Repository]
-    REPO -->|SessionDep: set_config scope<br/>pool 10+10, timeout 5 s| DB[(Postgres<br/>RLS FORCE · app_user)]
-    S -->|outside any transaction| CB{Circuit breaker<br/>closed / open / half-open}
-    CB -->|closed| AI[AI provider<br/>20 s timeout · max 4]
-    CB -->|open| FB[Rule-based fallback /<br/>passages_only]
-    R -->|cross-bank 404| SEC
+    C["Client"] -->|"Bearer token"| MW["Middleware<br/>request ID · rate limit · idempotency"]
+    MW --> AUTH["security.py<br/>verify JWT + load user<br/>is_active · role · bank · token_version"]
+    AUTH -->|"401/403"| SEC[("security_events")]
+    AUTH --> R["Router"]
+    R --> S["Service"]
+    S --> REPO["Repository"]
+    REPO -->|"SessionDep: set_config scope<br/>pool 10+10, timeout 5 s"| DB[("Postgres<br/>RLS FORCE · app_user")]
+    S -->|"outside any transaction"| CB{"Circuit breaker<br/>closed / open / half-open"}
+    CB -->|"closed"| AI["AI provider<br/>20 s timeout · max 4"]
+    CB -->|"open"| FB["Rule-based fallback /<br/>passages_only"]
+    R -->|"cross-bank 404"| SEC
 ```
 
 ### Extraction with short transactions and the breaker
 
 ```mermaid
 sequenceDiagram
-    participant O as Operator
-    participant API as FastAPI
-    participant DB as Postgres (RLS)
-    participant CB as Circuit breaker
-    participant AI as AI provider
+    participant O as "Operator"
+    participant API as "FastAPI"
+    participant DB as "Postgres (RLS)"
+    participant CB as "Circuit breaker"
+    participant AI as "AI provider"
     O->>API: POST /documents/{id}/extract
     API->>DB: short_tx(who): read document + case (scoped), commit
     API->>CB: allowed?
     alt breaker closed
-        CB->>AI: extract_fields() (≤ 20 s)
+        CB->>AI: extract_fields() (max 20 s)
         AI-->>API: fields / error
         API->>CB: record success or failure
     else breaker open
@@ -248,7 +248,7 @@ sequenceDiagram
         API->>API: rule-based fallback
     end
     API->>DB: short_tx(who): insert extraction + audit, commit
-    API-->>O: 201 Extraction (pending_review / failed)
+    API-->>O: 201 Extraction (pending_review or failed)
 ```
 
 ---
