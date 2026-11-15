@@ -93,6 +93,12 @@ I read Asif's whole work log, [REMAINING_WORK.md](../asif/REMAINING_WORK.md), mi
   - [test_accounts.py](../../backend/tests/api/test_accounts.py): 11 HTTP tests. **452 tests pass.**
   - **Open (Asif):** `SignupRequest.preferred_language` is in the contract, but `users` has no column for it, so it's accepted and dropped for now. Add a `users.preferred_language` column, or remove the field from the contract?
 
+- **N8, case lifecycle rules** ([case_workflow.py](../../backend/app/services/case_workflow.py)): pure functions over a case row and the caller, so the cases routes, Asif's review and victim edits, and tests all use one set of rules (API_SPEC §3.1–3.3).
+  - `allowed_transitions` gives the buttons in order (forward, back, closed): `verified` as an operator → `["account_check", "received", "closed"]`, the contract example. `allowed_closure_reasons`: operators `withdrawn`; supervisors `rejected`, `withdrawn`, plus `paid_out` only in `payout_review`. Viewers, victims and closed cases get `[]`.
+  - `check_transition` raises the contract's errors. `409 CASE_CLOSED`. `403` for a non-staff role or a money closure by an operator. `409 INVALID_STATUS_TRANSITION` with `{from, to, allowed}` for a skipped step or `paid_out` outside `payout_review`. `422 VALIDATION_ERROR` for a missing `note` (back or close), `closure_reason` or `payout_amount`, or closure fields on a normal move. `422 MISSING_REQUIRED_INFO` with `missing_fields` when leaving `received` forward; closing needs no facts.
+  - `deadline_state`: `none` (closed), `overdue`, `due_soon` (the last 20% of the stage, at least 1 day) or `on_track`. `transition_values` gives the column changes (new stage deadline, or closed fields).
+  - [test_case_workflow.py](../../backend/tests/unit/test_case_workflow.py): 24 unit tests. **493 tests pass.**
+
 ### Local test database (for anyone on Windows without Postgres)
 ```bash
 docker run -d --name reliefops-pg -e POSTGRES_PASSWORD=postgres -p 127.0.0.1:55433:5432 pgvector/pgvector:pg16
@@ -108,8 +114,8 @@ cd backend && uv run pytest -q
 
 ### Next (in order, each: tests → commit → pull → push)
 - ~~N2~~ done.
-- ~~N3~~, ~~N4~~, ~~N5~~, ~~N6~~, ~~N7~~ done.
-- Next: N8 `case_workflow.py`, N9–N11 (cases: XREQ-001).
+- ~~N3~~, ~~N4~~, ~~N5~~, ~~N6~~, ~~N7~~, ~~N8~~ done.
+- Next: N9–N11, the cases routes (XREQ-001).
 
 ### Blockers / handoff
 - **Galib:** rotate the AI keys (critical finding above).
