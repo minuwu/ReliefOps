@@ -535,15 +535,26 @@ export const api = {
       : request<DashboardStats>(`/api/dashboard/stats${query({ bank_id: bankId })}`);
   },
 
-  /** A page of audit entries, newest first (contract §6.4). */
+  /** A page of audit entries, newest first (contract §6.4). Bank scoping is done by the server. */
   getAuditLogs(
-    params: { case_id?: string; bank_id?: string; page?: number; page_size?: number } = {}
+    params: {
+      case_id?: string;
+      actor_id?: string;
+      action?: AuditEntry['action'];
+      from?: string;
+      to?: string;
+      page?: number;
+      page_size?: number;
+    } = {}
   ): Promise<ApiResponse<PaginatedResult<AuditEntry>>> {
     if (!USE_MOCK) return request<PaginatedResult<AuditEntry>>(`/api/audit-logs${query(params)}`);
     return mocked(() => {
       const items = db.auditLogs
         .filter((l) => !params.case_id || l.case_id === params.case_id)
-        .filter((l) => !params.bank_id || l.bank_id === params.bank_id);
+        .filter((l) => !params.actor_id || l.actor.id === params.actor_id)
+        .filter((l) => !params.action || l.action === params.action)
+        .filter((l) => !params.from || l.at >= params.from)
+        .filter((l) => !params.to || l.at <= params.to);
       return { items, total: items.length, page: 1, page_size: Math.max(items.length, 1) };
     });
   },
