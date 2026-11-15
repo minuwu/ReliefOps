@@ -142,6 +142,11 @@ I read Asif's whole work log, [REMAINING_WORK.md](../asif/REMAINING_WORK.md), mi
   - `GET /api/alerts/shared-accounts` (supervisor; `min_cases` 2–50): grouped by `(bank_id, account_number)`, most cases first, with total amount and the cases. **Never compares across banks** (that's XREQ-004 and still needs the team decision); the test checks that bank_a's single `9876543210` case doesn't join bank_b's ring.
   - [test_dashboard.py](../../backend/tests/api/test_dashboard.py): 6 tests, validated against `openapi.yaml`. **554 tests pass.**
 
+- **N15, permission table** ([test_permissions.py](../../backend/tests/api/test_permissions.py), guide §8.5): API_SPEC §2 as data, one row per route, checked for operator, supervisor, viewer_b and victim1.
+  - An allowed role must pass the role check (write routes get an empty body, so `422` and nothing is written). A denied role gets exactly `403`, no token gets `401` on every protected route, and the 9 public routes need no token. The cross-bank `404` is checked too.
+  - **Guard:** a test fails if a mounted `/api/*` route is missing from the table, so a new route can't ship without its permission row. **When §2 changes, change this table first.**
+  - 91 checks. **645 tests pass.**
+
 ### Local test database (for anyone on Windows without Postgres)
 ```bash
 docker run -d --name reliefops-pg -e POSTGRES_PASSWORD=postgres -p 127.0.0.1:55433:5432 pgvector/pgvector:pg16
@@ -157,8 +162,8 @@ cd backend && uv run pytest -q
 
 ### Next (in order, each: tests → commit → pull → push)
 - ~~N2~~ done.
-- ~~N3~~, ~~N4~~, ~~N5~~, ~~N6~~, ~~N7~~, ~~N8~~, ~~N9~~, ~~N10~~, ~~N11~~ done (Phase 2 complete; XREQ-001 resolved). ~~N12~~, ~~N13~~, ~~N14~~ done.
-- Next, Phase 3: N15 (permission table), N16 (smoke script).
+- ~~N3~~, ~~N4~~, ~~N5~~, ~~N6~~, ~~N7~~, ~~N8~~, ~~N9~~, ~~N10~~, ~~N11~~ done (Phase 2 complete; XREQ-001 resolved). ~~N12~~, ~~N13~~, ~~N14~~, ~~N15~~ done.
+- Next, Phase 3: N16 (smoke script).
 
 ### Blockers / handoff
 - **Galib:** rotate the AI keys (critical finding above).
