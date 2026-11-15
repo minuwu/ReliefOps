@@ -4,6 +4,30 @@ Owner: Asif (`MdAsif-Hossain`) — Role: Backend / Services / Database — Branc
 
 Use this log to share progress, planned work, and dependencies with the team. Update it after each work session, keep the newest entry first, and use Bangladesh time (UTC+6). Link to relevant issues, commits, or pull requests when available.
 
+## 2026-11-15 (session 9)
+
+### Completed
+- Checked contract v0.4.1 on the Prism mock (port 4010).
+  - Sent the documented example to all 48 operations: 48 returned their success code and the envelope.
+  - Probed bad input: a privileged role or bank at signup is rejected; missing `expected_version` → 422; the 409/429/403 variants work; the removed v0.3 routes return 404.
+- Fixed what the run found, as contract **v0.4.2** (additive only):
+  - Real examples for `GET /api/victim/cases` and `POST /api/victim/claims`; the mock was returning `"string"` placeholders that broke the schema.
+  - `404` on both victim chat routes.
+  - `422` on claims and on `GET /api/users`.
+  - §9.1 now says where the mock prints the real cause of a 422.
+  - Re-ran everything: 48/48 pass, 0 schema violations, lint valid.
+- Replayed the frontend's real requests against the mock: 15 of 22 accepted. The frontend is still on v0.3.0. `transition` and `review` use the old field names and send no `expected_version`, and all five victim calls hit removed routes.
+- Wrote [contributors/minhaz/suggested_by_backend_team.md](../minhaz/suggested_by_backend_team.md): each problem with its fix and code, the new victim account flow, a proposal for the email-link URLs, error handling, type updates, answers to XREQ-001..004, and a suggested order of work.
+- Added a [verify skill](../../.claude/skills/verify/SKILL.md) with the mock launch and drive recipe.
+
+### Next
+- Answer XREQ-001..004 in AGENTS.md with the contract routes (see Minhaz's note §9). XREQ-004 (fraud-ring freeze) needs a team decision first.
+- Once Minhaz agrees the email-link paths, add `FRONTEND_URL` to the backend guide's env vars.
+- Optional v0.4.3: `version` on `CaseSummary` and `case_version` on review items, if the frontend wants to skip the extra request.
+
+### Blockers / handoff
+- Minhaz: move the frontend to v0.4.2 (his note, sections 1–8).
+
 ## 2026-11-15 — incoming cross-functional dispatch (frontend ready, XREQ-001 & XREQ-004)
 
 ### Pending XREQs Assigned (AGENTS.md §2)
