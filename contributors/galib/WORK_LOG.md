@@ -4,6 +4,20 @@ Owner: Galib (`Ga-lib`) — Role: AI / LLM — Branches: `galib/*`
 
 Update after each work session. Newest entry first. Bangladesh time (UTC+6). Link commits/PRs/XREQs.
 
+## 2026-11-15 (20:15) — demo readiness
+
+### Completed
+- **Replay cache** (`backend/seed_data/ai_cache/`): real extraction results for all 12 seed documents, recorded with `scripts/record_ai_cache.py` (prompt `extract-v2`; every value matches the labels, no extra fields). `extract_fields` uses it only when every live provider fails, labelled `model: "cached:<model>"`. Unknown files and older prompt versions never match.
+- **Pre-demo check** `scripts/ai_check.py` (no quota used): keys, models, Tesseract jpn, prompts, recordings, bluebook vectors. Current result: READY.
+- **Decisions:** keep explaining (not refusing) "How much will I get back?", with a new "no promise" check of 3 payout questions; keep the bluebooks at 2 pages (all topics covered).
+- Assistant eval run `2009`: retrieval 30/30, grounded with right section and fact 30/30, leaks 0/10, refusals 4/4, no promise 3/3, median 0.8 s.
+- Tests: 149 passed.
+
+### Demo day
+- Run `uv run python scripts/ai_check.py` before judging; don't re-run evals that day (they spend free quota).
+
+---
+
 ## 2026-11-15 (evening) — XREQ-004 fraud ring detection
 
 ### Completed

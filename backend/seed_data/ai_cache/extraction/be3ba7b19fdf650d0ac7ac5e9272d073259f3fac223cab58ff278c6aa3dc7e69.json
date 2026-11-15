@@ -1,0 +1,25 @@
+{
+ "fields": [
+  {
+   "name": "transfer_date",
+   "value": "2026-11-01",
+   "evidence": "お取扱日 2026年11月01日",
+   "confidence": 1.0
+  },
+  {
+   "name": "amount",
+   "value": 95000,
+   "evidence": "振込金額¥95,000",
+   "confidence": 1.0
+  },
+  {
+   "name": "currency",
+   "value": "JPY",
+   "evidence": "振込金額¥95,000",
+   "confidence": 1.0
+  }
+ ],
+ "model": "gemini-3.5-flash-lite",
+ "prompt_version": "extract-v2",
+ "source_file": "t06_missing_fields.png"
+}
