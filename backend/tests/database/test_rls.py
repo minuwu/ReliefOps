@@ -18,7 +18,7 @@ from .conftest import set_scope
 BANK_OWNED_TABLES = ("cases", "documents", "document_contents", "ai_extractions", "notes", "audit_log")
 ALL_TABLES = (
     "banks", "users", "sessions", "auth_tokens", "invitations", "cases", "documents",
-    "document_contents", "ai_extractions", "notes", "audit_log",
+    "document_contents", "ai_extractions", "notes", "audit_log", "kb_documents", "kb_passages", "chat_messages",
 )
 
 

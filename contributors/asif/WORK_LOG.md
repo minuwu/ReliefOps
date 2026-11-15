@@ -4,6 +4,13 @@ Owner: Asif (`MdAsif-Hossain`) — Role: Backend / Services / Database — Branc
 
 Use this log to share progress, planned work, and dependencies with the team. Update it after each work session, keep the newest entry first, and use Bangladesh time (UTC+6). Link to relevant issues, commits, or pull requests when available.
 
+## 2026-11-15 (session 12) ? remaining tasks, part 1
+
+- Claimed XREQ-003's victim chat portion; documented the current account-based contract and XREQ-004's unresolved identity/permissions decision.
+- Completed A15 migration 003: pgvector knowledge, bluebooks, case chat and forced RLS. **254 database/unit tests passed** on a separate local pgvector database; lint passed.
+- Details, setup and next parts: [REMAINING_WORK.md](REMAINING_WORK.md).
+- Next: bank-scoped retrieval, then victim chat and the router handoff. No live HTTP server claimed.
+
 ## 2026-11-15 (session 11) — my services, built before Anim's framework
 
 Decision (Asif): build all my business logic as **service functions with database tests** now. When Anim's framework lands, each endpoint is a thin router on top. None of Anim's files are touched. How the pieces fit together:

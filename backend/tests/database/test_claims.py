@@ -81,7 +81,8 @@ def test_invite_then_claim_links_the_case(app_db: Engine, owner_engine: Engine, 
         actions = s.exec(text("select action from audit_log where case_id = :id order by at")
                          .bindparams(id=case_id)).scalars().all()
     assert case["victim_user_id"] == victim.user_id
-    assert actions[:2] == ["case.victim_invited", "case.claimed"]
+    # Claim and view can share a timestamp; SQL does not order equal timestamps.
+    assert [action for action in actions if action != "case.viewed"] == ["case.victim_invited", "case.claimed"]
 
 
 def test_a_link_works_once(app_db: Engine, owner_engine: Engine, callers: dict) -> None:

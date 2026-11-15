@@ -6,6 +6,12 @@ Hand-written Alembic migrations. RLS policies, grants and triggers can't be auto
 | :--- | :--- |
 | `001_core` | Core tables (backend-plan §4): banks, users, sessions, auth_tokens, invitations, cases, documents, document_contents, ai_extractions, notes, audit_log |
 | `002_rls` | Row-level security on every table (`FORCE`), least-privilege grants to `app_user` (no `DELETE` anywhere), append-only `audit_log` trigger, `next_case_reference()` (sequence starts at 100) |
+| `003_chat` | Bluebooks, `vector(768)` passages, transcript/feedback storage; forced RLS, published victim-facing knowledge only, case/bank foreign keys |
+
+Before migration 003, a database administrator must run `CREATE EXTENSION IF NOT EXISTS vector;`
+in both the application and test databases. The migrator stays non-superuser. Use a pgvector-enabled
+Postgres distribution; ordinary Postgres without the extension fails with an explicit setup message.
+Downgrades preserve the extension. See [Asif's handoff](../../contributors/asif/REMAINING_WORK.md).
 
 ### The scope every query needs (002)
 

@@ -22,7 +22,15 @@ Each completed part gets its own tested commit and push, after pulling both the 
 
 ## Completion evidence
 
-This section will be updated after each part with tests, commit references and remaining dependencies.
+### Part 1 ? complete: chat/knowledge migration
+
+- Added migration `003_chat`: `kb_documents`, `kb_passages` (`vector(768)`), `chat_messages`; existing case escalation flag reused.
+- Forced RLS; bank/case foreign keys; victim knowledge limited to published `victim_facing` documents in a bank where they own a case. Chat feedback cannot rewrite transcript content. App role cannot delete.
+- Tested real pgvector 0.8.1 on PostgreSQL 16 in an isolated loopback cluster at port 55432; the existing database on 5432 was not modified. Administrator must enable `vector` before migration on any other database.
+- Verification: **254 database/unit tests passed**, including 8 new migration/security cases and expanded no-scope/no-delete coverage. Ruff and `git diff --check` passed. Migration down/up exercised by the suite.
+- Fixed an existing flaky claim assertion: claim/view events can share timestamps; test now checks the intended events without assuming tie ordering.
+- Commit message: `feat(db): add bank-isolated knowledge and case chat storage`.
+- Limitation: tables exist and are verified; HTTP routes are still pending.
 
 ## Integration dependencies
 
