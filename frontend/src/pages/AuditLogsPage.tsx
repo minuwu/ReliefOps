@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/services/api';
+import { errorMessage } from '@/services/http';
 import { AuditEntry } from '@/types/api';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -9,12 +10,16 @@ import { User, Bot, Globe, Shield, RefreshCw } from 'lucide-react';
 export function AuditLogsPage() {
   const [logs, setLogs] = useState<AuditEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   async function loadLogs() {
     setIsLoading(true);
+    setLoadError(null);
     try {
       const res = await api.getAuditLogs();
       setLogs(res.data.items);
+    } catch (err) {
+      setLoadError(errorMessage(err, 'We could not load the audit logs. Check your connection and try again.'));
     } finally {
       setIsLoading(false);
     }
@@ -60,6 +65,24 @@ export function AuditLogsPage() {
           <RefreshCw className="w-3.5 h-3.5" /> REFRESH LOG
         </Button>
       </div>
+
+      {/* Error banner */}
+      {loadError && (
+        <div
+          role="alert"
+          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl border border-[#FF334B]/30 bg-[#FF334B]/10 text-xs text-[#09090B]"
+        >
+          <span className="font-bold text-[#FF334B]">{loadError}</span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={loadLogs}
+            className="self-start sm:self-auto shrink-0"
+          >
+            Retry
+          </Button>
+        </div>
+      )}
 
       {/* Ledger Table Panel */}
       <div className="rounded-2xl border-2 border-[#09090B] bg-[#F8F4E8] shadow-hard overflow-hidden">

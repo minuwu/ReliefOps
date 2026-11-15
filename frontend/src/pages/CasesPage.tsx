@@ -31,7 +31,7 @@ const STATUS_TABS: { label: string; value: string }[] = [
 
 export function CasesPage() {
   const { user } = useAuthStore();
-  const { cases, filters, setFilters, fetchCases, fetchCaseById, clearSelected, selectedCase, isLoading } =
+  const { cases, filters, setFilters, fetchCases, fetchCaseById, clearSelected, selectedCase, isLoading, error } =
     useCaseStore();
   const navigate = useNavigate();
   const { caseId } = useParams<{ caseId?: string }>();
@@ -258,6 +258,24 @@ export function CasesPage() {
           })}
         </div>
       </div>
+
+      {/* Error banner */}
+      {error && (
+        <div
+          role="alert"
+          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl border border-[#FF334B]/30 bg-[#FF334B]/10 text-xs text-[#09090B]"
+        >
+          <span className="font-bold text-[#FF334B]">{error}</span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fetchCases()}
+            className="self-start sm:self-auto shrink-0"
+          >
+            Retry
+          </Button>
+        </div>
+      )}
 
       {/* Cases Table */}
       <CaseTable

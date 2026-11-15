@@ -5,6 +5,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
+import { errorMessage } from '@/services/http';
 import { DocumentOpticalPreview } from './DocumentOpticalPreview';
 import { CheckCircle2, XCircle } from 'lucide-react';
 
@@ -26,6 +27,7 @@ export function ExtractionReviewModal({
   const { reviewExtraction, isActionLoading } = useReviewQueueStore();
   const [editedFields, setEditedFields] = useState<Record<string, unknown>>({});
   const [reviewNote, setReviewNote] = useState('');
+  const [actionError, setActionError] = useState<string | null>(null);
   const [showOpticalPreview, setShowOpticalPreview] = useState(true);
   const [hoveredField, setHoveredField] = useState<string | null>(null);
 
@@ -37,6 +39,7 @@ export function ExtractionReviewModal({
       });
       setEditedFields(initial);
       setReviewNote('');
+      setActionError(null);
     }
   }, [extraction]);
 
@@ -47,17 +50,31 @@ export function ExtractionReviewModal({
   };
 
   const handleAccept = async () => {
-    await reviewExtraction(extraction.id, 'accept', editedFields, reviewNote);
-    onSuccess?.();
-    onReviewed?.();
-    onClose();
+    setActionError(null);
+    try {
+      const result = await reviewExtraction(extraction.id, 'accept', editedFields, reviewNote);
+      if (result !== false) {
+        onSuccess?.();
+        onReviewed?.();
+        onClose();
+      }
+    } catch (err) {
+      setActionError(errorMessage(err, 'We could not submit the review. Please try again.'));
+    }
   };
 
   const handleReject = async () => {
-    await reviewExtraction(extraction.id, 'reject', undefined, reviewNote || 'Rejected by operator');
-    onSuccess?.();
-    onReviewed?.();
-    onClose();
+    setActionError(null);
+    try {
+      const result = await reviewExtraction(extraction.id, 'reject', undefined, reviewNote || 'Rejected by operator');
+      if (result !== false) {
+        onSuccess?.();
+        onReviewed?.();
+        onClose();
+      }
+    } catch (err) {
+      setActionError(errorMessage(err, 'We could not submit the review. Please try again.'));
+    }
   };
 
   const confidencePct = Math.round((extraction.overall_confidence || 0) * 100);
@@ -67,7 +84,7 @@ export function ExtractionReviewModal({
     <Modal isOpen={isOpen} onClose={onClose} maxWidth="5xl">
       <div className="space-y-6 font-['Space_Grotesk',sans-serif]">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-[#EDE8D5] border-2 border-[#09090B]">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-[#EDE8D5] border border-[#09090B]/15">
           <div className="space-y-1">
             <div className="flex items-center gap-3">
               <h2 className="text-lg sm:text-xl font-['Dela_Gothic_One'] text-[#09090B]">
@@ -200,6 +217,12 @@ export function ExtractionReviewModal({
                   className="w-full text-xs font-medium bg-[#F8F4E8] border border-[#09090B]/30 rounded-xl p-2.5 focus:border-[#09090B] focus:outline-none"
                 />
               </div>
+
+              {actionError && (
+                <div role="alert" className="rounded-xl border border-[#FF334B]/30 bg-[#FF334B]/10 p-3 text-xs font-bold text-[#FF334B]">
+                  {actionError}
+                </div>
+              )}
 
               {/* Action Buttons: one primary confirm, others outline */}
               <div className="flex justify-end gap-3 pt-4 border-t border-[#09090B]/10">

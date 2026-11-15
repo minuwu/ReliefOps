@@ -71,6 +71,11 @@ export function onUnauthorized(listener: UnauthorizedListener): void {
   unauthorizedListener = listener;
 }
 
+export function triggerUnauthorized(): void {
+  clearSession();
+  unauthorizedListener?.();
+}
+
 /* ---------------------------------------------------------------------------
  * Errors
  * ------------------------------------------------------------------------- */
@@ -155,22 +160,64 @@ export async function request<T>(
     clearTimeout(timer);
   }
 
-  const json = parseJson(await response.text()) as
-    | { success?: boolean; error?: ApiErrorDetail }
-    | null;
-
-  if (response.ok && json?.success) {
-    return json as ApiResponse<T>;
+  let rawText = '';
+  try {
+    rawText = await response.text();
+  } catch {
+    /* ignore read failure; rawText remains empty */
   }
 
-  const error: ApiErrorDetail = json?.error ?? {
+  const parsed = parseJson(rawText) as
+    | {
+        success?: boolean;
+        error?: ApiErrorDetail;
+        detail?: unknown;
+        message?: string;
+      }
+    | null;
+
+  if (response.ok && parsed?.success) {
+    return parsed as ApiResponse<T>;
+  }
+
+  let errorMessageText = response.statusText || 'Unexpected error';
+  let details: ApiErrorDetail['details'] | undefined;
+
+  if (parsed?.detail) {
+    if (typeof parsed.detail === 'string') {
+      errorMessageText = parsed.detail;
+    } else if (Array.isArray(parsed.detail)) {
+      const msgs: string[] = [];
+      const fields: Array<{ field: string; message: string }> = [];
+      for (const item of parsed.detail) {
+        if (typeof item === 'string') {
+          msgs.push(item);
+        } else if (item && typeof item === 'object') {
+          const obj = item as { loc?: unknown[]; msg?: string };
+          if (obj.msg) {
+            msgs.push(obj.msg);
+            const fieldPath = Array.isArray(obj.loc)
+              ? obj.loc.filter((p) => p !== 'body').join('.')
+              : 'body';
+            fields.push({ field: fieldPath || 'body', message: obj.msg });
+          }
+        }
+      }
+      if (msgs.length > 0) errorMessageText = msgs.join('; ');
+      if (fields.length > 0) details = { fields };
+    }
+  } else if (typeof parsed?.message === 'string' && parsed.message) {
+    errorMessageText = parsed.message;
+  }
+
+  const error: ApiErrorDetail = parsed?.error ?? {
     code: `HTTP_ERROR_${response.status}`,
-    message: response.statusText || 'Unexpected error',
+    message: errorMessageText,
+    ...(details ? { details } : {}),
   };
 
   if (response.status === 401 && error.code !== 'INVALID_CREDENTIALS') {
-    clearSession();
-    unauthorizedListener?.();
+    triggerUnauthorized();
   }
   if (response.status === 429) {
     throw { ...error, retry_after: retryAfterSeconds(response) };

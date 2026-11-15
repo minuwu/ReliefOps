@@ -15,12 +15,14 @@ import type {
 import {
   API_BASE_URL,
   CHAT_TIMEOUT_MS,
+  DEFAULT_TIMEOUT_MS,
   USE_MOCK,
   apiError,
   getAuthToken,
   mockEnvelope,
   mockFailure,
   request,
+  triggerUnauthorized,
 } from './http';
 import {
   actorOf,
@@ -310,8 +312,25 @@ async function liveDownloadDoc(docId: string): Promise<{ blob: Blob; filename: s
   const headers = new Headers();
   if (token) headers.set('Authorization', `Bearer ${token}`);
 
-  const res = await fetch(`${API_BASE_URL}/api/documents/${docId}/file`, { headers });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
+
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE_URL}/api/documents/${docId}/file`, {
+      headers,
+      signal: controller.signal,
+    });
+  } catch {
+    throw apiError('NETWORK_ERROR', 'Could not reach the server. Check your connection.');
+  } finally {
+    clearTimeout(timer);
+  }
+
   if (!res.ok) {
+    if (res.status === 401) {
+      triggerUnauthorized();
+    }
     let err: ApiErrorDetail;
     try {
       const json = (await res.json()) as { error?: ApiErrorDetail };

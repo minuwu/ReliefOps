@@ -173,7 +173,10 @@ export function AdminUsersPage() {
     api
       .getUsers({ include_inactive: showInactive })
       .then((res) => setUsers(res.data))
-      .catch((err) => setLoadError(errorMessage(err, 'Could not load the team.')));
+      .catch((err) => {
+        setUsers([]);
+        setLoadError(errorMessage(err, 'Could not load the team.'));
+      });
   }, [showInactive]);
 
   useEffect(() => {

@@ -9,7 +9,7 @@ import { cn, formatDate } from '@/lib/utils';
 import { ArrowRight, RefreshCw } from 'lucide-react';
 
 export function ReviewQueuePage() {
-  const { queue, fetchQueue, activeExtraction, fetchExtraction, clearActive, isLoading } =
+  const { queue, fetchQueue, activeExtraction, fetchExtraction, clearActive, isLoading, error } =
     useReviewQueueStore();
   const [laneFilter, setLaneFilter] = useState<'all' | 'standard' | 'low_confidence'>('all');
   const navigate = useNavigate();
@@ -118,7 +118,22 @@ export function ReviewQueuePage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#09090B]/10 font-medium">
-              {filteredQueue.length === 0 ? (
+              {error ? (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center">
+                    <div role="alert" className="inline-flex flex-col items-center gap-3 max-w-md mx-auto p-4 rounded-xl border border-[#FF334B]/30 bg-[#FF334B]/10">
+                      <p className="text-xs font-bold text-[#FF334B]">{error}</p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => fetchQueue()}
+                      >
+                        Retry
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ) : filteredQueue.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-12 text-center text-sm text-[#52525B]">
                     No documents waiting for review.

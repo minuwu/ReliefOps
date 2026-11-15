@@ -3,7 +3,18 @@
  * Provides paginated audit trail for a case and CSV export.
  */
 import type { ApiErrorDetail, ApiResponse, AuditEntry, PaginatedResult } from '@/types/api';
-import { API_BASE_URL, USE_MOCK, apiError, getAuthToken, isApiError, mockEnvelope, mockFailure, request } from './http';
+import {
+  API_BASE_URL,
+  DEFAULT_TIMEOUT_MS,
+  USE_MOCK,
+  apiError,
+  getAuthToken,
+  isApiError,
+  mockEnvelope,
+  mockFailure,
+  request,
+  triggerUnauthorized,
+} from './http';
 import { actorOf, addAudit, currentUser, db, findVisibleCase } from './mockStore';
 
 export interface CaseHistoryQuery {
@@ -74,17 +85,26 @@ async function fetchLiveCsv(caseId: string): Promise<CsvDownloadResult> {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
+
   let response: Response;
   try {
     response = await fetch(`${API_BASE_URL}/api/cases/${encodeURIComponent(caseId)}/history?format=csv`, {
       method: 'GET',
       headers,
+      signal: controller.signal,
     });
   } catch {
     throw apiError('NETWORK_ERROR', 'Could not reach the server. Check your connection.');
+  } finally {
+    clearTimeout(timer);
   }
 
   if (!response.ok) {
+    if (response.status === 401) {
+      triggerUnauthorized();
+    }
     let errorDetail: ApiErrorDetail;
     try {
       const text = await response.text();

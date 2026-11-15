@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/services/api';
 import { errorMessage } from '@/services/http';
@@ -27,26 +27,31 @@ export function DashboardPage() {
   // Shared-account alerts are supervisor-only; bank viewers read stats but cannot create cases.
   const isSupervisor = role === 'supervisor';
 
-  useEffect(() => {
-    async function loadData() {
-      setIsLoading(true);
-      setLoadError(null);
-      try {
-        const [statsRes, alertsRes] = await Promise.all([
-          api.getDashboardStats(),
-          isSupervisor ? api.getSharedAccountAlerts() : Promise.resolve({ data: [] as SharedAccountAlert[] }),
-        ]);
-        setStats(statsRes.data);
-        setAlerts(alertsRes.data);
-        await fetchCases();
-      } catch (err) {
-        setLoadError(errorMessage(err, 'Could not load the dashboard.'));
-      } finally {
-        setIsLoading(false);
-      }
+  const loadData = useCallback(async () => {
+    setIsLoading(true);
+    setLoadError(null);
+    try {
+      const alertsPromise = isSupervisor
+        ? api.getSharedAccountAlerts().catch(() => ({ data: [] as SharedAccountAlert[] }))
+        : Promise.resolve({ data: [] as SharedAccountAlert[] });
+
+      const [statsRes, alertsRes] = await Promise.all([
+        api.getDashboardStats(),
+        alertsPromise,
+      ]);
+      setStats(statsRes.data);
+      setAlerts(alertsRes.data);
+      await fetchCases();
+    } catch (err) {
+      setLoadError(errorMessage(err, 'We could not load the dashboard. Check your connection and try again.'));
+    } finally {
+      setIsLoading(false);
     }
-    loadData();
   }, [isSupervisor, fetchCases]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const totalClaimedJPY = cases.reduce((acc, c) => acc + (c.amount || 0), 0);
 
@@ -66,11 +71,16 @@ export function DashboardPage() {
 
   if (loadError) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center" role="alert">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center space-y-4" role="alert">
         <h1 className="font-['Dela_Gothic_One'] text-xl sm:text-2xl text-[#09090B]">
           Could not load the dashboard.
         </h1>
-        <p className="text-sm text-[#52525B] mt-2">{loadError}</p>
+        <p className="text-sm text-[#52525B] max-w-md mx-auto">{loadError}</p>
+        <div>
+          <Button variant="primary" onClick={loadData}>
+            Retry
+          </Button>
+        </div>
       </div>
     );
   }
