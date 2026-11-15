@@ -85,6 +85,20 @@ I read Asif's whole work log, [REMAINING_WORK.md](../asif/REMAINING_WORK.md), mi
   - [test_smoke.py](../../backend/tests/api/test_smoke.py): the §8.8 paths that work today, on seeded data (health, banks, every demo login, victim3 → `EMAIL_NOT_VERIFIED`, 401 without a token, logout → 401, 5 wrong → 429, the victim chat on case 00042 for its owner only).
   - `tests/api` and `tests/database` each migrate the same test database once. **441 tests pass in both folder orders.**
 
+- **N7, sign-up / verify / resend / forgot / reset** ([services/accounts.py](../../backend/app/services/accounts.py)):
+  - `POST /api/auth/signup` → always `202` with the same message. A new email gets a victim account (unverified) and a 24 h link `FRONTEND_BASE_URL/verify-email?token=…`; an existing email gets "you already have an account" and nothing changes. There's no `role` field, so sending one is `422`, and passwords must be 10–128 characters.
+  - `verify-email` → `200`; `400 INVALID_TOKEN` for an unknown, used or expired token. `resend-verification` and `forgot-password` → always `202`, sending only when there's an account to act on.
+  - A newer link cancels the older one. A reset link is valid for 1 h (`/reset-password?token=…`); the reset sets the password, **revokes every session**, and also counts as verifying the email.
+  - Tokens are SHA-256 in `auth_tokens` and single-use through one atomic `UPDATE … RETURNING`: four concurrent uses → exactly one `200`. Rate limits: 5 per hour per IP and per email for each of sign-up, resend and forgot. Audited: `auth.signup`, `auth.email_verified`, `auth.password_reset`. Emails are sent after the commit.
+  - [test_accounts.py](../../backend/tests/api/test_accounts.py): 11 HTTP tests. **452 tests pass.**
+  - **Open (Asif):** `SignupRequest.preferred_language` is in the contract, but `users` has no column for it, so it's accepted and dropped for now. Add a `users.preferred_language` column, or remove the field from the contract?
+
+- **N8, case lifecycle rules** ([case_workflow.py](../../backend/app/services/case_workflow.py)): pure functions over a case row and the caller, so the cases routes, Asif's review and victim edits, and tests all use one set of rules (API_SPEC §3.1–3.3).
+  - `allowed_transitions` gives the buttons in order (forward, back, closed): `verified` as an operator → `["account_check", "received", "closed"]`, the contract example. `allowed_closure_reasons`: operators `withdrawn`; supervisors `rejected`, `withdrawn`, plus `paid_out` only in `payout_review`. Viewers, victims and closed cases get `[]`.
+  - `check_transition` raises the contract's errors. `409 CASE_CLOSED`. `403` for a non-staff role or a money closure by an operator. `409 INVALID_STATUS_TRANSITION` with `{from, to, allowed}` for a skipped step or `paid_out` outside `payout_review`. `422 VALIDATION_ERROR` for a missing `note` (back or close), `closure_reason` or `payout_amount`, or closure fields on a normal move. `422 MISSING_REQUIRED_INFO` with `missing_fields` when leaving `received` forward; closing needs no facts.
+  - `deadline_state`: `none` (closed), `overdue`, `due_soon` (the last 20% of the stage, at least 1 day) or `on_track`. `transition_values` gives the column changes (new stage deadline, or closed fields).
+  - [test_case_workflow.py](../../backend/tests/unit/test_case_workflow.py): 24 unit tests. **493 tests pass.**
+
 ### Local test database (for anyone on Windows without Postgres)
 ```bash
 docker run -d --name reliefops-pg -e POSTGRES_PASSWORD=postgres -p 127.0.0.1:55433:5432 pgvector/pgvector:pg16
@@ -100,8 +114,8 @@ cd backend && uv run pytest -q
 
 ### Next (in order, each: tests → commit → pull → push)
 - ~~N2~~ done.
-- ~~N3~~, ~~N4~~, ~~N5~~, ~~N6~~ done.
-- Then N7 (sign-up, verify, reset), N8 `case_workflow.py`, N9–N11 (cases: XREQ-001).
+- ~~N3~~, ~~N4~~, ~~N5~~, ~~N6~~, ~~N7~~, ~~N8~~ done.
+- Next: N9–N11, the cases routes (XREQ-001).
 
 ### Blockers / handoff
 - **Galib:** rotate the AI keys (critical finding above).
