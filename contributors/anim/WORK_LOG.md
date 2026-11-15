@@ -147,6 +147,18 @@ I read Asif's whole work log, [REMAINING_WORK.md](../asif/REMAINING_WORK.md), mi
   - **Guard:** a test fails if a mounted `/api/*` route is missing from the table, so a new route can't ship without its permission row. **When §2 changes, change this table first.**
   - 91 checks. **645 tests pass.**
 
+- **N16, smoke script** ([scripts/smoke.sh](../../backend/scripts/smoke.sh), guide §8.8): `bash scripts/smoke.sh [BASE]` against a running, seeded server (or the Prism proxy on `:4011`). PASS/FAIL per line, non-zero exit on any failure.
+  - Covers health, banks, demo logins, victim3 → `EMAIL_NOT_VERIFIED`, `401`/`403`, **cross-bank 404 and the bank_b-only list**, and victim chat. A phone case goes create → `MISSING_REQUIRED_INFO` → edit (version bump) → `STALE_CASE` → `403` money closure → assign → note → withdrawn → closed read-only. Then the dashboards, alerts, sign-up (`422` with a role, `202` otherwise), logout → `401`, and, last, 5 wrong passwords → `429`.
+  - **Ran it against a real `fastapi run` server (uvicorn) on the seeded Docker database: 29/29 PASS.** The upload → AI extraction → review → Verified step is printed as `SKIP` until Asif's document routes are mounted.
+
+### Handoff: what's live now (all on `main`)
+- **Phase 1–3 of my list is done (N1–N16).** Live routes: health, banks, all of `/api/auth/*`, invitations, users, cases (list, get, create, edit, transition, assign, notes), dashboard and alerts, plus Asif's victim chat (mounted with real auth).
+- **Asif: your services can get routers now.** Use `from app.security import StaffUser, AnyStaffUser, VictimUser, SessionDep` and raise `ApiError`/`ServiceError` as you do (a `429` with `details.retry_after` gets `Retry-After` automatically). Add each router to `ROUTERS` in `main.py` **and a row to `tests/api/test_permissions.py`** (its guard test fails on an unlisted route).
+  - Still unrouted: documents upload/download, extract, get extraction, review, review queue, case history + CSV, audit logs, victim cases (report, list, get, patch), victim invite + claim.
+  - `tests/api/conftest.py` gives you `client`, `login_as(...)` and the seeded data; `tests/api/contract.py` `validate(body, "SchemaName")` checks a response against `openapi.yaml`.
+- **Open questions for Asif:** (1) `users.preferred_language` column, or drop the field from `SignupRequest`? (2) add a `user.reactivated` audit action? (3) a default `connect_timeout` in `db.init_engine`?
+- **Galib:** rotate the three AI keys in `backend/.env.example` (critical finding at the top).
+
 ### Local test database (for anyone on Windows without Postgres)
 ```bash
 docker run -d --name reliefops-pg -e POSTGRES_PASSWORD=postgres -p 127.0.0.1:55433:5432 pgvector/pgvector:pg16
@@ -162,8 +174,8 @@ cd backend && uv run pytest -q
 
 ### Next (in order, each: tests → commit → pull → push)
 - ~~N2~~ done.
-- ~~N3~~, ~~N4~~, ~~N5~~, ~~N6~~, ~~N7~~, ~~N8~~, ~~N9~~, ~~N10~~, ~~N11~~ done (Phase 2 complete; XREQ-001 resolved). ~~N12~~, ~~N13~~, ~~N14~~, ~~N15~~ done.
-- Next, Phase 3: N16 (smoke script).
+- ~~N3~~, ~~N4~~, ~~N5~~, ~~N6~~, ~~N7~~, ~~N8~~, ~~N9~~, ~~N10~~, ~~N11~~ done (Phase 2 complete; XREQ-001 resolved). ~~N12~~, ~~N13~~, ~~N14~~, ~~N15~~, ~~N16~~ done (Phase 3 complete).
+- Next, Phase 4 (extras): N17 staff chat (`GET /api/cases/{id}/chat`, `POST …/chat/reply`) and N18 bluebooks (`/api/kb/documents` list, upload, publish, archive). Also: update my use-case diagram to v0.4.2, and answer XREQ-003's auth part.
 
 ### Blockers / handoff
 - **Galib:** rotate the AI keys (critical finding above).
