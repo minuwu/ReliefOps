@@ -18,6 +18,12 @@ Decision (Asif): build all my business logic as **service functions with databas
   - Contract types in [common.py](../../backend/app/models/common.py) (`Money` serializes to a JSON number).
   - `case_sql`: the atomic version check (two parallel edits with the same version → exactly one wins), `CASE_CLOSED`, 404 for another bank's case, `403` when RLS refuses a write, the §3.3 missing-fields rule and the §3.1 stage deadlines.
   - 168 tests pass.
+- **A6, victim cases** ([victim_cases.py](../../backend/app/services/victim_cases.py)): report, list, view and edit, following API_SPEC §3.5 and §6.7.
+  - **Report:** a `received` web-form case linked to the account. The email defaults to the account's, the 7-day stage deadline is set, and a repeat report gets `possible_duplicate`.
+  - **Visibility:** a victim sees only their own cases; anyone else's is `404`. Views are audited.
+  - **Edits:** contact details until the case closes, report facts only while `received` (otherwise `409 CASE_LOCKED` with `locked_fields`). A phone or an email must remain, and edits need `expected_version`.
+  - **Records:** each changed field is audited as `{from, to}`. An edit that changes nothing creates no new version.
+  - 32 tests.
 
 ## 2026-11-15 (session 10) — backend Phase 1 done
 
