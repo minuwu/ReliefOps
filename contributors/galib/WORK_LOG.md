@@ -4,6 +4,16 @@ Owner: Galib (`Ga-lib`) — Role: AI / LLM — Branches: `galib/*`
 
 Update after each work session. Newest entry first. Bangladesh time (UTC+6). Link commits/PRs/XREQs.
 
+## 2026-11-15 — XREQ-002 naming fixes
+
+### Completed
+- Corrected XREQ-002 in AGENTS.md: field names now match `ExtractableField` (API_SPEC §3.4), and it names the extraction files. `ai_extraction.py` is Galib's; `extraction.py` is Asif's wrapper (backend-development-guide §ownership). Minhaz's log entry pointing Galib at `services/extraction.py` is superseded.
+
+### Related issues / commits / PRs
+- Branch `galib/fix-xreq-002-fields`
+
+---
+
 ## 2026-11-15 — incoming cross-functional dispatch (frontend ready, XREQ-002 & XREQ-004)
 
 ### Pending XREQs Assigned (AGENTS.md §2)
