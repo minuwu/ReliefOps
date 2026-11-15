@@ -196,7 +196,8 @@ def test_victim_with_empty_user_id_sees_nothing(app_conn: Connection, world: dic
 def test_app_user_reads_sessions_only_in_system_scope(app_conn: Connection, world: dict[str, str]) -> None:
     assert count(app_conn, "sessions") == 0
     set_scope(app_conn, "system")
-    assert count(app_conn, "sessions") == 1
+    # The fixture's own session; other modules' login tests add sessions too (guide §8.2: no global counts).
+    assert count(app_conn, "sessions", "token_hash = repeat('b', 64)") == 1
 
 
 def test_supervisor_manages_invitations(app_conn: Connection, world: dict[str, str]) -> None:

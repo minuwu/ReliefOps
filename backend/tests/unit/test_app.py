@@ -13,8 +13,28 @@ from pydantic import BaseModel, ConfigDict, Field, SecretStr, ValidationError
 from app.config import Settings
 from app.errors import ApiError
 from app.main import create_app
+from app.rate_limit import SlidingWindowLimiter, enforce
 from app.routers.reference import health_status
 from app.services import extraction_engine
+
+
+def test_rate_limiter_blocks_at_the_limit_and_frees_up_when_the_window_slides() -> None:
+    now = [1000.0]
+    limiter = SlidingWindowLimiter(limit=3, window_seconds=60, clock=lambda: now[0])
+    for offset in (0, 10, 20):
+        now[0] = 1000.0 + offset
+        assert limiter.retry_after("k") is None
+        limiter.hit("k")
+    assert limiter.retry_after("k") == 40  # the first hit (t=1000) leaves the window at t=1060
+    assert limiter.retry_after("other") is None
+    with pytest.raises(ApiError) as blocked:
+        enforce(limiter, ["other", "k"])
+    assert (blocked.value.status, blocked.value.details) == (429, {"retry_after": 40})
+    now[0] = 1060.0
+    assert limiter.retry_after("k") is None
+    limiter.reset("k")
+    assert limiter.retry_after("k") is None
+
 
 UNREACHABLE_DB = "postgresql+psycopg://app_user:app_password@127.0.0.1:1/nothing_test"
 ORIGIN = "http://localhost:5173"

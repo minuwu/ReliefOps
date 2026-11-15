@@ -50,6 +50,17 @@ I read Asif's whole work log, [REMAINING_WORK.md](../asif/REMAINING_WORK.md), mi
   - **Asif's victim-chat router is mounted** in `main.py` with `get_principal` and `ChatSettings` from settings.
   - [test_security.py](../../backend/tests/database/test_security.py): 22 tests on the real database, covering hashing, token lookup (expired, revoked, deactivated, oversized), every role dependency, the bank scope through `SessionDep` (a bank_a viewer sees only bank_a), the log line, and the mounted chat routes. **413 tests pass.**
 
+- **N3, login / logout / me + rate limits:**
+  - [rate_limit.py](../../backend/app/rate_limit.py): an in-memory sliding window (thread-safe, injectable clock). `login_failures` = 5 per 15 min and `email_requests` = 5 per hour (for N7), per IP and per email. `enforce()` raises `429 RATE_LIMITED` with `details.retry_after`, which the N1 handler turns into `Retry-After`. `reset_rate_limits()` is for tests.
+  - [services/auth.py](../../backend/app/services/auth.py) + [routers/auth.py](../../backend/app/routers/auth.py): `POST /api/auth/login`, `GET /api/auth/me`, `POST /api/auth/logout`.
+    - A wrong password, an unknown email and a deactivated account all get the same `401 INVALID_CREDENTIALS`. An unverified victim gets `403 EMAIL_NOT_VERIFIED`, but only with the right password.
+    - The 6th failure in 15 minutes is `429` even with the right password, and a success clears that email's failures.
+    - `auth.login`, `auth.login_failed` (with `reason`) and `auth.logout` are audited, never with the password. Logout ends only the current session. `revoke_all_sessions()` is ready for N7 and N12.
+  - [models/auth.py](../../backend/app/models/auth.py): `LoginRequest` (`extra="forbid"`; login accepts the seed's 9-character `Demo@1234`, while the 10–128 rule is for new passwords in N7), `User`, `LoginResult`.
+  - [test_auth_http.py](../../backend/tests/database/test_auth_http.py): 8 HTTP tests on the real database, plus a limiter unit test with a fake clock.
+  - **Fixed two of Asif's tests** (`test_db_scope.py`, `test_rls.py`): they asserted exactly one row in `sessions`, which broke once login tests created sessions (guide §8.2: no global counts). They now count the fixture's own session. Intent unchanged. **Asif, please check.**
+  - **422 tests pass** (two runs in a row); Ruff clean.
+
 ### Local test database (for anyone on Windows without Postgres)
 ```bash
 docker run -d --name reliefops-pg -e POSTGRES_PASSWORD=postgres -p 127.0.0.1:55433:5432 pgvector/pgvector:pg16
@@ -65,7 +76,7 @@ cd backend && uv run pytest -q
 
 ### Next (in order, each: tests → commit → pull → push)
 - ~~N2~~ done.
-- **N3** login, logout, me, in-memory rate limits with `Retry-After`. **N4** `email.py`. **N5** seed. **N6** API test harness (`tests/api/conftest.py`).
+- ~~N3~~ done. **N4** `email.py`. **N5** seed. **N6** API test harness (`tests/api/conftest.py`).
 - Then N7 (sign-up, verify, reset), N8 `case_workflow.py`, N9–N11 (cases: XREQ-001).
 
 ### Blockers / handoff

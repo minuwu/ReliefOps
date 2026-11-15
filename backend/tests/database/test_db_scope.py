@@ -82,8 +82,10 @@ def test_victim_scope_sees_only_own_case(engine: Engine, world: dict[str, str]) 
 
 
 def test_system_session_reads_auth_tables(engine: Engine, world: dict[str, str]) -> None:
+    # The fixture's own session (token_hash 'bbbb…'); other modules' login tests add sessions too.
+    fixture_session = text("select count(*) from sessions where token_hash = repeat('b', 64)")
     with db.system_session() as s:
-        assert s.exec(text("select count(*) from sessions")).scalar_one() == 1
+        assert s.exec(fixture_session).scalar_one() == 1
     with db.scoped_session(operator_scope(world)) as s:
         assert s.exec(text("select count(*) from sessions")).scalar_one() == 0
 
