@@ -164,6 +164,13 @@ I read Asif's whole work log, [REMAINING_WORK.md](../asif/REMAINING_WORK.md), mi
   - `POST /api/cases/{id}/chat/reply` (operator, supervisor) → `201` `ChatMessage` with `role: "staff"`, the author's name, and the case's language. In one transaction it writes the message, **clears `victim_question_pending`** and audits `chat.staff_replied`. RLS only lets staff insert `staff` rows under their own `author_id`, so a reply can't pose as the assistant. Allowed on closed cases, like notes.
   - [test_staff_chat.py](../../backend/tests/api/test_staff_chat.py): 3 tests, including **victim asks for a person → escalated → staff reply → flag cleared → the victim sees the reply**. Both new routes were added to the permission table. **658 tests pass.**
 
+- **N18, bluebooks** ([services/kb.py](../../backend/app/services/kb.py), [routers/kb.py](../../backend/app/routers/kb.py)):
+  - `GET /api/kb/documents` (`bank_id`, `status`): staff see all banks, bank viewers only their own (RLS; `bank_id` ignored), victims → 403.
+  - `POST /api/kb/documents` (supervisor, multipart: `file`, `bank_id`, `title`, `version`, `language`, optional `audience`, default `victim_facing`) → `201` with status `processing`. The type is checked from the file's bytes (PDF or UTF-8 TXT, else `400`); over 20 MB → `413 FILE_TOO_LARGE`. Audited as `kb.document_uploaded`.
+  - **Indexing runs as a background task** in the system scope: Galib's `rag.split_bluebook`, then `rag.embed` with **no transaction open during the call**. If embedding is unavailable, passages are stored without vectors and retrieval falls back to keywords. No numbered sections or an unreadable file → `failed` with a reason.
+  - `publish` works only from `ready` (else `409 INVALID_STATUS_TRANSITION`) and **archives the older published version with the same title**. `archive` works from any status and is idempotent. Audited as `kb.document_published` / `kb.document_archived`.
+  - [test_kb.py](../../backend/tests/api/test_kb.py): 6 tests, including upload → ready (3 passages) → publish replaces the seeded bank_e version → archive, a failed file, type and size checks, and **Galib's real `bank_a_bluebook.pdf` indexing into exactly as many passages as his `kb_passages.json`**. The 4 routes were added to the permission table. **685 tests pass.**
+
 ### Local test database (for anyone on Windows without Postgres)
 ```bash
 docker run -d --name reliefops-pg -e POSTGRES_PASSWORD=postgres -p 127.0.0.1:55433:5432 pgvector/pgvector:pg16

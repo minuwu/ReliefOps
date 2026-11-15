@@ -18,7 +18,7 @@ from app import db, email
 from app.config import Settings, get_settings
 from app.errors import register_error_handlers
 from app.middleware import RequestContextMiddleware
-from app.routers import auth, cases, dashboard, reference, staff, staff_chat, victim_chat
+from app.routers import auth, cases, dashboard, kb, reference, staff, staff_chat, victim_chat
 from app.security import get_principal
 from app.services import extraction_engine
 from app.services.victim_chat import ChatSettings
@@ -32,6 +32,7 @@ ROUTERS: tuple[APIRouter, ...] = (
     staff.router,
     dashboard.router,
     staff_chat.router,
+    kb.router,
 )
 
 
