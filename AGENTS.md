@@ -64,6 +64,8 @@ This file is:
 | `XREQ-002` | `P0 (Blocker)` | Frontend (Minhaz) | AI (Galib) / Backend (Asif) | Rule D3 Vision OCR Extraction & HITL Queue (`POST /api/documents/{id}/extract`, `POST /api/extractions/{id}/review`) | `[IN_PROGRESS]` | 2026-11-15 20:10 (accept/reject is one review call) |
 | `XREQ-003` | `P1 (High)` | Frontend (Minhaz) | Backend (Anim / Asif) | Victim accounts, case reports & 6-Stage Status Tracker (`POST /api/victim/cases`) | `[IN_PROGRESS]` | 2026-11-15 20:10 (intake replaced by victim accounts) |
 | `XREQ-004` | `P1 (High)` | Frontend (Minhaz) | Backend (Asif / Anim) / AI (Galib) | Cross-Bank Shared Accounts (`GET /api/alerts/shared-accounts`); freeze needs a team decision | `[IN_PROGRESS]` | 2026-11-15 20:10 (detection done, freeze not agreed) |
+| `XREQ-005` | `P1 (High)` | Frontend (Minhaz) | Backend (Anim / Asif) | Mount the remaining v0.4.2 routes + fix 3 contract deviations (list in card) | `[PENDING]` | 2026-11-15 14:49 |
+| `XREQ-006` | `P0 (Blocker)` | Frontend (Minhaz) | Backend (Asif / Anim) / AI (Galib) | Deploy backend + database + AI to the cloud, post the public HTTPS API URL, allow the frontend origin (CORS) | `[PENDING]` | 2026-11-15 15:05 |
 
 *(When adding a request: append a row above AND add a detailed card in 2.2. Never insert in the middle.)*
 
@@ -165,6 +167,8 @@ Statutory Rule D3 dictates that AI is strictly an assistive advisor: **AI model 
 - **Status / Notes**: `[Implemented route / schema / component]`
 - **Verification Proof**: `[curl command, Swagger link, or test output]`
 
+**Status request (Minhaz, 2026-11-15 14:49):** None of the document, extraction or review-queue routes are mounted yet. The frontend upload, extract and review screens are built against the contract. Galib / Asif: please post progress and an ETA here. If the demo uses only the rules fallback, say so.
+
 ---
 
 #### `[XREQ-003]` Public Citizen Intake & 6-Stage Progress Tracker
@@ -221,6 +225,8 @@ Allows scam victims to report losses via the public web form without prior regis
 - **Status / Notes**: `[Implemented route / schema / component]`
 - **Verification Proof**: `[curl command, Swagger link, or test output]`
 
+**Status request (Minhaz, 2026-11-15 14:49):** Victim auth and victim chat are live. The victim case routes (`GET/POST /api/victim/cases`, `GET/PATCH /api/victim/cases/{id}`) are still not mounted, so the portal falls back to mock mode. Anim / Asif: please post an ETA. Also, signup drops `preferred_language` (see XREQ-005).
+
 ---
 
 #### `[XREQ-004]` Cross-Bank Fraud Ring Topology & Coordinated Freeze API
@@ -265,6 +271,98 @@ Provides the showstopper feature for hackathon judging: uncovering organized cri
 - **Branch / Commit**: `main` (Galib's detection part; commit in this card's history)
 - **Status / Notes**: Split agreed in the card: **AI (Galib), done:** `app/services/fraud_rings.detect_rings(cases, include_same_bank=False, frozen_accounts=...)` returns the response items above, plus `reasons` (plain-language why), `link` (`confirmed` / `possible` / `same_bank`) and `holder_names`. It matches accounts across formats (`98-7654-3210` = `9876543210`) and holder names across spellings (`GLOBAL ASSET TRUST` = `カ）グローバルアセットトラスト`). Same digits with different holder names is only `POSSIBLE_LINK`, never `CRITICAL_SYNDICATE`, so an innocent account isn't flagged. Pure function, no DB or model calls. **Backend (Asif / Anim), open:** load the cases the supervisor may see (`id, reference, bank_id, amount, account_number, account_holder_name, transfer_date`), call `detect_rings`, serve `GET`; the `freeze` POST (supervisor only, audited, a human action) and storing frozen accounts to pass back in.
 - **Verification Proof**: `cd backend && uv run pytest tests/ai/test_fraud_rings.py` → 19 passed. On the real demo seed (`app.seed.all_cases()`): exactly one cross-bank ring, account `9876543210`, 3 cases at bank_a + bank_b, ¥4,485,000 → `CRITICAL_SYNDICATE` (test `test_the_real_demo_seed_has_one_critical_cross_bank_ring`).
+
+**Status request (Minhaz, 2026-11-15 14:49):** `GET /api/alerts/shared-accounts` is still not mounted in `backend/app/main.py`, so the dashboard's shared-accounts panel works only in mock mode. Asif / Anim: please mount it (supervisor only), and tell me the ETA here. The freeze stays out until the team decides.
+
+---
+
+#### `[XREQ-005]` Mount the remaining v0.4.2 routes and fix 3 contract deviations
+- **Priority**: `P1 (High)`
+- **From**: Frontend (Minhaz)
+- **To**: Backend (Anim / Asif)
+- **Status**: `[PENDING]`
+- **Created**: 2026-11-15 14:49 (UTC+6)
+- **Target Interface / Endpoints**: every route below, exactly as in `docs/openapi.yaml` v0.4.2
+
+**Requirement Details:**
+The frontend calls every route in the contract. Against the live backend (`VITE_USE_MOCK=false`), these routes match today: health, banks, all auth routes, the six case routes, and victim chat. The routes below are **not mounted** in `backend/app/main.py`, so those screens work only in mock mode. Please mount them, or reply here with which ones are out of scope for the demo so I can hide those screens in live mode.
+
+1. **Team:** `GET/POST /api/users`, `PATCH /api/users/{id}`, invitations (`GET/POST /api/invitations`, revoke), `POST /api/auth/accept-invitation`
+2. **Case work:** `POST /api/cases/{id}/notes`, `POST /api/cases/{id}/victim-invite`, `GET /api/cases/{id}/history` (+ CSV), `GET /api/audit-logs`
+3. **Staff chat:** `GET /api/cases/{id}/chat`, `POST /api/cases/{id}/chat`
+4. **Documents and AI review (with XREQ-002):** `POST /api/cases/{id}/documents`, `GET /api/documents/{id}/file`, `POST /api/documents/{id}/extract`, `GET /api/extractions/{id}`, `POST /api/extractions/{id}/review`, `GET /api/review-queue`
+5. **Dashboard:** `GET /api/dashboard/stats`, `GET /api/alerts/shared-accounts` (XREQ-004)
+6. **Knowledge base:** `GET /api/kb/documents`, `POST /api/kb/documents`, publish and archive
+7. **Victim portal (with XREQ-003):** `GET/POST /api/victim/cases`, `GET/PATCH /api/victim/cases/{id}`, victim claims
+
+**Contract deviations found in the backend (please fix or update the contract):**
+- `preferred_language` is accepted at victim signup but dropped (`backend/app/services/accounts.py` ~line 99).
+- The victim chat routes return errors that are not the standard `ErrorEnvelope` (`{success:false, error:{code,message,details}}`).
+- `POST /api/cases/{id}/assign` declares a `409` response that the contract does not list. Either add it to `docs/openapi.yaml` or remove it.
+
+**Frontend side (in progress, Minhaz):** the frontend is switching to `q` (not `search`) for case search, reading case documents from `GET /api/cases/{id}`, and treating the notes POST response as a `Note`.
+
+**Fulfillment & Proof (filled by recipient on completion):**
+- **Branch / Commit**: `[branch-name or commit-hash]`
+- **Status / Notes**: `[which routes are mounted, which are out of scope]`
+- **Verification Proof**: `[pytest output with contract validation]`
+
+---
+
+#### `[XREQ-006]` Deploy backend, database and AI to the cloud; give the frontend a public API URL
+- **Priority**: `P0 (Blocker)`
+- **From**: Frontend (Minhaz)
+- **To**: Backend (Asif / Anim) / AI (Galib)
+- **Status**: `[PENDING]`
+- **Created**: 2026-11-15 15:05 (UTC+6)
+- **Target Interface / Endpoint**: a public `https://` base URL serving `/api/*` (contract v0.4.2)
+
+**Question to every owner: is your part deployed to the cloud and working? Reply in this card with yes/no and the URL.**
+
+**Where things stand (checked 2026-11-15 15:05):**
+- **Frontend: deployed.** Firebase Hosting, `https://reliefops.web.app` (also `https://reliefops.firebaseapp.com`). Both return 200. It runs in mock mode today because there is no backend to call.
+- **Backend: not deployed, as far as the repo shows.** There is no Dockerfile, no Cloud Run / Render / Fly / Railway config and no deploy workflow (`.github/workflows` has only `verify-branch-sync.yml`). If it is deployed somewhere, post the URL here.
+- **AI: runs inside the backend** (`backend/app/services/ai_extraction.py`, `fraud_rings.py`), so it goes live when the backend does. Its provider keys must be set on the server.
+
+**Requirement Details (please do all of these, then post the URL):**
+1. **Deploy the FastAPI app** to a host with HTTPS. Cloud Run is the easiest fit, since the frontend is already on Firebase/GCP. Any HTTPS host works. **It must be `https://`**: the frontend is served over HTTPS, so browsers block calls to a plain `http://` API (mixed content).
+2. **Deploy a managed Postgres** (Cloud SQL, Neon or Supabase) with both roles the app expects (`app_user` for the app and `migrator` for migrations), so bank isolation (RLS) still works. Run `alembic upgrade head` with `MIGRATIONS_DATABASE_URL`, then `uv run python -m app.seed`, so the demo accounts (`Demo@1234`) exist.
+3. **CORS (blocker):** `cors_origins` in `backend/app/config.py` defaults to localhost only, so the browser will block every call from the deployed site. Set the env var:
+   `CORS_ORIGINS=https://reliefops.web.app,https://reliefops.firebaseapp.com,http://localhost:5173,http://localhost:3000`
+   CORS must also cover preflight `OPTIONS` (it does today with `allow_methods/headers=["*"]`) and keep the exposed headers `Retry-After`, `X-Request-ID` and `Content-Disposition` (CSV and file downloads need them). Auth is a Bearer token, not cookies, so no `allow_credentials` or SameSite change is needed.
+4. **Server env vars:**
+   - `APP_ENV=prod`
+   - `DATABASE_URL`, `MIGRATIONS_DATABASE_URL`
+   - `FRONTEND_BASE_URL=https://reliefops.web.app` (the email verification, reset and invitation links point here)
+   - `SESSION_HOURS`
+   - `AI_MODE=live`, plus `GEMINI_API_KEY`, `OPENROUTER_API_KEY` and `GROQ_API_KEY`, which are **secrets: set them in the host's secret manager and never commit them**
+   - `LOG_LEVEL`
+5. **Email decision (blocker for victim sign-up):** with `EMAIL_MODE=console`, verification emails go only to the server log, so a judge cannot verify a new victim account. Choose one:
+   - `EMAIL_MODE=smtp`, with SMTP secrets set on the server
+   - keep console mode and demo only with the pre-verified seed accounts (victim1 and victim2)
+   Post the choice here.
+6. **Rate limiting:** `backend/app/rate_limit.py` keeps counters in process memory. Run one instance (Cloud Run `--max-instances=1`), or the limits split across instances. Cold starts are fine; `--min-instances=1` avoids a slow first request during judging.
+7. **Uploads:** the host must accept 10 MB multipart bodies (`POST /api/cases/{id}/documents`, `POST /api/kb/documents`). Check the proxy body limit. Cloud Run allows 32 MB.
+8. **Health:** `GET /api/health` should return `db: ok` and the AI status in prod. Use it as the host's health check.
+
+**Expected reply (fill in below):**
+```text
+API_URL=https://<your-host>          # no trailing slash, no /api suffix
+CORS_ORIGINS set: yes/no
+DB migrated + seeded: yes/no
+AI keys set, /api/health ai=ok: yes/no
+EMAIL_MODE: console | smtp
+```
+
+**After the URL arrives (Minhaz):**
+1. Build the frontend with `VITE_USE_MOCK=false VITE_API_URL=<API_URL>`; Vite bakes these in at build time.
+2. Redeploy Firebase Hosting.
+3. Test every flow against the live API, and report drift in XREQ-005.
+
+**Fulfillment & Proof (filled by recipient on completion):**
+- **Branch / Commit**: `[commit with deploy config]`
+- **Status / Notes**: `[API URL, host, DB provider, email mode]`
+- **Verification Proof**: `curl -i -H "Origin: https://reliefops.web.app" <API_URL>/api/health` showing `200` and `access-control-allow-origin: https://reliefops.web.app`
 
 ---
 
