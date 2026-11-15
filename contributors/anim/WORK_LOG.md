@@ -159,6 +159,11 @@ I read Asif's whole work log, [REMAINING_WORK.md](../asif/REMAINING_WORK.md), mi
 - **Open questions for Asif:** (1) `users.preferred_language` column, or drop the field from `SignupRequest`? (2) add a `user.reactivated` audit action? (3) a default `connect_timeout` in `db.init_engine`?
 - **Galib:** rotate the three AI keys in `backend/.env.example` (critical finding at the top).
 
+- **N17, staff side of the case chat** ([services/staff_chat.py](../../backend/app/services/staff_chat.py), [routers/staff_chat.py](../../backend/app/routers/staff_chat.py)):
+  - `GET /api/cases/{id}/chat` (operator, supervisor, bank_viewer for their own bank; another bank → 404; victims → 403): **the same `ChatThread` the victim sees**, through Asif's `victim_chat.get_thread`.
+  - `POST /api/cases/{id}/chat/reply` (operator, supervisor) → `201` `ChatMessage` with `role: "staff"`, the author's name, and the case's language. In one transaction it writes the message, **clears `victim_question_pending`** and audits `chat.staff_replied`. RLS only lets staff insert `staff` rows under their own `author_id`, so a reply can't pose as the assistant. Allowed on closed cases, like notes.
+  - [test_staff_chat.py](../../backend/tests/api/test_staff_chat.py): 3 tests, including **victim asks for a person → escalated → staff reply → flag cleared → the victim sees the reply**. Both new routes were added to the permission table. **658 tests pass.**
+
 ### Local test database (for anyone on Windows without Postgres)
 ```bash
 docker run -d --name reliefops-pg -e POSTGRES_PASSWORD=postgres -p 127.0.0.1:55433:5432 pgvector/pgvector:pg16

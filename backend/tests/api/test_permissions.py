@@ -40,6 +40,8 @@ TABLE: list[tuple[str, str, set[str]]] = [
     ("GET", "/api/dashboard/stats", {"supervisor", "viewer_b"}),
     ("GET", "/api/alerts/shared-accounts", {"supervisor"}),
     ("GET", f"/api/victim/cases/{CASE}/chat", {"victim1"}),
+    ("GET", f"/api/cases/{CASE}/chat", {"operator", "supervisor", "viewer_b"}),
+    ("POST", f"/api/cases/{CASE}/chat/reply", {"operator", "supervisor"}),
 ]
 PUBLIC: list[tuple[str, str]] = [
     ("GET", "/api/health"),
