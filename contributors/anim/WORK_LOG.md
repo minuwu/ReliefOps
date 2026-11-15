@@ -133,6 +133,9 @@ I read Asif's whole work log, [REMAINING_WORK.md](../asif/REMAINING_WORK.md), mi
   - **Open (Asif, contract):** there's no `user.reactivated` audit action, so a reactivation is recorded as `user.deactivated` with `changes.is_active {from: false, to: true}` and the summary "reactivated". Add the action in a migration and the contract?
   - [test_staff.py](../../backend/tests/api/test_staff.py): 8 tests, including **an invited bank_c viewer who, once joined, sees only bank_c cases**. Responses are validated against `openapi.yaml`. **545 tests pass.**
 
+- **N13, notes**: `POST /api/cases/{id}/notes` (operator, supervisor) → `201` `Note`, body 1–4000 characters. Notes are **the one write a closed case still accepts**, and a note doesn't change the case's version. Audited as `note.added`; the case detail lists notes newest first. [test_notes.py](../../backend/tests/api/test_notes.py): 3 tests. **548 tests pass.**
+- **Frontend check:** Minhaz's routes `/verify-email`, `/reset-password`, `/accept-invitation` and `/claim-case` read `?token=`, which **matches the links my emails send** (and Asif's claim link), so the email-link flows work end to end.
+
 ### Local test database (for anyone on Windows without Postgres)
 ```bash
 docker run -d --name reliefops-pg -e POSTGRES_PASSWORD=postgres -p 127.0.0.1:55433:5432 pgvector/pgvector:pg16
@@ -148,8 +151,8 @@ cd backend && uv run pytest -q
 
 ### Next (in order, each: tests → commit → pull → push)
 - ~~N2~~ done.
-- ~~N3~~, ~~N4~~, ~~N5~~, ~~N6~~, ~~N7~~, ~~N8~~, ~~N9~~, ~~N10~~, ~~N11~~ done (Phase 2 complete; XREQ-001 resolved). ~~N12~~ done.
-- Next, Phase 3: N13 (notes), N14 (dashboard, alerts), N15 (permission table), N16 (smoke script).
+- ~~N3~~, ~~N4~~, ~~N5~~, ~~N6~~, ~~N7~~, ~~N8~~, ~~N9~~, ~~N10~~, ~~N11~~ done (Phase 2 complete; XREQ-001 resolved). ~~N12~~, ~~N13~~ done.
+- Next, Phase 3: N14 (dashboard, alerts), N15 (permission table), N16 (smoke script).
 
 ### Blockers / handoff
 - **Galib:** rotate the AI keys (critical finding above).
