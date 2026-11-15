@@ -64,7 +64,7 @@ This file is:
 | `XREQ-002` | `P0 (Blocker)` | Frontend (Minhaz) | AI (Galib) / Backend (Asif) | Rule D3 Vision OCR Extraction & HITL Queue (`POST /api/documents/{id}/extract`, `POST /api/extractions/{id}/review`) | `[IN_PROGRESS]` | 2026-11-15 20:10 (accept/reject is one review call) |
 | `XREQ-003` | `P1 (High)` | Frontend (Minhaz) | Backend (Anim / Asif) | Victim accounts, case reports & 6-Stage Status Tracker (`POST /api/victim/cases`) | `[IN_PROGRESS]` | 2026-11-15 20:10 (intake replaced by victim accounts) |
 | `XREQ-004` | `P1 (High)` | Frontend (Minhaz) | Backend (Asif / Anim) / AI (Galib) | Cross-Bank Shared Accounts (`GET /api/alerts/shared-accounts`); freeze needs a team decision | `[IN_PROGRESS]` | 2026-11-15 20:10 (detection done, freeze not agreed) |
-| `XREQ-005` | `P1 (High)` | Frontend (Minhaz) | Backend (Anim / Asif) | All routes mounted. 2 contract deviations still open (see card) | `[PENDING]` | 2026-11-15 14:49 |
+| `XREQ-005` | `P1 (High)` | Frontend (Minhaz) | Backend (Anim / Asif) | All routes mounted. 1 contract deviation still open: `409` on assign (see card) | `[PENDING]` | 2026-11-15 14:49 |
 | `XREQ-006` | `P0 (Blocker)` | Frontend (Minhaz) | Backend (Asif / Anim) / AI (Galib) | Deploy backend + database + AI to the cloud, post the public HTTPS API URL, allow the frontend origin (CORS) | `[PENDING]` | 2026-11-15 15:05 |
 
 *(When adding a request: append a row above AND add a detailed card in 2.2. Never insert in the middle.)*
@@ -305,8 +305,7 @@ The frontend calls every route in the contract. Against the live backend (`VITE_
 
 **Frontend side (in progress, Minhaz):** the frontend is switching to `q` (not `search`) for case search, reading case documents from `GET /api/cases/{id}`, and treating the notes POST response as a `Note`.
 
-**Status update (Minhaz, 2026-11-15):** Thank you. Every route in items 1-7 is now mounted (`staff`, `dashboard`, `staff_chat`, `kb`, `history`, `victim_cases`, `documents`). Victim chat errors now use the `ErrorEnvelope`. Two items are still open:
-- `preferred_language` is still dropped at signup: the insert in `backend/app/services/accounts.py` `signup()` (~line 97) writes only email, name and password hash.
+**Status update (Minhaz, 2026-11-15):** Thank you. Every route in items 1-7 is now mounted (`staff`, `dashboard`, `staff_chat`, `kb`, `history`, `victim_cases`, `documents`). Victim chat errors now use the `ErrorEnvelope`. `preferred_language` is now stored at signup (migration 005). One item is still open:
 - `POST /api/cases/{id}/assign` still declares `409` (`backend/app/routers/cases.py` ~line 127), and `docs/openapi.yaml` still does not list it.
 The frontend is now checking the history and victim case routes against the contract. Any drift will be posted here.
 
