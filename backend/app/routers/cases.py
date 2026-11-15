@@ -16,6 +16,8 @@ from app.models.cases import (
     CaseSummary,
     CaseUpdate,
     DeadlineFilter,
+    Note,
+    NoteCreate,
     SortField,
     SortOrder,
     TransitionRequest,
@@ -126,3 +128,14 @@ def transition_case(case_id: UUID, data: TransitionRequest, who: StaffUser, s: S
 )
 def assign_case(case_id: UUID, data: AssignRequest, who: StaffUser, s: SessionDep) -> dict:
     return ok(case_moves.assign(s, who, case_id, data, datetime.now(UTC)), "Case assigned")
+
+
+@router.post(
+    "/{case_id}/notes",
+    status_code=201,
+    response_model=Envelope[Note],
+    summary="Add an internal note (also on closed cases)",
+    responses=error_responses(401, 403, 404, 422),
+)
+def add_note(case_id: UUID, data: NoteCreate, who: StaffUser, s: SessionDep) -> dict:
+    return ok(case_edits.add_note(s, who, case_id, data), "Note added")

@@ -20,8 +20,9 @@ from sqlalchemy import insert, text
 from sqlmodel import Session
 
 from app.errors import ApiError
-from app.models.cases import Case, CaseCreate, CaseUpdate
+from app.models.cases import Case, CaseCreate, CaseUpdate, Note, NoteCreate
 from app.security import Principal
+from app.models.documents import UserRef
 from app.services import audit, case_sql
 from app.services.cases import load_case
 
@@ -198,3 +199,34 @@ def update_case(s: Session, who: Principal, case_id: UUID, data: CaseUpdate, now
         )
     s.commit()
     return load_case(s, who, case_id, now)
+
+
+def add_note(s: Session, who: Principal, case_id: UUID, data: NoteCreate) -> Note:
+    """``POST /api/cases/{id}/notes`` → 201. Notes are the one write a closed case still accepts (§3.2)."""
+    case = case_sql.require_case(s, case_id)  # 404 if not visible
+    row = (
+        s.exec(  # type: ignore[call-overload]
+            text(
+                "insert into notes (case_id, bank_id, author_id, body) values (:case_id, :bank_id, :author_id, :body) "
+                "returning id, created_at"
+            ),
+            params={"case_id": case_id, "bank_id": case["bank_id"], "author_id": who.user_id, "body": data.body},
+        )
+        .mappings()
+        .one()
+    )
+    audit.record(
+        s,
+        action="note.added",
+        actor=who.actor(),
+        summary="Note added",
+        case=CaseKey(case_id, case["bank_id"]),
+        metadata={"note_id": row["id"]},
+    )
+    s.commit()
+    return Note(
+        id=str(row["id"]),
+        body=data.body,
+        author=UserRef(id=str(who.user_id), name=who.name),
+        created_at=row["created_at"],
+    )

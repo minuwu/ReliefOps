@@ -88,6 +88,14 @@ class TransitionRequest(BaseModel):
     payout_amount: Money | None = None
 
 
+class NoteCreate(BaseModel):
+    """``POST /api/cases/{id}/notes``: internal staff note (allowed even on a closed case)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    body: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=4000)]
+
+
 class AssignRequest(BaseModel):
     """``POST /api/cases/{id}/assign``. ``operator_id: null`` unassigns; the key itself is required."""
 
