@@ -99,6 +99,15 @@ I read Asif's whole work log, [REMAINING_WORK.md](../asif/REMAINING_WORK.md), mi
   - `deadline_state`: `none` (closed), `overdue`, `due_soon` (the last 20% of the stage, at least 1 day) or `on_track`. `transition_values` gives the column changes (new stage deadline, or closed fields).
   - [test_case_workflow.py](../../backend/tests/unit/test_case_workflow.py): 24 unit tests. **493 tests pass.**
 
+- **N9, case list and detail (XREQ-001, reads)** ([services/cases.py](../../backend/app/services/cases.py), [routers/cases.py](../../backend/app/routers/cases.py), [models/cases.py](../../backend/app/models/cases.py)):
+  - `GET /api/cases` (operator, supervisor, bank_viewer; victim → 403) is **one SQL query**: bank and operator joins, a correlated count for `shared_account_case_count`, and `count(*) over ()` for the total.
+    - Filters: `status` (comma-separated, validated), `bank_id` (**ignored for bank viewers**), `assigned_to` (`me`, `unassigned` or a user ID), `deadline_state` (computed in SQL with the same `now` as the response field, so the filter and the field agree), `scam_type`, and `q` (reference, victim name or account number, with `%` and `_` escaped).
+    - Sort by `deadline` (default), `reported_date`, `amount` or `updated_at`, nulls last and ties broken by reference. `page` and `page_size` ≤ 100.
+  - `GET /api/cases/{id}`: the full `Case` with `allowed_transitions` and `allowed_closure_reasons` for this user, Asif's `case_documents()`, and notes (newest first). A **`case.viewed` audit is written at most once per 10 minutes**. Another bank's case → **404**.
+  - `build_case` and `load_case` are ready for N10/N11 (writes return the full `Case`). The models reuse Asif's `UserRef`, `DocumentMeta` and `VictimOut`.
+  - [test_cases_read.py](../../backend/tests/api/test_cases_read.py): 13 tests on the seeded data. **Contract check:** [contract.py](../../backend/tests/api/contract.py) + [test_contract.py](../../backend/tests/api/test_contract.py) validate every response from N1–N9 (health, banks, login, me, logout, sign-up, errors, the case list and 15+ case details) against `docs/openapi.yaml`.
+  - Answered XREQ-001 in AGENTS.md (reads live; transition in N11). **510 tests pass.**
+
 ### Local test database (for anyone on Windows without Postgres)
 ```bash
 docker run -d --name reliefops-pg -e POSTGRES_PASSWORD=postgres -p 127.0.0.1:55433:5432 pgvector/pgvector:pg16
@@ -114,8 +123,8 @@ cd backend && uv run pytest -q
 
 ### Next (in order, each: tests → commit → pull → push)
 - ~~N2~~ done.
-- ~~N3~~, ~~N4~~, ~~N5~~, ~~N6~~, ~~N7~~, ~~N8~~ done.
-- Next: N9–N11, the cases routes (XREQ-001).
+- ~~N3~~, ~~N4~~, ~~N5~~, ~~N6~~, ~~N7~~, ~~N8~~, ~~N9~~ done.
+- Next: N10 (create and edit a case) and N11 (transition and assign), which finish XREQ-001.
 
 ### Blockers / handoff
 - **Galib:** rotate the AI keys (critical finding above).
