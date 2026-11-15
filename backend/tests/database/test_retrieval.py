@@ -39,6 +39,22 @@ def test_model_context_and_text_redaction(app_db, callers, world):
     assert "Private" not in safe and "@" not in safe and "9876543210" not in safe and "5678" not in safe
 
 
+def test_redaction_keeps_dates_and_case_references():
+    case = {"victim_name": "Rina Example", "victim_phone": "+81-90-0000-0042"}
+    text = "I sent money on 2026-10-28 for RFR-2026-00042; call me on +81-90-0000-0042 or 03 1234 5678"
+    safe = retrieval.redact(text, case)
+    assert "2026-10-28" in safe and "RFR-2026-00042" in safe
+    assert "0042" not in safe.replace("RFR-2026-00042", "") and "1234 5678" not in safe
+
+
+def test_shown_answers_keep_guidance_numbers_but_not_case_identifiers():
+    case = {"victim_name": "Rina Example", "account_number": "0012345"}
+    answer = "Rina Example, call the bank hotline 0120-000-000 by 2026-11-16 about account 0012345."
+    shown = retrieval.redact(answer, case, generic=False)
+    assert "0120-000-000" in shown and "2026-11-16" in shown  # what the bluebook told the victim
+    assert "Rina Example" not in shown and "0012345" not in shown
+
+
 @pytest.mark.parametrize("vector", [[0.0] * 768, [float("nan")] * 768, [1.0], None])
 def test_bad_vectors_still_use_keywords(app_db, callers, world, knowledge, vector):
     result = retrieval.retrieve(callers["victim1"], UUID(world["case_b1"]), "report", vector)

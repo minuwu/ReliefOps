@@ -174,12 +174,14 @@ def ask(caller: Caller, case_id: UUID, data: ChatQuestion,
     with db.scoped_session(caller.scope()) as s:
         case = _check_case(s, caller, case_id)
         s.exec(select(case_sql.cases.c.id).where(case_sql.cases.c.id == case_id).with_for_update()).one()
-        now = case_sql.now()
+        # The database clock stamps created_at, so the window is measured on that same clock;
+        # mixing in Python's clock let Retry-After exceed the one-hour window by a second.
+        now = s.exec(select(func.clock_timestamp())).scalar_one()
         recent = s.exec(select(func.count(), func.min(messages.c.created_at)).where(
             messages.c.case_id == case_id, messages.c.role == "victim",
             messages.c.created_at > now - timedelta(hours=1))).one()
         if recent[0] >= 20:
-            retry = max(1, math.ceil((recent[1] + timedelta(hours=1) - now).total_seconds()))
+            retry = min(3600, max(1, math.ceil((recent[1] + timedelta(hours=1) - now).total_seconds())))
             raise ServiceError(429, "RATE_LIMITED", "At most 20 questions per case per hour",
                                {"retry_after": retry})
         language = data.language or case["preferred_language"]
@@ -226,7 +228,7 @@ def ask(caller: Caller, case_id: UUID, data: ChatQuestion,
                      for p in selected]
         answer_row = s.exec(insert(messages).values(
             id=uuid4(), case_id=case_id, bank_id=current["bank_id"], role="assistant",
-            body=retrieval.redact(result["body"], case), language=language,
+            body=retrieval.redact(result["body"], case, generic=False), language=language,
             answer_type=result["answer_type"], citations=citations, confidence=result["confidence"],
             needs_staff=result["needs_staff"], reply_to=UUID(question.id),
             used_passage_ids=[UUID(p["passage_id"]) for p in selected],

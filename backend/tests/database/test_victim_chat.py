@@ -100,6 +100,19 @@ def test_redacted_input_and_no_transaction_during_models(chat_case, owner_engine
                  chat.ChatSettings(embed=embed, answer=answer))
 
 
+def test_saved_answer_keeps_the_hotline_and_deadline(chat_case):
+    caller, case_id = chat_case
+
+    def with_hotline(question, passages, context, history, language):
+        return {**grounded(question, passages, context, history, language),
+                "body": "Secret Name, call the hotline 0120-000-000 before 2026-11-16."}
+
+    answer = chat.ask(caller, case_id, ChatQuestion(question="report documents"),
+                      replace(SETTINGS, answer=with_hotline)).answer
+    assert "0120-000-000" in answer.body and "2026-11-16" in answer.body
+    assert "Secret Name" not in answer.body
+
+
 @pytest.mark.parametrize("bad", [
     {}, {"answer_type": "grounded", "body": "Invented", "used_passage_ids": ["other-bank"], "confidence": .9},
     {"answer_type": "grounded", "body": "Invented", "used_passage_ids": [], "confidence": float("nan")},

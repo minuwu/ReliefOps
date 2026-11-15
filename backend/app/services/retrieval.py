@@ -43,8 +43,20 @@ def case_context(case: dict[str, Any]) -> dict[str, Any]:
     })
 
 
-def redact(body: str, case: dict[str, Any]) -> str:
-    """Remove known case identifiers plus email/phone-like text before external calls.
+_EMAIL = re.compile(r"[\w.+-]+@[\w.-]+\.[\w-]+")
+# Phone-like runs. Not preceded or followed by a word character or hyphen, so the
+# digits inside a case reference (RFR-2026-00042) are never mistaken for a phone.
+_PHONE = re.compile(r"(?<![\w-])\+?\d[\d ()-]{5,}\d(?![\w-])")
+_ISO_DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
+
+
+def redact(body: str, case: dict[str, Any], *, generic: bool = True) -> str:
+    """Remove the case's own identifiers, and with ``generic`` any email/phone-like text.
+
+    Use ``generic=True`` for text sent to an external model (questions, history).
+    Use ``generic=False`` for the assistant's answer we store and show: only the
+    case's known identifiers go, so a hotline number, a deadline or a case
+    reference quoted from the bank's guidance survives. Dates are never removed.
 
     This is deterministic minimization, not a general detector of unknown names
     or addresses someone may type. Never claim arbitrary free text is PII-free.
@@ -52,8 +64,10 @@ def redact(body: str, case: dict[str, Any]) -> str:
     values = sorted({str(case[k]) for k in PERSONAL_FIELDS if case.get(k)}, key=len, reverse=True)
     for value in values:
         body = re.sub(re.escape(value), "[redacted]", body, flags=re.IGNORECASE)
-    body = re.sub(r"[\w.+-]+@[\w.-]+\.[\w-]+", "[redacted]", body)
-    return re.sub(r"(?<!\w)\+?\d[\d ()-]{5,}\d(?!\w)", "[redacted]", body)
+    if not generic:
+        return body
+    body = _EMAIL.sub("[redacted]", body)
+    return _PHONE.sub(lambda m: m.group(0) if _ISO_DATE.fullmatch(m.group(0)) else "[redacted]", body)
 
 
 def valid_vector(vector: Any) -> bool:
