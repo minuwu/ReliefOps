@@ -12,6 +12,10 @@
 set -u
 BASE="${1:-${BASE:-http://localhost:8000}}"
 PY="${PYTHON:-python}"
+HERE="$(cd "$(dirname "$0")" && pwd)"
+PAPER_FORM="$HERE/../eval/extraction/documents/t04_victim_report.txt"   # Galib's synthetic intake form
+# Windows curl can't read Git Bash paths like /e/...; give it a C:/... style path there.
+command -v cygpath >/dev/null 2>&1 && PAPER_FORM="$(cygpath -m "$PAPER_FORM")"
 PASSWORD="Demo@1234"
 CASE_42="7f3c2a9e-5b1d-4c8e-9a10-2d6f8b4e1c33"   # RFR-2026-00042, bank_b, owned by victim1
 failures=0
@@ -83,7 +87,26 @@ CLOSED=$(json_post "/api/cases/$CASE/transition" "$OP" "{\"to_status\":\"closed\
 check "operator closes it as withdrawn" "closed" "$(echo "$CLOSED" | jget data.status)"
 check "a closed case is read-only (409)" "409" "$(code -X PATCH "$BASE/api/cases/$CASE" -H "Authorization: Bearer $OP" \
   -H 'Content-Type: application/json' -d "{\"amount\":1,\"expected_version\":$((V + 1))}")"
-echo "SKIP  upload → AI extraction → review → Verified (needs Asif's document routes mounted)"
+
+# ---------------------------------------------------------------- the demo flow (guide §8.8 step 3): paper → AI → person → Verified
+PAPER=$(json_post /api/cases "$OP" '{"bank_id":"bank_b","channel":"paper","victim":{"name":"Paper Victim"}}' | jget data.id)
+DOC_JSON=$(curl -s -X POST "$BASE/api/cases/$PAPER/documents" -H "Authorization: Bearer $OP"   -F "file=@$PAPER_FORM;type=text/plain" -F "doc_type=intake_form")
+DOC=$(echo "$DOC_JSON" | jget data.id)
+check "upload the scanned paper form" "intake_form" "$(echo "$DOC_JSON" | jget data.doc_type)"
+check "bank_a viewer can't download it (404)" "404" "$(code "$BASE/api/documents/$DOC/file" -H "Authorization: Bearer $VA")"
+EXT_JSON=$(json_post "/api/documents/$DOC/extract" "$OP" '{}')
+EXT=$(echo "$EXT_JSON" | jget data.id)
+check "AI extraction waits for a person (never changes the case itself)" "pending_review" "$(echo "$EXT_JSON" | jget data.status)"
+check "it shows up in the review queue" "yes" "$(body "$BASE/api/review-queue?page_size=100" -H "Authorization: Bearer $OP"   | "$PY" -c "import json,sys; print('yes' if any(i['extraction_id']=='$EXT' for i in json.load(sys.stdin)['data']['items']) else 'no')")"
+PV=$(body "$BASE/api/cases/$PAPER" -H "Authorization: Bearer $OP" | jget data.version)
+REVIEW=$(json_post "/api/extractions/$EXT/review" "$OP" "{\"decision\":\"accept\",\"expected_version\":$PV,\"fields\":{\"victim_phone\":\"+81-90-0000-0102\",\"amount\":250000,\"transfer_date\":\"2026-10-28\",\"account_number\":\"0012345\",\"scam_type\":\"impersonation\"}}")
+check "a person accepts the fields" "accepted" "$(echo "$REVIEW" | jget data.extraction.status)"
+check "nothing is missing any more" "[]" "$(body "$BASE/api/cases/$PAPER" -H "Authorization: Bearer $OP" | jget data.flags.missing_fields)"
+check "reviewing it twice is 409 ALREADY_REVIEWED" "409" "$(code -X POST "$BASE/api/extractions/$EXT/review" -H "Authorization: Bearer $OP"   -H 'Content-Type: application/json' -d "{\"decision\":\"reject\",\"note\":\"x\",\"expected_version\":$((PV + 1))}")"
+PV=$(body "$BASE/api/cases/$PAPER" -H "Authorization: Bearer $OP" | jget data.version)
+check "the paper case moves to Verified" "verified" "$(json_post "/api/cases/$PAPER/transition" "$OP"   "{\"to_status\":\"verified\",\"expected_version\":$PV}" | jget data.status)"
+check "the history shows every step" "yes" "$(body "$BASE/api/cases/$PAPER/history?page_size=100" -H "Authorization: Bearer $OP"   | "$PY" -c "import json,sys; a={e['action'] for e in json.load(sys.stdin)['data']['items']}; print('yes' if {'case.created','document.uploaded','ai.review_accepted','case.status_changed'} <= a else sorted(a))")"
+check "history downloads as CSV" "200" "$(code "$BASE/api/cases/$PAPER/history?format=csv" -H "Authorization: Bearer $OP")"
 
 # ---------------------------------------------------------------- supervisor views
 check "supervisor dashboard" "All banks" "$(body "$BASE/api/dashboard/stats" -H "Authorization: Bearer $SUP" | jget data.scope.label)"

@@ -8,6 +8,26 @@ My area (backend guide §1): the app framework (`create_app`, settings, errors, 
 
 ---
 
+## 2026-11-15 (session 4) — check after Asif's routes, and the full demo run in the smoke script
+
+### What I checked after Asif's push (`3c506a3`)
+- **All 48 contract operations are mounted**: every path and method in `openapi.yaml` is served, with none missing and none extra. **754 tests pass**; Ruff clean.
+- Drove the guide §8.8 happy path over HTTP on the seeded database and validated every response against `openapi.yaml`: victim report and list, upload, download, extract (AI off → `rules_fallback`, low confidence), get extraction, review queue, review accept (`ReviewResultResponse`), a second review → `409 ALREADY_REVIEWED`, transition → Verified, history + CSV, audit logs for supervisor and viewer, victim-invite → `422` without an email. All match.
+- XREQ-005's "victim chat errors aren't the error envelope" **doesn't reproduce in the real app**: a bad question is `422` and another victim's case is `404`, both a valid `ErrorEnvelope`. It was probably seen in a standalone test app.
+
+### Completed
+- **Smoke script: the demo flow is no longer skipped.** [scripts/smoke.sh](../../backend/scripts/smoke.sh) now runs paper case → upload Galib's intake form → bank_a viewer can't download it → AI extraction is `pending_review` and in the review queue → a person accepts → nothing missing → second review `409` → **Verified** → history has `case.created`, `document.uploaded`, `ai.review_accepted`, `case.status_changed` → CSV download.
+  - Fix: Windows curl can't read Git Bash paths (`/e/...`), so the upload path goes through `cygpath -m` when it exists (no effect on Linux or macOS).
+  - **39/39 PASS** against a real `fastapi run` server on the seeded Docker database.
+
+### Asif's review list, by owner
+- Asif: (1) contract tests for each of his routes, (3) the A12 Prism contract check, (4) mark routes LIVE in API_SPEC §5, (6) review my changes to his two tests.
+- Mine: (2) the smoke demo run, **done above**.
+- Shared: (5) `users.preferred_language` and a `user.reactivated` audit action. Both need migration 005, which is Asif's (guide §1.2); after that, my side is two small code changes.
+- **Not in his list, and still blocking the live demo:** XREQ-006 deployment (no Dockerfile, host, cloud database, production CORS or email decision yet), rotating and blanking the three AI keys in `backend/.env.example`, the `409` on `/assign` missing from the contract, and the unanswered XREQ-005 card (all its routes are mounted now).
+
+---
+
 ## 2026-11-15 (session 3) — review of the team's backend, then N1 (app framework)
 
 ### Review of Asif's and Galib's work (read in full; suite run independently)
