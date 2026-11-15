@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Extraction } from '@/types/api';
-import { FileText, ZoomIn, ZoomOut, CheckCircle2, ShieldAlert } from 'lucide-react';
+import { FileText, ZoomIn, ZoomOut } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface DocumentOpticalPreviewProps {
   extraction?: Extraction | null;
@@ -31,34 +32,35 @@ export function DocumentOpticalPreview({
     return f ? Math.round(f.confidence * 100) : 88;
   };
 
+  const dateConf = getFieldConf('date');
+  const accountConf = getFieldConf('account_number');
+  const amountConf = getFieldConf('amount');
+
   return (
-    <div className="rounded-2xl border-2 border-[#09090B] bg-[#09090B] text-[#F8F4E8] p-5 space-y-4 shadow-hard font-['Space_Grotesk',sans-serif]">
-      {/* Visual Header & Controls */}
-      <div className="flex items-center justify-between text-xs text-[#A1A1AA] border-b-2 border-[#27272A] pb-3">
+    <div className="rounded-2xl border-2 border-[#09090B] bg-[#F8F4E8] p-4 sm:p-5 space-y-4 font-['Space_Grotesk',sans-serif]">
+      {/* Header & Controls */}
+      <div className="flex items-center justify-between text-xs text-[#52525B] border-b border-[#09090B]/10 pb-3">
         <div className="flex items-center gap-2">
-          <FileText className="w-4 h-4 text-[#D2E823]" />
-          <span className="font-['Dela_Gothic_One'] uppercase text-xs text-[#F8F4E8]">
-            OPTICAL VOUCHER GEOMETRY
-          </span>
-          <span className="text-[10px] px-2 py-0.5 rounded bg-[#18181B] text-[#D2E823] font-mono border border-[#27272A]">
-            OCR ZONE MAPPING
+          <FileText className="w-4 h-4 text-[#09090B]" />
+          <span className="font-bold uppercase tracking-wide text-xs text-[#09090B]">
+            Voucher facsimile
           </span>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <button
             type="button"
             onClick={() => setZoomLevel((z) => Math.max(80, z - 10))}
-            className="p-1 rounded-lg border border-[#27272A] bg-[#18181B] hover:bg-[#D2E823] hover:text-[#09090B] text-[#A1A1AA] transition-colors cursor-pointer"
+            className="p-1 rounded-lg border border-[#09090B]/20 bg-[#EDE8D5] hover:bg-[#D2E823] text-[#09090B] transition-colors cursor-pointer"
             title="Zoom out"
           >
             <ZoomOut className="w-3.5 h-3.5" />
           </button>
-          <span className="text-[10px] font-mono font-bold text-[#F8F4E8] w-8 text-center">{zoomLevel}%</span>
+          <span className="text-xs font-mono font-bold text-[#09090B] w-9 text-center">{zoomLevel}%</span>
           <button
             type="button"
             onClick={() => setZoomLevel((z) => Math.min(130, z + 10))}
-            className="p-1 rounded-lg border border-[#27272A] bg-[#18181B] hover:bg-[#D2E823] hover:text-[#09090B] text-[#A1A1AA] transition-colors cursor-pointer"
+            className="p-1 rounded-lg border border-[#09090B]/20 bg-[#EDE8D5] hover:bg-[#D2E823] text-[#09090B] transition-colors cursor-pointer"
             title="Zoom in"
           >
             <ZoomIn className="w-3.5 h-3.5" />
@@ -66,131 +68,137 @@ export function DocumentOpticalPreview({
         </div>
       </div>
 
-      {/* Simulated Document Canvas */}
-      <div className="overflow-x-auto p-3 bg-[#121215] rounded-xl border-2 border-[#27272A] flex justify-center">
+      {/* Document Canvas */}
+      <div className="overflow-x-auto p-3 bg-[#EDE8D5]/50 rounded-xl border border-[#09090B]/15 flex justify-center">
         <div
-          className="w-full max-w-xl bg-[#F8F4E8] text-[#09090B] rounded-xl shadow-hard p-6 border-2 border-[#09090B] font-['Space_Grotesk'] text-xs transition-transform duration-200"
+          className="w-full max-w-xl bg-[#F8F4E8] text-[#09090B] rounded-xl p-5 border border-[#09090B]/20 text-xs transition-transform duration-200"
           style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: 'top center' }}
         >
-          {/* Slip Header with Official Hanko Seal */}
-          <div className="flex justify-between items-start border-b-2 border-[#09090B] pb-3 mb-4 relative">
+          {/* Slip Header */}
+          <div className="flex justify-between items-start border-b border-[#09090B]/20 pb-3 mb-4">
             <div>
-              <p className="font-['Dela_Gothic_One'] tracking-tight text-sm uppercase text-[#09090B]">
-                WIRE TRANSFER VOUCHER / 送金受付書
+              <p className="font-bold text-xs uppercase tracking-wide text-[#09090B]">
+                Wire transfer voucher
               </p>
-              <p className="text-[10px] text-[#52525B] font-mono mt-0.5">
-                Doc ID: {extraction?.document_id || 'DOC-78921'} • Stamp: AUTH-CONFIRMED
+              <p className="text-xs text-[#52525B] font-mono mt-0.5">
+                Doc ID: {extraction?.document_id || 'DOC-78921'}
               </p>
             </div>
-            <div className="flex items-center gap-3">
-              {/* Japanese Statutory Evidence Hanko Stamp */}
-              <div className="w-14 h-14 rounded-full border-2 border-[#FF334B] text-[#FF334B] flex flex-col items-center justify-center rotate-12 select-none shadow-[1px_1px_0px_0px_#FF334B]">
-                <span className="text-[8px] font-black leading-none">証拠保全</span>
-                <span className="text-[9px] font-bold leading-none my-0.5">確 認</span>
-                <span className="text-[7px] font-mono leading-none">LAW 133</span>
-              </div>
-              <span className="inline-block border-2 border-[#09090B] bg-[#D2E823] text-[#09090B] px-2 py-0.5 text-[9px] font-mono uppercase font-black tracking-widest shadow-hard-sm">
-                PHYSICAL FACSIMILE
-              </span>
-            </div>
+            <span className="px-2 py-0.5 rounded border border-[#FF334B] text-[#FF334B] text-xs font-mono font-bold uppercase">
+              Evidence sealed
+            </span>
           </div>
 
-          {/* Form Rows with OCR Bounding Boxes */}
-          <div className="space-y-3.5">
-            {/* Row 1: Date & Channel */}
-            <div className="grid grid-cols-2 gap-3 text-[11px]">
+          {/* Form Rows with Field Highlights */}
+          <div className="space-y-3">
+            {/* Row 1: Date & Bank */}
+            <div className="grid grid-cols-2 gap-3 text-xs">
               <div>
-                <span className="text-[10px] uppercase font-bold text-[#52525B] block mb-1">Transfer Date</span>
+                <span className="text-xs uppercase font-bold text-[#52525B] block mb-1">Transfer date</span>
                 <div
                   onClick={() => onSelectField?.('date')}
-                  className={`p-2 rounded-lg border-2 transition-all cursor-pointer ${
+                  className={cn(
+                    'p-2 rounded-lg border transition-colors cursor-pointer',
                     currentHover === 'date'
-                      ? 'border-[#09090B] bg-[#D2E823] shadow-hard-sm'
-                      : 'border-dashed border-[#09090B]/40 bg-[#EDE8D5]'
-                  }`}
+                      ? 'border-[#09090B] bg-[#D2E823]/30'
+                      : 'border-dashed border-[#09090B]/30 bg-[#EDE8D5]/40'
+                  )}
                 >
                   <span className="font-mono font-bold text-[#09090B]">{getFieldValue('date', '2026-11-12')}</span>
-                  <span className="ml-2 text-[10px] font-mono text-[#09090B] font-black">
-                    {getFieldConf('date')}%
+                  <span
+                    className={cn(
+                      'ml-2 text-xs font-mono font-bold',
+                      dateConf < 85 ? 'text-[#FF334B]' : 'text-[#52525B]'
+                    )}
+                  >
+                    {dateConf}%
                   </span>
                 </div>
               </div>
 
               <div>
-                <span className="text-[10px] uppercase font-bold text-[#52525B] block mb-1">Destination Bank</span>
+                <span className="text-xs uppercase font-bold text-[#52525B] block mb-1">Destination bank</span>
                 <div
                   onClick={() => onSelectField?.('bank_name')}
-                  className={`p-2 rounded-lg border-2 transition-all cursor-pointer ${
+                  className={cn(
+                    'p-2 rounded-lg border transition-colors cursor-pointer',
                     currentHover === 'bank_name'
-                      ? 'border-[#09090B] bg-[#D2E823] shadow-hard-sm'
-                      : 'border-dashed border-[#09090B]/40 bg-[#EDE8D5]'
-                  }`}
+                      ? 'border-[#09090B] bg-[#D2E823]/30'
+                      : 'border-dashed border-[#09090B]/30 bg-[#EDE8D5]/40'
+                  )}
                 >
-                  <span className="font-bold uppercase text-[#09090B]">{getFieldValue('bank_name', 'Bank of Tokyo')}</span>
+                  <span className="font-bold text-[#09090B]">{getFieldValue('bank_name', 'Bank of Tokyo')}</span>
                 </div>
               </div>
             </div>
 
             {/* Row 2: Beneficiary Account */}
             <div>
-              <span className="text-[10px] uppercase font-bold text-[#52525B] block mb-1">
-                Destination Beneficiary Account
+              <span className="text-xs uppercase font-bold text-[#52525B] block mb-1">
+                Beneficiary account
               </span>
               <div
                 onClick={() => onSelectField?.('account_number')}
-                className={`p-2.5 rounded-xl border-2 transition-all flex items-center justify-between cursor-pointer ${
+                className={cn(
+                  'p-2.5 rounded-lg border transition-colors flex items-center justify-between cursor-pointer',
                   currentHover === 'account_number'
-                    ? 'border-[#09090B] bg-[#FF334B] text-[#09090B] shadow-hard-sm'
-                    : 'border-[#09090B] bg-[#D2E823]/40'
-                }`}
+                    ? 'border-[#09090B] bg-[#D2E823]/30'
+                    : 'border border-[#09090B]/30 bg-[#EDE8D5]/30'
+                )}
               >
                 <div>
-                  <span className="font-mono text-sm font-black tracking-widest text-[#09090B]">
+                  <span className="font-mono text-sm font-bold tracking-wider text-[#09090B]">
                     {getFieldValue('account_number', '9823-1049-21')}
                   </span>
-                  <p className="text-[10px] font-bold uppercase text-[#52525B]">
-                    Holder: {getFieldValue('account_holder', 'KENJI SATO / VICTIM HOLDINGS')}
+                  <p className="text-xs text-[#52525B]">
+                    Holder: {getFieldValue('account_holder', 'KENJI SATO')}
                   </p>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-mono font-black text-[#09090B] bg-[#F8F4E8] px-2 py-0.5 rounded border border-[#09090B]">
-                    OCR: {getFieldConf('account_number')}%
-                  </span>
-                  <CheckCircle2 className="w-4 h-4 text-[#09090B]" />
-                </div>
+                <span
+                  className={cn(
+                    'text-xs font-mono font-bold',
+                    accountConf < 85 ? 'text-[#FF334B]' : 'text-[#52525B]'
+                  )}
+                >
+                  {accountConf}%
+                </span>
               </div>
             </div>
 
             {/* Row 3: Remitted Amount */}
             <div>
-              <span className="text-[10px] uppercase font-bold text-[#52525B] block mb-1">Remitted Amount</span>
+              <span className="text-xs uppercase font-bold text-[#52525B] block mb-1">Remitted amount</span>
               <div
                 onClick={() => onSelectField?.('amount')}
-                className={`p-2.5 rounded-xl border-2 transition-all flex items-center justify-between cursor-pointer ${
+                className={cn(
+                  'p-2.5 rounded-lg border transition-colors flex items-center justify-between cursor-pointer',
                   currentHover === 'amount'
-                    ? 'border-[#09090B] bg-[#D2E823] shadow-hard-sm'
-                    : 'border-[#09090B] bg-[#EDE8D5]'
-                }`}
+                    ? 'border-[#09090B] bg-[#D2E823]/30'
+                    : 'border border-[#09090B]/30 bg-[#EDE8D5]/30'
+                )}
               >
                 <div>
-                  <span className="font-['Dela_Gothic_One'] text-base text-[#09090B]">
+                  <span className="font-mono font-bold text-sm text-[#09090B]">
                     ¥{Number(getFieldValue('amount', '3500000')).toLocaleString()}
                   </span>
-                  <span className="text-[10px] text-[#52525B] ml-2 font-mono uppercase">JPY Wire Gross</span>
+                  <span className="text-xs text-[#52525B] ml-2 font-mono uppercase">JPY</span>
                 </div>
-                <span className="text-[10px] font-mono font-black text-[#09090B] bg-[#F8F4E8] px-2 py-0.5 rounded border border-[#09090B]">
-                  OCR: {getFieldConf('amount')}%
+                <span
+                  className={cn(
+                    'text-xs font-mono font-bold',
+                    amountConf < 85 ? 'text-[#FF334B]' : 'text-[#52525B]'
+                  )}
+                >
+                  {amountConf}%
                 </span>
               </div>
             </div>
           </div>
 
-          {/* Slip Stamp Footnote */}
-          <div className="mt-4 pt-3 border-t-2 border-[#09090B] flex justify-between items-center text-[10px] text-[#52525B] font-mono">
-            <span>Security Hash: sha256:b8c9f210a4e7...</span>
-            <span className="flex items-center gap-1 text-[#09090B] font-bold">
-              <ShieldAlert className="w-3.5 h-3.5" /> Law 133 Evidence Validated
-            </span>
+          {/* Footnote */}
+          <div className="mt-4 pt-3 border-t border-[#09090B]/10 flex justify-between items-center text-xs text-[#52525B] font-mono">
+            <span>Doc ID: {extraction?.document_id || 'DOC-78921'}</span>
+            <span>Law 133 evidence record</span>
           </div>
         </div>
       </div>

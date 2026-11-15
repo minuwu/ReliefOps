@@ -52,7 +52,7 @@ function FileUploadField({
         type="file"
         accept=".pdf,.txt,application/pdf,text/plain"
         onChange={(e) => onChange(e.target.files?.[0] ?? null)}
-        className="block w-full text-xs text-[#09090B] file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-2 file:border-[#09090B] file:bg-[#EDE8D5] file:text-xs file:font-bold file:uppercase file:cursor-pointer hover:file:bg-[#D2E823] cursor-pointer"
+        className="block w-full text-xs text-[#09090B] file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border file:border-[#09090B]/30 file:bg-[#EDE8D5] file:text-xs file:font-bold file:uppercase file:cursor-pointer hover:file:bg-[#D2E823] cursor-pointer"
       />
       {error && <p role="alert" className="text-xs font-bold text-[#FF334B]">{error}</p>}
     </div>
@@ -117,7 +117,7 @@ function SelectMetaFields({
         </select>
       </div>
 
-      <div className="space-y-1.5 sm:col-span-2">
+      <div className="space-y-1.5">
         <label htmlFor="kb-audience" className={labelClass}>
           Audience
         </label>
@@ -145,7 +145,7 @@ function FormSubmitSection({
   return (
     <div className="sm:col-span-2 space-y-3">
       {formError && (
-        <div role="alert" className="rounded-xl border-2 border-[#FF334B] bg-[#FF334B]/10 p-3 text-xs font-bold text-[#FF334B]">
+        <div role="alert" className="rounded-xl border border-[#FF334B]/30 bg-[#FF334B]/10 p-3 text-xs font-bold text-[#FF334B]">
           {formError}
         </div>
       )}
@@ -270,12 +270,11 @@ export type Props = {
 export function KbUploadPanel({ banks, onUploaded }: Props) {
   return (
     <section className={panelClass} aria-labelledby="upload-heading">
-      <h2 id="upload-heading" className="text-base font-bold uppercase">
+      <h2 id="upload-heading" className="text-sm font-bold uppercase tracking-wide text-[#09090B]">
         Upload Bluebook
       </h2>
       <p className="text-sm text-[#52525B]">
-        Upload bank guidance documents (PDF or TXT, max 20 MB). Synthetic documents only. The victim assistant
-        answers using passages extracted from published victim-facing bluebooks.
+        Upload bank guidance documents (PDF or TXT, max 20 MB). Synthetic documents only.
       </p>
       <UploadBluebookForm banks={banks} onUploaded={onUploaded} />
     </section>

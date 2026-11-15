@@ -6,6 +6,7 @@ import { errorMessage, fieldErrors } from '@/services/http';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useToastStore } from '@/store/useToastStore';
 import { FormNotice } from '@/components/auth/AuthCard';
+import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 
@@ -18,7 +19,7 @@ const ROLES = Object.keys(ROLE_LABEL) as StaffRole[];
 
 const panelClass = 'rounded-2xl border-2 border-[#09090B] bg-[#F8F4E8] p-5 sm:p-6 shadow-hard space-y-4';
 const selectClass =
-  'h-11 w-full rounded-xl border-2 border-[#09090B] bg-[#F8F4E8] px-3 text-sm font-medium shadow-[2px_2px_0px_0px_#09090B]';
+  'h-10 w-full rounded-xl border border-[#09090B]/30 bg-[#F8F4E8] px-3 text-sm font-medium focus:border-[#09090B] focus:outline-none';
 const labelClass = 'block text-xs font-bold uppercase tracking-wider text-[#09090B]';
 
 /* --- Invite form --------------------------------------------------------- */
@@ -50,7 +51,6 @@ function InviteForm({ banks, onInvited }: { banks: Bank[]; onInvited: (invite: I
         name: name.trim(),
         email: email.trim(),
         role,
-        // The contract wants bank_id only for bank viewers, null for center staff.
         bank_id: needsBank ? (bankId as BankId) : null,
       });
       pushToast(`Invitation sent to ${res.data.email}. The link works for 72 hours.`, 'success');
@@ -211,16 +211,16 @@ export function AdminUsersPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-3 sm:px-6 py-8 sm:py-12 space-y-6">
-      <header className="border-b-2 border-[#09090B] pb-4">
-        <p className="text-xs font-mono font-bold uppercase text-[#52525B]">Supervisor</p>
-        <h1 className="text-2xl sm:text-4xl font-['Dela_Gothic_One'] uppercase text-[#09090B]">Team & access</h1>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 font-['Space_Grotesk',sans-serif]">
+      <header className="border-b-2 border-[#09090B] pb-6">
+        <h1 className="text-2xl sm:text-3xl font-['Dela_Gothic_One'] text-[#09090B]">Team</h1>
+        <p className="text-sm text-[#52525B] mt-1">Staff accounts and invitations.</p>
       </header>
 
       {loadError && <FormNotice tone="error">{loadError}</FormNotice>}
 
       <section className={panelClass} aria-labelledby="invite-heading">
-        <h2 id="invite-heading" className="text-base font-bold uppercase">
+        <h2 id="invite-heading" className="text-sm font-bold uppercase tracking-wide text-[#09090B]">
           Invite someone
         </h2>
         <p className="text-sm text-[#52525B]">
@@ -230,23 +230,33 @@ export function AdminUsersPage() {
       </section>
 
       <section className={panelClass} aria-labelledby="invites-heading">
-        <h2 id="invites-heading" className="text-base font-bold uppercase">
+        <h2 id="invites-heading" className="text-sm font-bold uppercase tracking-wide text-[#09090B]">
           Invitations
         </h2>
         {invitations.length === 0 ? (
-          <p className="text-sm text-[#52525B]">No invitations yet.</p>
+          <p className="text-sm text-[#52525B]">No invitations pending.</p>
         ) : (
-          <ul className="divide-y-2 divide-[#09090B]">
+          <ul className="divide-y divide-[#09090B]/10">
             {invitations.map((invite) => (
               <li key={invite.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
-                <div className="text-sm">
-                  <p className="font-bold">
+                <div className="text-sm space-y-0.5">
+                  <p className="font-bold text-[#09090B]">
                     {invite.name} · {invite.email}
                   </p>
-                  <p className="text-xs text-[#52525B]">
-                    {ROLE_LABEL[invite.role]} · {bankName(invite.bank_id)} · {invite.status}
-                    {invite.status === 'pending' && ` · expires ${new Date(invite.expires_at).toLocaleString()}`}
-                  </p>
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-[#52525B]">
+                    <span>{ROLE_LABEL[invite.role]}</span>
+                    <span>·</span>
+                    <span>{bankName(invite.bank_id)}</span>
+                    <span>·</span>
+                    <Badge variant={invite.status === 'pending' ? 'warning' : 'secondary'}>
+                      {invite.status}
+                    </Badge>
+                    {invite.status === 'pending' && (
+                      <span className="font-mono text-xs">
+                        · expires {new Date(invite.expires_at).toLocaleDateString()}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 {invite.status === 'pending' && (
                   <ConfirmButton label="REVOKE" confirmLabel="YES, REVOKE" onConfirm={() => revoke(invite)} />
@@ -259,10 +269,10 @@ export function AdminUsersPage() {
 
       <section className={panelClass} aria-labelledby="team-heading">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 id="team-heading" className="text-base font-bold uppercase">
+          <h2 id="team-heading" className="text-sm font-bold uppercase tracking-wide text-[#09090B]">
             Staff accounts
           </h2>
-          <label className="flex items-center gap-2 text-xs font-bold uppercase cursor-pointer">
+          <label className="flex items-center gap-2 text-xs font-bold uppercase text-[#52525B] cursor-pointer">
             <input
               type="checkbox"
               checked={showInactive}
@@ -273,18 +283,24 @@ export function AdminUsersPage() {
           </label>
         </div>
         {!users ? (
-          <p className="text-sm text-[#52525B]">Loading…</p>
+          <p className="text-sm text-[#52525B]">Loading staff accounts…</p>
+        ) : users.length === 0 ? (
+          <p className="text-sm text-[#52525B]">No staff accounts found.</p>
         ) : (
-          <ul className="divide-y-2 divide-[#09090B]">
+          <ul className="divide-y divide-[#09090B]/10">
             {users.map((u) => (
               <li key={u.id} className={`flex flex-wrap items-center justify-between gap-3 py-3 ${u.is_active ? '' : 'opacity-60'}`}>
-                <div className="text-sm">
-                  <p className="font-bold">
-                    {u.name} · {u.email}
-                  </p>
+                <div className="text-sm space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <p className="font-bold text-[#09090B]">{u.name}</p>
+                    <span className="text-xs text-[#52525B]">·</span>
+                    <span className="text-xs text-[#52525B] font-mono">{u.email}</span>
+                    {!u.is_active && (
+                      <Badge variant="destructive">Deactivated</Badge>
+                    )}
+                  </div>
                   <p className="text-xs text-[#52525B]">
                     {ROLE_LABEL[u.role as StaffRole] ?? u.role} · {bankName(u.bank_id)}
-                    {u.is_active ? '' : ' · deactivated'}
                   </p>
                 </div>
                 {u.id === me?.id ? (

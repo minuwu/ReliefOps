@@ -89,7 +89,7 @@ function DocumentActions({
       {doc.status === 'ready' && (
         <Button
           type="button"
-          variant="acid"
+          variant="primary"
           size="sm"
           isLoading={publishingId === doc.id}
           onClick={() => onPublish(doc)}
@@ -118,17 +118,17 @@ interface DocumentRowProps {
 
 function DocumentRow({ doc, isSupervisor, publishingId, onPublish, onArchive }: DocumentRowProps) {
   return (
-    <li className="flex flex-wrap items-center justify-between gap-4 py-4">
-      <div className="space-y-1 text-sm max-w-xl">
+    <li className="flex flex-wrap items-center justify-between gap-4 py-3.5">
+      <div className="space-y-0.5 text-sm max-w-xl">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="font-bold text-[#09090B] text-base">{doc.title}</span>
-          <span className="font-mono text-xs font-bold text-[#52525B]">v{doc.version}</span>
+          <span className="font-bold text-[#09090B] text-sm">{doc.title}</span>
+          <span className="font-mono text-xs text-[#52525B]">v{doc.version}</span>
           <StatusBadge status={doc.status} />
         </div>
         <div className="flex flex-wrap items-center gap-2 text-xs text-[#52525B]">
-          <span className="font-semibold text-[#09090B]">{doc.bank_name || doc.bank_id}</span>
+          <span className="font-medium text-[#09090B]">{doc.bank_name || doc.bank_id}</span>
           <span>·</span>
-          <span>{doc.audience === 'staff_only' ? 'Staff Only' : 'Victim Facing'}</span>
+          <span>{doc.audience === 'staff_only' ? 'Staff only' : 'Victim facing'}</span>
           <span>·</span>
           <span className="uppercase font-mono">{doc.language}</span>
           {doc.passage_count !== null && (
@@ -172,18 +172,18 @@ function DocumentFilters({
   onBankFilterChange: (bankId: string) => void;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-3">
+    <div className="flex flex-wrap items-center gap-2">
       <div className="flex items-center gap-1.5 text-xs font-bold uppercase text-[#52525B]">
         <Filter className="w-3.5 h-3.5" />
         <span>Filter:</span>
       </div>
       <select
         aria-label="Filter by status"
-        className="h-9 rounded-xl border-2 border-[#09090B] bg-[#F8F4E8] px-2.5 text-xs font-bold uppercase shadow-[2px_2px_0px_0px_#09090B]"
+        className="h-8 rounded-lg border border-[#09090B]/20 bg-[#F8F4E8] px-2.5 text-xs font-medium text-[#09090B] focus:outline-none focus:border-[#09090B]"
         value={statusFilter}
         onChange={(e) => onStatusFilterChange(e.target.value as KbDocumentStatus | '')}
       >
-        <option value="">All Statuses</option>
+        <option value="">All statuses</option>
         <option value="ready">Ready</option>
         <option value="published">Published</option>
         <option value="archived">Archived</option>
@@ -193,11 +193,11 @@ function DocumentFilters({
       {!isBankViewer && (
         <select
           aria-label="Filter by bank"
-          className="h-9 rounded-xl border-2 border-[#09090B] bg-[#F8F4E8] px-2.5 text-xs font-bold uppercase shadow-[2px_2px_0px_0px_#09090B]"
+          className="h-8 rounded-lg border border-[#09090B]/20 bg-[#F8F4E8] px-2.5 text-xs font-medium text-[#09090B] focus:outline-none focus:border-[#09090B]"
           value={bankFilter}
           onChange={(e) => onBankFilterChange(e.target.value)}
         >
-          <option value="">All Banks</option>
+          <option value="">All banks</option>
           {banks.map((b) => (
             <option key={b.id} value={b.id}>
               {b.name}
@@ -241,8 +241,8 @@ export function KbDocumentList({
   return (
     <section className={panelClass} aria-labelledby="documents-heading">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 id="documents-heading" className="text-base font-bold uppercase">
-          Bank Guidance Documents
+        <h2 id="documents-heading" className="text-sm font-bold uppercase tracking-wide text-[#09090B]">
+          Bank guidance documents
         </h2>
         <DocumentFilters
           banks={banks}
@@ -259,7 +259,7 @@ export function KbDocumentList({
       ) : !documents || documents.length === 0 ? (
         <p className="text-sm text-[#52525B]">No guidance documents found.</p>
       ) : (
-        <ul className="divide-y-2 divide-[#09090B]">
+        <ul className="divide-y divide-[#09090B]/10">
           {documents.map((doc) => (
             <DocumentRow
               key={doc.id}

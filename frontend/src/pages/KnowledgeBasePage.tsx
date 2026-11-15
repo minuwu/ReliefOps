@@ -92,16 +92,18 @@ export function KnowledgeBasePage() {
   const { publishingId, handlePublish, handleArchive } = useKbActions(loadDocuments);
 
   return (
-    <div className="max-w-6xl mx-auto px-3 sm:px-6 py-8 sm:py-12 space-y-6">
-      <header className="border-b-2 border-[#09090B] pb-4">
-        <p className="text-xs font-mono font-bold uppercase text-[#52525B]">Knowledge Base</p>
-        <h1 className="text-2xl sm:text-4xl font-['Dela_Gothic_One'] uppercase text-[#09090B]">
-          Bluebooks & Guidance
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 font-['Space_Grotesk',sans-serif]">
+      <header className="border-b-2 border-[#09090B] pb-6">
+        <h1 className="text-2xl sm:text-3xl font-['Dela_Gothic_One'] text-[#09090B]">
+          Knowledge base
         </h1>
+        <p className="text-sm text-[#52525B] mt-1">
+          Bank guidance documents and operations bluebooks.
+        </p>
       </header>
 
       {loadError && (
-        <div role="alert" className="rounded-xl border-2 border-[#FF334B] bg-[#FF334B]/10 p-4 text-xs font-bold text-[#FF334B]">
+        <div role="alert" className="rounded-xl border border-[#FF334B]/30 bg-[#FF334B]/10 p-4 text-xs font-bold text-[#FF334B]">
           {loadError}
         </div>
       )}
