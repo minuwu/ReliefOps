@@ -4,6 +4,19 @@ Owner: Galib (`Ga-lib`) — Role: AI / LLM — Branches: `galib/*`
 
 Update after each work session. Newest entry first. Bangladesh time (UTC+6). Link commits/PRs/XREQs.
 
+## 2026-11-16 — XREQ-007 AI checks (A5–A7)
+
+### Completed
+- A5: no real AI key was ever committed (whole history searched for Gemini/Groq/OpenRouter key patterns: 0). No rotation needed.
+- A6: quotas written in the XREQ-007 card. Gemini 20/day per model (4 models), OpenRouter 50/day, Groq 1,000/day and 8,000 tokens/min per model. Suggested `AI_TIMEOUT_SECONDS=20`, `AI_MAX_CONCURRENT=2`.
+- A7 (partly): Dockerfile checked; `ai_check.py` READY; live extraction (t02, 5/5, 4.8 s) and grounded chat answer (bank_a-03, 1.6 s) outside Docker.
+- Hugging Face plan dropped (Docker Spaces need PRO; Anim's card).
+
+### Next
+- After Northflank B5: one extraction and one chat question on the live URL, tick A7 and "Live extraction + KB chat"; send the keys privately for the secret group.
+
+---
+
 ## 2026-11-15 (20:15) — demo readiness
 
 ### Completed

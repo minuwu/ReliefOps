@@ -446,10 +446,23 @@ EMAIL_MODE: console | smtp
     6. You don't need to set anything up in the database. It's ready.
 - **Reply so far:**
   ```text
-  Phase A  A1 [ ] A2 [x] A3 [ ] A4 [ ] (backend)   A5 [ ] A6 [ ] A7 [ ] (AI)
+  Phase A  A1 [ ] A2 [x] A3 [ ] A4 [ ] (backend)   A5 [x] A6 [x] A7 [~] (AI)
   Fallback used (if any): database on Supabase free (Tokyo) instead of the Northflank addon / Neon
   DB migrated + seeded (seed line matches): yes
   ```
+- **AI reply (Galib, 2026-11-16):**
+  - **A5 (keys): no rotation needed.** Searched the whole git history (`git log --all -p`) for Gemini (`AIza…`), Groq (`gsk_…`) and OpenRouter (`sk-or-v1-…`) key patterns: 0 matches. The lines removed in `9018383` were placeholders (`your-gemini-key`, …). The real keys only exist in Galib's local `backend/.env`; Galib sends them privately for the Northflank secret group.
+  - **A6 (free quotas), for one judging day:**
+    - Extraction: Gemini free tier is **20 requests/day per model** (measured from the 429 quota id). The chain has 4 Gemini models, so about **80 live extractions/day**, then OpenRouter Nemotron VL (**50/day**), then the recorded results for the 12 seed documents. One extraction = 1 request; median about 5 s.
+    - Chat: Groq `openai/gpt-oss-120b` and `qwen/qwen3.8-27b` each **1,000 requests/day, 8,000 tokens/minute** (read from Groq's `x-ratelimit-*` headers today). One answer is about 2–3k tokens, so about 3 answers/minute per model, 6/minute with both; Gemini 3.1 Flash-Lite after that. Each question also makes 1 Gemini embedding call (free; the daily cap is shown per project on the AI Studio rate-limit page).
+    - Rule for judging day: don't run `eval/` scripts that day (they spend the quota). `scripts/ai_check.py` uses none.
+    - Settings: **`AI_TIMEOUT_SECONDS=20`** (extraction stops itself at 17 s, chat at 15 s, so the engine's timeout never cuts a good answer), **`AI_MAX_CONCURRENT=2`** (free tiers throttle bursts; 2 parallel extractions is enough for a demo). `AI_MODE=live`.
+  - **A7 (in the built image): partly done.** Docker isn't installed on Galib's machine, so the image wasn't built here. Checked instead:
+    - the Dockerfile installs `tesseract-ocr` + `tesseract-ocr-jpn` and copies `app/` (prompts), `seed_data/` (bluebooks, `ai_cache`) and the seed documents;
+    - the code reads the keys from environment variables, which is how the secret group provides them, and needs no `TESSERACT_CMD` on Linux;
+    - `scripts/ai_check.py`: READY;
+    - live, outside Docker: extraction of `t02_netbank.pdf` → `gemini-2.5-flash`, 4.8 s, 5/5 fields match `labels.json`; chat "How do I apply for relief money?" (bank_a) → `grounded`, cites `bank_a-03`, `openai/gpt-oss-120b`, 1.6 s.
+    - **Still open:** the same two checks in the image. Galib does them on the Northflank build right after B5 (step 5 below), then ticks A7 and "Live extraction + KB chat".
 - **Verification Proof** (API run locally in prod mode against Supabase, 2026-11-15):
   - `/api/health` → `{"status":"healthy","db":"ok","ai":"disabled","rag":"disabled"}` (no AI keys locally).
   - Preflight from `https://reliefops.web.app` → `access-control-allow-origin: https://reliefops.web.app`; from another origin → `400`.
