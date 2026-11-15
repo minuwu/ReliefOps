@@ -1,0 +1,37 @@
+{
+ "fields": [
+  {
+   "name": "transfer_date",
+   "value": "2026-10-19",
+   "evidence": "2026. 10. 19",
+   "confidence": 1.0
+  },
+  {
+   "name": "amount",
+   "value": 2300000,
+   "evidence": "お振込金額¥2,300,000",
+   "confidence": 1.0
+  },
+  {
+   "name": "currency",
+   "value": "JPY",
+   "evidence": "¥2,300,000",
+   "confidence": 1.0
+  },
+  {
+   "name": "account_number",
+   "value": "1029384756",
+   "evidence": "1029384756",
+   "confidence": 1.0
+  },
+  {
+   "name": "account_holder_name",
+   "value": "カ)グローバルトレード",
+   "evidence": "口座名義カ)グローバルトレード",
+   "confidence": 1.0
+  }
+ ],
+ "model": "gemini-2.5-flash",
+ "prompt_version": "extract-v2",
+ "source_file": "h01_atm_other_layout.png"
+}

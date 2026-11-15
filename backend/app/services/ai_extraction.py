@@ -23,6 +23,7 @@ nothing here acts on it.
 from __future__ import annotations
 
 import base64
+import hashlib
 import io
 import json
 import os
@@ -366,4 +367,37 @@ def extract_fields(file_bytes: bytes, mime_type: str, doc_type: str) -> dict[str
             errors.append(f"{provider.model}: {type(exc).__name__} {str(exc)[:60]}".rstrip())
             continue
         return {"fields": build_fields(answer, page.text), "model": provider.model, "prompt_version": PROMPT_VERSION}
+    if cached := cached_result(file_bytes):
+        return cached  # every provider failed: replay the recorded real result, labelled as such
     raise AIUnavailableError("; ".join(errors) or "no provider configured")
+
+
+# ------------------------------------------------------------------ demo replay cache
+
+# Real results recorded earlier for the synthetic seed documents (scripts/record_ai_cache.py). Used only
+# when every live provider fails, so a demo survives free-tier quotas or no Wi-Fi. The model name is
+# prefixed "cached:" so nobody mistakes a replay for a live call. Unknown files never hit the cache.
+CACHE_DIR: Final = Path(__file__).resolve().parents[2] / "seed_data" / "ai_cache" / "extraction"
+
+
+def file_key(file_bytes: bytes) -> str:
+    return hashlib.sha256(file_bytes).hexdigest()
+
+
+def cached_result(file_bytes: bytes) -> dict[str, Any] | None:
+    path = CACHE_DIR / f"{file_key(file_bytes)}.json"
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if data.get("prompt_version") != PROMPT_VERSION or not isinstance(data.get("fields"), list):
+        return None  # recorded with another prompt: don't pretend it is current
+    return {"fields": data["fields"], "model": f"cached:{data.get('model')}", "prompt_version": PROMPT_VERSION}
+
+
+def record_result(file_bytes: bytes, result: dict[str, Any], source: str) -> Path:
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    path = CACHE_DIR / f"{file_key(file_bytes)}.json"
+    path.write_text(json.dumps({**result, "source_file": source}, ensure_ascii=False, indent=1) + "\n",
+                    encoding="utf-8")
+    return path
