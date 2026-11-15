@@ -29,6 +29,12 @@ Decision (Asif): build all my business logic as **service functions with databas
   - **CSV export:** the contract's columns. Formula cells are neutralised, and the export is audited as `export.generated`.
   - **Audit log:** supervisors see all banks, bank viewers their own (RLS), operators get `403`. Filters are `case_id`, `actor_id`, `action`, `from` and `to`.
   - 10 tests.
+- **A8, documents** ([documents.py](../../backend/app/services/documents.py)), following API_SPEC §6.5.
+  - **Upload:** staff only, `CASE_CLOSED` and `404` rules apply. The file type is checked from its bytes (400/413/422). The content goes into `document_contents`, and the case's `document_count` is updated in the same transaction (not a version bump, since it isn't a user edit). Audited.
+  - **Download:** staff and bank viewers (own bank, others `404`), victims `403`. Always an attachment with `nosniff`, and audited.
+  - `case_documents()` gives Anim's case detail each document with its latest extraction.
+  - Gotcha: on Windows, a parametrized test ID over 32 KB breaks pytest's `PYTEST_CURRENT_TEST`, so large test inputs get explicit `ids`.
+  - 11 tests.
 
 ## 2026-11-15 (session 10) — backend Phase 1 done
 
