@@ -23,18 +23,18 @@ const MAX_REPLY_CHARS = 4000;
 function CitationsList({ citations }: { citations: Citation[] }) {
   if (!citations || citations.length === 0) return null;
   return (
-    <ul className="mt-2.5 space-y-1.5" aria-label="Cited Sources">
+    <ul className="mt-2 space-y-1.5" aria-label="Cited Sources">
       {citations.map((c, idx) => (
         <li
           key={`${c.document_id}-${c.section ?? ''}-${c.page ?? ''}-${idx}`}
-          className="rounded-lg border-2 border-[#09090B] bg-[#F8F4E8] p-2 text-xs"
+          className="rounded-lg border border-[#09090B]/15 bg-[#F8F4E8] p-2 text-xs"
         >
           <div className="flex flex-wrap items-center justify-between gap-1 font-bold text-[#09090B]">
             <span>
               {c.document_title} · v{c.version}
             </span>
             {(c.section || c.page !== null) && (
-              <span className="text-[10px] font-mono text-[#52525B]">
+              <span className="text-xs font-mono text-[#52525B]">
                 {c.section && `Sec: ${c.section}`}
                 {c.section && c.page !== null && ' · '}
                 {c.page !== null && `p.${c.page}`}
@@ -56,15 +56,15 @@ function MessageBubble({ message }: { message: ChatMessage }) {
     <li className={`flex ${isVictim ? 'justify-start' : 'justify-end'}`}>
       <div
         className={cn(
-          'max-w-[85%] rounded-xl border-2 border-[#09090B] p-3 text-sm shadow-[2px_2px_0px_0px_#09090B]',
+          'max-w-[85%] rounded-xl border border-[#09090B]/20 p-3 text-xs',
           isVictim && 'bg-[#EDE8D5] text-[#09090B]',
-          isStaff && 'bg-[#D2E823] text-[#09090B]',
+          isStaff && 'bg-[#D2E823]/30 text-[#09090B] border-[#09090B]/30',
           !isVictim && !isStaff && 'bg-[#FFFFFF] text-[#09090B]'
         )}
       >
         <div
           className={cn(
-            'mb-1 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider',
+            'mb-1 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider',
             isVictim ? 'justify-start text-[#52525B]' : 'justify-end text-[#09090B]'
           )}
         >
@@ -74,22 +74,22 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 
           <span>
             {isVictim
-              ? 'VICTIM'
+              ? 'Victim'
               : isStaff
-                ? `STAFF${message.author?.name ? ` (${message.author.name})` : ''}`
-                : 'ASSISTANT'}
+                ? `Staff${message.author?.name ? ` (${message.author.name})` : ''}`
+                : 'Assistant'}
           </span>
           <span>·</span>
-          <span>{formatDateTime(message.created_at)}</span>
+          <span className="font-mono font-normal">{formatDateTime(message.created_at)}</span>
         </div>
 
         {message.needs_staff && (
-          <span className="mb-1.5 inline-block rounded bg-[#FF334B] px-1.5 py-0.5 text-[10px] font-bold text-[#09090B]">
-            Escalated to Staff
+          <span className="mb-1.5 inline-block rounded bg-[#FF334B] px-1.5 py-0.5 text-xs font-bold text-[#09090B]">
+            Escalated to staff
           </span>
         )}
 
-        <p className="whitespace-pre-wrap break-words">{message.body}</p>
+        <p className="whitespace-pre-wrap break-words font-medium">{message.body}</p>
         <CitationsList citations={message.citations} />
       </div>
     </li>
@@ -100,21 +100,21 @@ function PendingBanner() {
   return (
     <div
       role="status"
-      className="flex items-center justify-between gap-3 rounded-xl border-2 border-[#09090B] bg-[#FF334B] p-3 text-[#09090B] shadow-hard-sm"
+      className="flex items-center justify-between gap-3 rounded-xl border border-[#FF334B]/40 bg-[#FF334B]/15 p-3 text-[#09090B]"
     >
       <div className="flex items-center gap-2.5">
-        <AlertTriangle className="h-5 w-5 shrink-0 text-[#09090B]" aria-hidden="true" />
+        <AlertTriangle className="h-4 w-4 shrink-0 text-[#FF334B]" aria-hidden="true" />
         <div>
-          <p className="text-xs font-bold uppercase tracking-wider">
-            The victim is waiting for a person
+          <p className="text-xs font-bold uppercase tracking-wide">
+            Victim response pending
           </p>
-          <p className="text-xs font-medium">
-            This thread has a pending question or escalation requiring human staff attention.
+          <p className="text-xs text-[#52525B]">
+            This thread has a question requiring human staff attention.
           </p>
         </div>
       </div>
-      <Badge variant="default" className="shrink-0 bg-[#09090B] text-[10px] text-[#D2E823]">
-        ACTION REQUIRED
+      <Badge variant="destructive" className="shrink-0 text-xs">
+        Action required
       </Badge>
     </div>
   );
@@ -122,7 +122,7 @@ function PendingBanner() {
 
 function ReadOnlyNotice() {
   return (
-    <div className="flex items-center gap-2 rounded-xl border-2 border-[#09090B] bg-[#EDE8D5] p-3 text-xs font-bold text-[#52525B]">
+    <div className="flex items-center gap-2 rounded-xl border border-[#09090B]/15 bg-[#EDE8D5]/40 p-3 text-xs text-[#52525B]">
       <Lock className="h-4 w-4 shrink-0 text-[#52525B]" aria-hidden="true" />
       <span>Read-only view. Only operators and supervisors can post replies to victims.</span>
     </div>
@@ -148,17 +148,17 @@ function StaffReplyForm({
   const isDisabled = !replyText.trim() || isTooLong || isSending;
 
   return (
-    <form onSubmit={onSubmit} className="space-y-2.5 border-t-2 border-[#09090B]/15 pt-3">
+    <form onSubmit={onSubmit} className="space-y-2.5 border-t border-[#09090B]/15 pt-3">
       <div className="flex items-center justify-between">
         <label
           htmlFor="staff-chat-reply-textarea"
-          className="text-xs font-bold uppercase tracking-wider text-[#09090B]"
+          className="text-xs font-bold uppercase tracking-wide text-[#09090B]"
         >
-          Send Staff Reply
+          Send staff reply
         </label>
         <span
           className={cn(
-            'font-mono text-[11px]',
+            'font-mono text-xs',
             isTooLong ? 'font-bold text-[#FF334B]' : 'text-[#52525B]'
           )}
         >
@@ -172,26 +172,26 @@ function StaffReplyForm({
         maxLength={MAX_REPLY_CHARS}
         value={replyText}
         onChange={(e) => onTextChange(e.target.value)}
-        placeholder="Type reply to victim... (e.g., We have received your police report and initiated verification.)"
+        placeholder="Type reply to victim..."
         disabled={isSending}
-        className="w-full rounded-xl border-2 border-[#09090B] bg-[#F8F4E8] p-3 text-sm font-medium shadow-[2px_2px_0px_0px_#09090B] focus:shadow-hard focus:outline-none"
+        className="w-full rounded-xl border border-[#09090B]/20 bg-[#F8F4E8] p-3 text-xs font-medium focus:outline-none focus:border-[#09090B]"
       />
 
       {sendError && <FormNotice tone="error">{sendError}</FormNotice>}
 
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-[11px] text-[#52525B]">
-          Visible to victim immediately. Clears pending question flag and records an audit log.
+        <p className="text-xs text-[#52525B]">
+          Visible to victim immediately. Clears pending flag and records audit log.
         </p>
         <Button
           type="submit"
-          variant="secondary"
+          variant="primary"
           size="sm"
           isLoading={isSending}
           disabled={isDisabled}
           className="shrink-0 gap-1.5"
         >
-          <Send className="h-3.5 w-3.5" aria-hidden="true" /> SEND REPLY
+          <Send className="h-3.5 w-3.5" aria-hidden="true" /> Send reply
         </Button>
       </div>
     </form>
@@ -264,12 +264,12 @@ export function StaffChatPanel({
   };
 
   return (
-    <div className="space-y-4 rounded-2xl border-2 border-[#09090B] bg-[#F8F4E8] p-5 shadow-hard sm:p-6">
-      <div className="flex items-center justify-between border-b-2 border-[#09090B]/10 pb-3">
-        <h4 className="flex items-center gap-2 font-['Dela_Gothic_One'] text-xs uppercase tracking-wider text-[#09090B]">
+    <div className="space-y-4 font-['Space_Grotesk',sans-serif]">
+      <div className="flex items-center justify-between border-b border-[#09090B]/15 pb-2.5">
+        <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-[#09090B]">
           <MessageSquare className="h-4 w-4 text-[#09090B]" aria-hidden="true" />
-          VICTIM ASSISTANT & STAFF CHAT
-        </h4>
+          Staff & victim messages
+        </h3>
         <Button
           type="button"
           variant="outline"
@@ -280,20 +280,20 @@ export function StaffChatPanel({
           aria-label="Refresh conversation"
         >
           <RotateCw className={cn('h-3.5 w-3.5', isRefreshing && 'animate-spin')} aria-hidden="true" />
-          REFRESH
+          Refresh
         </Button>
       </div>
 
       {thread?.victim_question_pending && <PendingBanner />}
 
       {thread && !thread.assistant_available && (
-        <div className="rounded-xl border-2 border-[#09090B] bg-[#EDE8D5] p-2.5 text-xs font-semibold text-[#09090B]">
+        <div className="rounded-xl border border-[#09090B]/15 bg-[#EDE8D5]/50 p-2.5 text-xs text-[#09090B]">
           The automated assistant is currently offline. Staff should provide all updates here.
         </div>
       )}
 
       {isLoading && (
-        <p className="py-6 text-center text-sm font-medium text-[#52525B]">
+        <p className="py-6 text-center text-xs text-[#52525B]">
           Loading conversation…
         </p>
       )}
@@ -302,13 +302,13 @@ export function StaffChatPanel({
         <div className="space-y-3">
           <FormNotice tone="error">{loadError}</FormNotice>
           <Button type="button" variant="outline" size="sm" onClick={() => loadThread(false)}>
-            Retry Loading
+            Retry loading
           </Button>
         </div>
       )}
 
       {!isLoading && !loadError && thread && thread.messages.length === 0 && (
-        <p className="py-6 text-center text-sm italic text-[#52525B]">
+        <p className="py-6 text-center text-xs italic text-[#52525B]">
           No messages in this case thread yet.
         </p>
       )}
@@ -316,7 +316,7 @@ export function StaffChatPanel({
       {!isLoading && !loadError && thread && thread.messages.length > 0 && (
         <ul
           ref={messagesEndRef}
-          className="max-h-[26rem] space-y-3 overflow-y-auto pr-1"
+          className="max-h-[24rem] space-y-2.5 overflow-y-auto pr-1"
           aria-label="Chat messages"
         >
           {thread.messages.map((m) => (

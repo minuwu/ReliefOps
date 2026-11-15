@@ -24,7 +24,6 @@ const SCAM_OPTIONS: { value: ScamType; label: string }[] = [
   { value: 'other', label: 'Other' },
 ];
 
-/** Staff intake: a phone call or a paper form. Victims report online through the portal. */
 const STAFF_CHANNELS: { value: IntakeChannel; label: string }[] = [
   { value: 'phone', label: 'Phone call' },
   { value: 'paper', label: 'Paper form' },
@@ -46,7 +45,6 @@ export function CaseIntakeModal({ isOpen, onClose, onCaseCreated }: CaseIntakeMo
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Only the victim's name is required: the rest can come later from a scanned form (AI extraction).
     if (!victimName.trim()) {
       setError('Enter the victim name. Other details can be added later.');
       return;
@@ -81,24 +79,24 @@ export function CaseIntakeModal({ isOpen, onClose, onCaseCreated }: CaseIntakeMo
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="NEW STATUTORY CLAIM INTAKE" maxWidth="2xl">
-      <form onSubmit={handleSubmit} className="space-y-5 font-['Space_Grotesk',sans-serif]">
+    <Modal isOpen={isOpen} onClose={onClose} title="New case intake" maxWidth="2xl">
+      <form onSubmit={handleSubmit} className="space-y-4 font-['Space_Grotesk',sans-serif]">
         {error && (
-          <div className="p-3 rounded-xl border-2 border-[#FF334B] bg-[#FF334B]/10 text-[#FF334B] text-xs font-bold">
+          <div className="p-3 rounded-xl border border-[#FF334B]/30 bg-[#FF334B]/10 text-[#FF334B] text-xs font-bold">
             {error}
           </div>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
           {/* Target Bank */}
           <div className="space-y-1.5">
             <label className="block text-xs font-bold uppercase tracking-wider text-[#09090B]">
-              AFFECTED PARTNER BANK
+              Affected partner bank
             </label>
             <select
               value={bankId}
               onChange={(e) => setBankId(e.target.value as BankId)}
-              className="w-full text-xs font-bold bg-[#F8F4E8] border-2 border-[#09090B] rounded-xl p-3 shadow-hard-sm focus:outline-none"
+              className="w-full text-xs font-medium bg-[#F8F4E8] border border-[#09090B]/20 rounded-xl p-2.5 focus:outline-none focus:border-[#09090B]"
             >
               {DEMO_BANKS.map((b) => (
                 <option key={b.id} value={b.id}>
@@ -111,12 +109,12 @@ export function CaseIntakeModal({ isOpen, onClose, onCaseCreated }: CaseIntakeMo
           {/* Scam Typology */}
           <div className="space-y-1.5">
             <label className="block text-xs font-bold uppercase tracking-wider text-[#09090B]">
-              SCAM CATEGORIZATION
+              Scam categorization
             </label>
             <select
               value={scamType}
               onChange={(e) => setScamType(e.target.value as ScamType)}
-              className="w-full text-xs font-bold bg-[#F8F4E8] border-2 border-[#09090B] rounded-xl p-3 shadow-hard-sm focus:outline-none"
+              className="w-full text-xs font-medium bg-[#F8F4E8] border border-[#09090B]/20 rounded-xl p-2.5 focus:outline-none focus:border-[#09090B]"
             >
               {SCAM_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
@@ -129,13 +127,13 @@ export function CaseIntakeModal({ isOpen, onClose, onCaseCreated }: CaseIntakeMo
           {/* Intake Channel */}
           <div className="space-y-1.5 sm:col-span-2">
             <label htmlFor="intake-channel" className="block text-xs font-bold uppercase tracking-wider text-[#09090B]">
-              HOW THE REPORT ARRIVED
+              Intake channel
             </label>
             <select
               id="intake-channel"
               value={channel}
               onChange={(e) => setChannel(e.target.value as IntakeChannel)}
-              className="w-full text-xs font-bold bg-[#F8F4E8] border-2 border-[#09090B] rounded-xl p-3 shadow-hard-sm focus:outline-none"
+              className="w-full text-xs font-medium bg-[#F8F4E8] border border-[#09090B]/20 rounded-xl p-2.5 focus:outline-none focus:border-[#09090B]"
             >
               {STAFF_CHANNELS.map((c) => (
                 <option key={c.value} value={c.value}>
@@ -147,8 +145,8 @@ export function CaseIntakeModal({ isOpen, onClose, onCaseCreated }: CaseIntakeMo
         </div>
 
         {/* Victim Information */}
-        <div className="p-4 rounded-xl border-2 border-[#09090B] bg-[#EDE8D5] shadow-hard-sm space-y-3">
-          <p className="text-xs font-['Dela_Gothic_One'] uppercase text-[#09090B]">VICTIM IDENTIFICATION</p>
+        <div className="space-y-3 pt-3 border-t border-[#09090B]/15">
+          <p className="text-xs font-bold uppercase tracking-wider text-[#52525B]">Victim identification</p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Input
               label="Full Name *"
@@ -174,8 +172,8 @@ export function CaseIntakeModal({ isOpen, onClose, onCaseCreated }: CaseIntakeMo
         </div>
 
         {/* Transaction & Beneficiary Details */}
-        <div className="p-4 rounded-xl border-2 border-[#09090B] bg-[#EDE8D5] shadow-hard-sm space-y-3">
-          <p className="text-xs font-['Dela_Gothic_One'] uppercase text-[#09090B]">FRAUD TRANSACTION DETAILS</p>
+        <div className="space-y-3 pt-3 border-t border-[#09090B]/15">
+          <p className="text-xs font-bold uppercase tracking-wider text-[#52525B]">Fraud transaction details</p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Input
               label="Amount Lost (JPY) *"
@@ -202,26 +200,26 @@ export function CaseIntakeModal({ isOpen, onClose, onCaseCreated }: CaseIntakeMo
         </div>
 
         {/* Narrative Description */}
-        <div className="space-y-1.5">
+        <div className="space-y-1.5 pt-3 border-t border-[#09090B]/15">
           <label className="block text-xs font-bold uppercase tracking-wider text-[#09090B]">
-            INCIDENT SUMMARY / POLICE REPORT REFERENCE
+            Incident summary / police report reference
           </label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            rows={3}
+            rows={2}
             placeholder="Details of fraudulent contact, wire voucher reference, or police case number..."
-            className="w-full text-xs font-bold rounded-xl border-2 border-[#09090B] bg-[#F8F4E8] p-3 shadow-hard-sm focus:outline-none placeholder:text-[#71717A]"
+            className="w-full text-xs font-medium rounded-xl border border-[#09090B]/20 bg-[#F8F4E8] p-2.5 focus:outline-none focus:border-[#09090B] placeholder:text-[#71717A]"
           />
         </div>
 
         {/* Action Buttons */}
-        <div className="flex justify-end gap-3 pt-4 border-t-2 border-[#09090B]">
-          <Button variant="outline" size="md" type="button" onClick={onClose} className="shadow-hard-sm">
-            CANCEL
+        <div className="flex justify-end gap-2.5 pt-3 border-t border-[#09090B]/15">
+          <Button variant="outline" size="sm" type="button" onClick={onClose}>
+            Cancel
           </Button>
-          <Button variant="primary" size="md" type="submit" isLoading={isSubmitting} className="shadow-hard-sm gap-2">
-            <CheckCircle2 className="w-4 h-4" /> REGISTER CLAIM
+          <Button variant="primary" size="sm" type="submit" isLoading={isSubmitting} className="gap-1.5">
+            <CheckCircle2 className="w-4 h-4" /> Register claim
           </Button>
         </div>
       </form>

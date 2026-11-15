@@ -115,14 +115,14 @@ export function CaseHistoryPanel({ caseId }: CaseHistoryPanelProps) {
   const endItem = Math.min(page * PAGE_SIZE, total);
 
   return (
-    <div className="rounded-2xl border-2 border-[#09090B] bg-[#F8F4E8] p-5 sm:p-6 shadow-hard space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-[#09090B] pb-4">
+    <div className="space-y-4 font-['Space_Grotesk',sans-serif]">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#09090B]/15 pb-2.5">
         <div>
-          <h2 className="text-xs font-['Dela_Gothic_One'] uppercase tracking-wider text-[#09090B]">
-            Case Audit History
-          </h2>
-          <p className="mt-1 text-xs text-[#52525B] font-['Space_Grotesk',sans-serif]">
-            Immutable chronological audit log for this case.
+          <h3 className="text-sm font-bold uppercase tracking-wide text-[#09090B]">
+            Audit history
+          </h3>
+          <p className="mt-0.5 text-xs text-[#52525B]">
+            Chronological audit log for this case.
           </p>
         </div>
         <Button
@@ -139,8 +139,8 @@ export function CaseHistoryPanel({ caseId }: CaseHistoryPanelProps) {
       </div>
 
       {isLoading && history.length === 0 && (
-        <div className="py-12 text-center space-y-3">
-          <RotateCw className="w-6 h-6 animate-spin mx-auto text-[#09090B]" />
+        <div className="py-8 text-center space-y-2">
+          <RotateCw className="w-5 h-5 animate-spin mx-auto text-[#09090B]" />
           <p className="text-xs font-bold uppercase tracking-wider text-[#09090B]">
             Loading case history...
           </p>
@@ -148,7 +148,7 @@ export function CaseHistoryPanel({ caseId }: CaseHistoryPanelProps) {
       )}
 
       {error && !isLoading && (
-        <div className="rounded-xl border-2 border-[#FF334B] bg-[#FFF1F2] p-4 text-[#991B1B] space-y-2">
+        <div className="rounded-xl border border-[#FF334B]/30 bg-[#FFF1F2] p-3.5 text-[#991B1B] space-y-2">
           <div className="flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 shrink-0" />
             <span className="text-xs font-bold uppercase tracking-wider">Error</span>
@@ -158,7 +158,6 @@ export function CaseHistoryPanel({ caseId }: CaseHistoryPanelProps) {
             variant="outline"
             size="sm"
             onClick={() => void fetchHistory(page)}
-            className="mt-2"
           >
             Retry
           </Button>
@@ -166,10 +165,10 @@ export function CaseHistoryPanel({ caseId }: CaseHistoryPanelProps) {
       )}
 
       {!isLoading && !error && history.length === 0 && (
-        <div className="py-12 text-center space-y-2 rounded-xl border-2 border-dashed border-[#09090B]/30 bg-[#FFFDF5]">
-          <History className="w-8 h-8 mx-auto text-[#71717A]" />
+        <div className="py-8 text-center space-y-2 rounded-xl border border-dashed border-[#09090B]/20 bg-[#EDE8D5]/30">
+          <History className="w-6 h-6 mx-auto text-[#71717A]" />
           <p className="text-xs font-bold uppercase tracking-wider text-[#09090B]">
-            No Audit Records
+            No audit records
           </p>
           <p className="text-xs text-[#52525B]">
             No history recorded for this case yet.
@@ -178,37 +177,37 @@ export function CaseHistoryPanel({ caseId }: CaseHistoryPanelProps) {
       )}
 
       {history.length > 0 && (
-        <div className="relative pl-6 space-y-5 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-[#09090B]">
+        <div className="relative pl-5 space-y-3.5 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-[#09090B]/20">
           {history.map((entry) => (
             <div key={entry.id} className="relative group">
-              <div className="absolute -left-6 top-1 w-5 h-5 rounded-full bg-[#D2E823] border-2 border-[#09090B] flex items-center justify-center shadow-[1px_1px_0px_0px_#09090B]">
+              <div className="absolute -left-5 top-1.5 w-4 h-4 rounded-full bg-[#D2E823] border border-[#09090B] flex items-center justify-center">
                 <div className="w-1.5 h-1.5 rounded-full bg-[#09090B]" />
               </div>
 
-              <div className="rounded-xl border-2 border-[#09090B] bg-[#FFFDF5] p-3.5 shadow-[2px_2px_0px_0px_#09090B] space-y-2">
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#09090B]/10 pb-2">
+              <div className="rounded-xl border border-[#09090B]/15 bg-[#EDE8D5]/30 p-3 space-y-1.5">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#09090B]/10 pb-1.5">
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-xs text-[#09090B] font-['Space_Grotesk',sans-serif]">
+                    <span className="font-bold text-xs text-[#09090B]">
                       {entry.actor.name || 'System'}
                     </span>
                     <Badge
                       variant={getRoleBadgeVariant(entry.actor.role, entry.actor.type)}
-                      className="text-[10px] px-1.5 py-0"
+                      className="text-xs px-1.5 py-0"
                     >
                       {formatRoleLabel(entry.actor.role, entry.actor.type)}
                     </Badge>
                   </div>
-                  <div className="flex items-center gap-1.5 text-[11px] text-[#52525B] font-mono">
+                  <div className="flex items-center gap-1 text-xs text-[#52525B] font-mono">
                     <Clock className="w-3 h-3 shrink-0" />
                     <time dateTime={entry.at}>{formatTimestamp(entry.at)}</time>
                   </div>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="inline-block rounded bg-[#EDE8D5] px-2 py-0.5 font-mono text-[11px] font-bold text-[#09090B] border border-[#09090B]/30">
+                  <span className="inline-block rounded bg-[#EDE8D5] px-2 py-0.5 font-mono text-xs font-bold text-[#09090B] border border-[#09090B]/20">
                     {entry.action}
                   </span>
-                  <p className="text-xs text-[#09090B] font-medium font-['Space_Grotesk',sans-serif]">
+                  <p className="text-xs text-[#09090B] font-medium">
                     {entry.summary}
                   </p>
                 </div>
@@ -219,7 +218,7 @@ export function CaseHistoryPanel({ caseId }: CaseHistoryPanelProps) {
       )}
 
       {total > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t-2 border-[#09090B] text-xs font-['Space_Grotesk',sans-serif]">
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-[#09090B]/15 text-xs">
           <div className="text-[#52525B]">
             Showing <span className="font-bold text-[#09090B]">{startItem}</span>–
             <span className="font-bold text-[#09090B]">{endItem}</span> of{' '}
@@ -236,7 +235,7 @@ export function CaseHistoryPanel({ caseId }: CaseHistoryPanelProps) {
               <ChevronLeft className="w-3.5 h-3.5 mr-1" />
               Prev
             </Button>
-            <span className="px-2.5 py-1 font-bold text-xs bg-[#EDE8D5] rounded-md border-2 border-[#09090B] shadow-[1px_1px_0px_0px_#09090B]">
+            <span className="px-2 py-0.5 font-bold text-xs bg-[#EDE8D5] rounded border border-[#09090B]/20">
               {page} / {totalPages}
             </span>
             <Button

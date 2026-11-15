@@ -14,12 +14,12 @@ export interface CaseDocumentsPanelProps {
 }
 
 const DOC_TYPE_LABELS: Record<DocumentType, string> = {
-  transfer_receipt: 'Transfer Receipt / Slip',
-  bank_statement: 'Bank Statement',
-  police_report: 'Police Report',
-  id_document: 'Identity Document',
-  intake_form: 'Intake Form',
-  other: 'Other Document',
+  transfer_receipt: 'Transfer receipt / slip',
+  bank_statement: 'Bank statement',
+  police_report: 'Police report',
+  id_document: 'Identity document',
+  intake_form: 'Intake form',
+  other: 'Other document',
 };
 
 const DOC_TYPES = Object.keys(DOC_TYPE_LABELS) as DocumentType[];
@@ -51,7 +51,7 @@ function ExtractionBadge({ extraction }: { extraction: DocumentMeta['latest_extr
     return (
       <Badge variant="warning" reviewLane={extraction.review_lane ?? undefined} title={`Status: Pending Review${conf}`}>
         <Clock className="w-3 h-3 mr-1" />
-        Needs Review{conf}
+        Needs review{conf}
       </Badge>
     );
   }
@@ -72,13 +72,13 @@ interface DocumentRowProps {
 
 function DocumentRow({ doc, canWrite, isBusy, isDownloading, isExtracting, onDownload, onExtract }: DocumentRowProps) {
   return (
-    <div className="p-3.5 rounded-xl border-2 border-[#09090B] bg-[#EDE8D5] shadow-hard-sm space-y-2.5">
+    <div className="p-3.5 rounded-xl border border-[#09090B]/15 bg-[#EDE8D5]/40 space-y-2">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="flex items-start gap-2.5 min-w-0">
           <FileText className="w-4 h-4 text-[#09090B] shrink-0 mt-0.5" />
           <div className="min-w-0">
             <p className="text-xs font-bold text-[#09090B] break-all uppercase leading-tight">{doc.filename}</p>
-            <p className="text-[11px] font-mono text-[#52525B] mt-0.5">
+            <p className="text-xs font-mono text-[#52525B] mt-0.5">
               {DOC_TYPE_LABELS[doc.doc_type] ?? doc.doc_type} • {formatBytes(doc.size_bytes)}
             </p>
           </div>
@@ -88,8 +88,8 @@ function DocumentRow({ doc, canWrite, isBusy, isDownloading, isExtracting, onDow
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-[#09090B]/10">
-        <span className="text-[10px] font-mono text-[#52525B]">
+      <div className="flex flex-wrap items-center justify-between gap-2 pt-1.5 border-t border-[#09090B]/10">
+        <span className="text-xs font-mono text-[#52525B]">
           By {doc.uploaded_by.name} • {formatDate(doc.uploaded_at)}
         </span>
         <div className="flex items-center gap-2">
@@ -99,7 +99,6 @@ function DocumentRow({ doc, canWrite, isBusy, isDownloading, isExtracting, onDow
             onClick={() => onDownload(doc)}
             isLoading={isDownloading}
             disabled={isBusy}
-            className="h-7 px-2.5 text-[11px]"
             aria-label={`Download ${doc.filename}`}
           >
             <Download className="w-3 h-3 mr-1" />
@@ -113,7 +112,6 @@ function DocumentRow({ doc, canWrite, isBusy, isDownloading, isExtracting, onDow
               onClick={() => onExtract(doc)}
               isLoading={isExtracting}
               disabled={isBusy}
-              className="h-7 px-2.5 text-[11px]"
               aria-label={`Run AI extraction on ${doc.filename}`}
             >
               <Sparkles className="w-3 h-3 mr-1" />
@@ -174,26 +172,26 @@ function UploadForm({ caseId, isBusy, onUploaded }: { caseId: string; isBusy: bo
     useFileUpload(caseId, onUploaded);
 
   return (
-    <form onSubmit={(e) => void onSubmit(e)} className="p-4 rounded-xl border-2 border-[#09090B] bg-[#F8F4E8] shadow-hard-sm space-y-3 mt-4">
+    <form onSubmit={(e) => void onSubmit(e)} className="p-4 rounded-xl border border-[#09090B]/15 bg-[#EDE8D5]/30 space-y-3 mt-4">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-['Dela_Gothic_One'] uppercase tracking-wider text-[#09090B] flex items-center gap-1.5">
+        <span className="text-xs font-bold uppercase tracking-wide text-[#09090B] flex items-center gap-1.5">
           <Upload className="w-3.5 h-3.5" />
-          Upload New Evidence
+          Upload evidence
         </span>
-        <span className="text-[10px] font-mono text-[#52525B]">PDF, PNG, JPG, TXT (Max 10 MB)</span>
+        <span className="text-xs text-[#52525B]">PDF, PNG, JPG, TXT (Max 10 MB)</span>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
-          <label htmlFor={`doc-type-${caseId}`} className="block text-[11px] font-bold uppercase tracking-wider text-[#09090B] mb-1">
-            Document Type
+          <label htmlFor={`doc-type-${caseId}`} className="block text-xs font-bold uppercase tracking-wider text-[#09090B] mb-1">
+            Document type
           </label>
           <select
             id={`doc-type-${caseId}`}
             value={docType}
             onChange={(e) => setDocType(e.target.value as DocumentType)}
             disabled={isBusy || isUploading}
-            className="h-10 w-full rounded-xl border-2 border-[#09090B] bg-[#EDE8D5] px-3 text-xs font-medium text-[#09090B] shadow-[2px_2px_0px_0px_#09090B] focus:outline-none focus:shadow-hard"
+            className="h-9 w-full rounded-lg border border-[#09090B]/20 bg-[#F8F4E8] px-3 text-xs font-medium text-[#09090B] focus:outline-none focus:border-[#09090B]"
           >
             {DOC_TYPES.map((type) => (
               <option key={type} value={type}>{DOC_TYPE_LABELS[type]}</option>
@@ -202,8 +200,8 @@ function UploadForm({ caseId, isBusy, onUploaded }: { caseId: string; isBusy: bo
         </div>
 
         <div>
-          <label htmlFor={`doc-file-${caseId}`} className="block text-[11px] font-bold uppercase tracking-wider text-[#09090B] mb-1">
-            Choose File
+          <label htmlFor={`doc-file-${caseId}`} className="block text-xs font-bold uppercase tracking-wider text-[#09090B] mb-1">
+            Choose file
           </label>
           <input
             id={`doc-file-${caseId}`}
@@ -212,13 +210,13 @@ function UploadForm({ caseId, isBusy, onUploaded }: { caseId: string; isBusy: bo
             accept=".pdf,.png,.jpg,.jpeg,.txt"
             onChange={onFileChange}
             disabled={isBusy || isUploading}
-            className="h-10 w-full rounded-xl border-2 border-[#09090B] bg-[#EDE8D5] px-2 py-1 text-xs text-[#09090B] file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-2 file:border-[#09090B] file:bg-[#F8F4E8] file:text-[10px] file:font-bold file:uppercase shadow-[2px_2px_0px_0px_#09090B]"
+            className="h-9 w-full rounded-lg border border-[#09090B]/20 bg-[#F8F4E8] px-2 py-1 text-xs text-[#09090B] file:mr-2 file:py-1 file:px-2 file:rounded file:border file:border-[#09090B]/20 file:bg-[#EDE8D5] file:text-xs file:font-bold file:uppercase"
           />
         </div>
       </div>
 
       {selectedFile && (
-        <p className="text-[11px] font-mono text-[#09090B]">
+        <p className="text-xs font-mono text-[#09090B]">
           Selected: <span className="font-bold">{selectedFile.name}</span> ({formatBytes(selectedFile.size)})
         </p>
       )}
@@ -236,10 +234,10 @@ function UploadForm({ caseId, isBusy, onUploaded }: { caseId: string; isBusy: bo
         size="sm"
         isLoading={isUploading}
         disabled={!selectedFile || isBusy}
-        className="w-full h-9 shadow-hard-sm text-xs"
+        className="w-full"
       >
         <Upload className="w-3.5 h-3.5 mr-1.5" />
-        Upload Document
+        Upload document
       </Button>
     </form>
   );
@@ -311,18 +309,17 @@ export function CaseDocumentsPanel({ caseId, onExtractionReady }: CaseDocumentsP
 
   return (
     <div className="space-y-4 font-['Space_Grotesk',sans-serif]">
-      <div className="flex items-center justify-between border-b-2 border-[#09090B] pb-3">
-        <h4 className="text-xs font-['Dela_Gothic_One'] uppercase tracking-wider text-[#09090B] flex items-center gap-2">
+      <div className="flex items-center justify-between border-b border-[#09090B]/15 pb-2.5">
+        <h3 className="text-sm font-bold uppercase tracking-wide text-[#09090B] flex items-center gap-2">
           <FileText className="w-4 h-4 text-[#09090B]" />
-          EVIDENCE DOCUMENTS ({docs.length})
-        </h4>
+          Documents ({docs.length})
+        </h3>
         <Button
           size="sm"
           variant="ghost"
           onClick={() => void loadDocuments()}
           disabled={isBusy}
           aria-label="Refresh documents list"
-          className="h-7 px-2 text-[11px]"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
         </Button>
@@ -336,7 +333,7 @@ export function CaseDocumentsPanel({ caseId, onExtractionReady }: CaseDocumentsP
       )}
 
       {loadError && !isLoading && (
-        <div className="p-4 rounded-xl border-2 border-[#FF334B] bg-[#FFF0F2] text-xs font-bold text-[#FF334B] flex items-center justify-between">
+        <div className="p-3.5 rounded-xl border border-[#FF334B]/30 bg-[#FFF0F2] text-xs font-bold text-[#FF334B] flex items-center justify-between">
           <span className="flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0" />
             {loadError}
@@ -348,9 +345,9 @@ export function CaseDocumentsPanel({ caseId, onExtractionReady }: CaseDocumentsP
       )}
 
       {!isLoading && !loadError && docs.length === 0 && (
-        <div className="p-6 text-center rounded-xl border-2 border-dashed border-[#09090B]/30 bg-[#EDE8D5]/50 space-y-1">
+        <div className="p-6 text-center rounded-xl border border-dashed border-[#09090B]/20 bg-[#EDE8D5]/30 space-y-1">
           <p className="text-xs font-bold uppercase text-[#09090B]">No documents attached yet</p>
-          <p className="text-[11px] text-[#52525B]">
+          <p className="text-xs text-[#52525B]">
             {canWrite
               ? 'Upload a bank receipt, statement, or report below to begin AI OCR extraction.'
               : 'No documents have been uploaded for this case.'}
@@ -359,7 +356,7 @@ export function CaseDocumentsPanel({ caseId, onExtractionReady }: CaseDocumentsP
       )}
 
       {!isLoading && !loadError && docs.length > 0 && (
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           {docs.map((doc) => (
             <DocumentRow
               key={doc.id}
