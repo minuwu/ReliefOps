@@ -1,0 +1,310 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-15T21:30:00Z",
+  "title": "Design System: ReliefOps",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "Ink Black",
+        "canonical": "#09090B",
+        "tonalRamp": [
+          "#09090B",
+          "#18181B",
+          "#27272A",
+          "#3F3F46",
+          "#52525B",
+          "#71717A",
+          "#A1A1AA",
+          "#E4E4E7"
+        ]
+      },
+      "accent": {
+        "role": "accent",
+        "displayName": "Acid Yellow",
+        "canonical": "#D2E823",
+        "tonalRamp": [
+          "#2E3300",
+          "#545C03",
+          "#7D8A05",
+          "#A8BA09",
+          "#D2E823",
+          "#E4FC28",
+          "#EFFD68",
+          "#F7FEA8"
+        ]
+      },
+      "danger": {
+        "role": "danger",
+        "displayName": "Coral Red",
+        "canonical": "#FF334B",
+        "tonalRamp": [
+          "#4A000A",
+          "#800516",
+          "#B80E24",
+          "#E01F37",
+          "#FF334B",
+          "#FF6B7D",
+          "#FFA3AF",
+          "#FFD6DC"
+        ]
+      },
+      "neutral-bg": {
+        "role": "neutral",
+        "displayName": "Warm Cream",
+        "canonical": "#F8F4E8",
+        "tonalRamp": [
+          "#29261E",
+          "#524C3D",
+          "#7A735C",
+          "#A3997B",
+          "#CCC09A",
+          "#EDE8D5",
+          "#F8F4E8",
+          "#FDFCF7"
+        ]
+      },
+      "neutral-surface": {
+        "role": "neutral",
+        "displayName": "Muted Sand",
+        "canonical": "#EDE8D5",
+        "tonalRamp": [
+          "#24211A",
+          "#474134",
+          "#6B624E",
+          "#8F8368",
+          "#B3A482",
+          "#D6C7A1",
+          "#EDE8D5",
+          "#FAF8F2"
+        ]
+      },
+      "neutral-text": {
+        "role": "neutral",
+        "displayName": "Ink Black",
+        "canonical": "#09090B",
+        "tonalRamp": [
+          "#09090B",
+          "#18181B",
+          "#27272A",
+          "#3F3F46",
+          "#52525B",
+          "#71717A",
+          "#A1A1AA",
+          "#E4E4E7"
+        ]
+      },
+      "neutral-muted": {
+        "role": "neutral",
+        "displayName": "Muted Zinc",
+        "canonical": "#52525B",
+        "tonalRamp": [
+          "#18181B",
+          "#27272A",
+          "#3F3F46",
+          "#52525B",
+          "#71717A",
+          "#A1A1AA",
+          "#D4D4D8",
+          "#F4F4F5"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display (Dela Gothic One)",
+        "purpose": "Primary page h1 and modal dialog titles only."
+      },
+      "body": {
+        "displayName": "Body (Space Grotesk)",
+        "purpose": "General UI text, labels, button labels, and descriptions."
+      },
+      "mono": {
+        "displayName": "Mono (JetBrains Mono)",
+        "purpose": "Case references, currency amounts, timestamps, and identifiers."
+      }
+    },
+    "shadows": [
+      {
+        "name": "shadow-hard-sm",
+        "value": "2px 2px 0px 0px #09090B",
+        "purpose": "Badges, compact button variants, icon controls."
+      },
+      {
+        "name": "shadow-hard",
+        "value": "4px 4px 0px 0px #09090B",
+        "purpose": "Standard panels, cards, focused input fields."
+      },
+      {
+        "name": "shadow-hard-lg",
+        "value": "8px 8px 0px 0px #09090B",
+        "purpose": "Modal dialogs, major overlay surfaces."
+      }
+    ],
+    "motion": [
+      {
+        "name": "pressable-transition",
+        "value": "120ms cubic-bezier(0.2, 0, 0, 1)",
+        "purpose": "Mechanical button and card compression on hover and active states."
+      },
+      {
+        "name": "panel-transition",
+        "value": "150ms ease-out",
+        "purpose": "Modal appearance and state transition timing."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      },
+      {
+        "name": "xl",
+        "value": "1280px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Main action button with solid ink background, acid yellow text, and mechanical press.",
+      "html": "<button class=\"ds-btn-primary\">New Case</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; font-family: 'Space Grotesk', system-ui, sans-serif; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; background: #09090B; color: #D2E823; border: 2px solid #09090B; border-radius: 12px; height: 40px; padding: 8px 20px; box-shadow: 4px 4px 0px 0px #09090B; cursor: pointer; transition: all 120ms cubic-bezier(0.2, 0, 0, 1); user-select: none; } .ds-btn-primary:hover { background: #1a1a1f; transform: translate(2px, 2px); box-shadow: 2px 2px 0px 0px #09090B; } .ds-btn-primary:active { transform: translate(4px, 4px); box-shadow: 0px 0px 0px 0px #09090B; } .ds-btn-primary:focus-visible { outline: 2px solid #09090B; outline-offset: 2px; }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Subtle secondary action button with transparent background, revealing acid tint and solid border on hover.",
+      "html": "<button class=\"ds-btn-ghost\">Refresh</button>",
+      "css": ".ds-btn-ghost { display: inline-flex; align-items: center; justify-content: center; font-family: 'Space Grotesk', system-ui, sans-serif; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; background: transparent; color: #09090B; border: 2px solid transparent; border-radius: 12px; height: 40px; padding: 8px 20px; cursor: pointer; transition: all 120ms cubic-bezier(0.2, 0, 0, 1); } .ds-btn-ghost:hover { background: rgba(210, 232, 35, 0.3); border-color: #09090B; } .ds-btn-ghost:focus-visible { outline: 2px solid #09090B; outline-offset: 2px; }"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Destructive confirmation button in coral red with ink border and mechanical depression.",
+      "html": "<button class=\"ds-btn-danger\">Delete Case</button>",
+      "css": ".ds-btn-danger { display: inline-flex; align-items: center; justify-content: center; font-family: 'Space Grotesk', system-ui, sans-serif; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; background: #FF334B; color: #09090B; border: 2px solid #09090B; border-radius: 12px; height: 40px; padding: 8px 20px; box-shadow: 4px 4px 0px 0px #09090B; cursor: pointer; transition: all 120ms cubic-bezier(0.2, 0, 0, 1); } .ds-btn-danger:hover { background: #ff4f63; transform: translate(2px, 2px); box-shadow: 2px 2px 0px 0px #09090B; } .ds-btn-danger:active { transform: translate(4px, 4px); box-shadow: 0px 0px 0px 0px #09090B; } .ds-btn-danger:focus-visible { outline: 2px solid #09090B; outline-offset: 2px; }"
+    },
+    {
+      "name": "Small Button",
+      "kind": "button",
+      "refersTo": "button-sm",
+      "description": "Compact action button with 2px hard shadow and 8px border radius.",
+      "html": "<button class=\"ds-btn-sm\">Filter</button>",
+      "css": ".ds-btn-sm { display: inline-flex; align-items: center; justify-content: center; font-family: 'Space Grotesk', system-ui, sans-serif; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; background: #F8F4E8; color: #09090B; border: 2px solid #09090B; border-radius: 8px; height: 32px; padding: 4px 12px; box-shadow: 2px 2px 0px 0px #09090B; cursor: pointer; transition: all 120ms cubic-bezier(0.2, 0, 0, 1); } .ds-btn-sm:hover { background: #D2E823; transform: translate(1px, 1px); box-shadow: 1px 1px 0px 0px #09090B; } .ds-btn-sm:active { transform: translate(2px, 2px); box-shadow: 0px 0px 0px 0px #09090B; } .ds-btn-sm:focus-visible { outline: 2px solid #09090B; outline-offset: 2px; }"
+    },
+    {
+      "name": "Status Badge",
+      "kind": "chip",
+      "refersTo": "badge",
+      "description": "Compact uppercase status badge with heavy border and 1px hard shadow.",
+      "html": "<span class=\"ds-badge\">Account Check</span>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; gap: 6px; font-family: 'Space Grotesk', system-ui, sans-serif; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; background: #09090B; color: #D2E823; border: 2px solid #09090B; border-radius: 6px; padding: 2px 10px; box-shadow: 1px 1px 0px 0px #09090B; white-space: nowrap; }"
+    },
+    {
+      "name": "Input Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "High-contrast form input with cream background, 2px offset shadow, and hard focus shift.",
+      "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"Search reference or account...\" />",
+      "css": ".ds-input { display: flex; width: 100%; height: 44px; font-family: 'Space Grotesk', system-ui, sans-serif; font-size: 14px; font-weight: 500; background: #F8F4E8; color: #09090B; border: 2px solid #09090B; border-radius: 12px; padding: 8px 14px; box-shadow: 2px 2px 0px 0px #09090B; transition: all 120ms ease-out; outline: none; } .ds-input::placeholder { color: #52525B; } .ds-input:focus { box-shadow: 4px 4px 0px 0px #09090B; transform: translate(-1px, -1px); outline: 2px solid #09090B; outline-offset: 2px; }"
+    },
+    {
+      "name": "Primary Panel",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "Standard workstation panel with cream paper background, 2px ink border, 16px radius, and 4px hard shadow.",
+      "html": "<div class=\"ds-panel\"><h3 class=\"ds-panel-title\">Active Claims</h3><p class=\"ds-panel-body\">Review statutory deadlines and stage progression.</p></div>",
+      "css": ".ds-panel { background: #F8F4E8; color: #09090B; border: 2px solid #09090B; border-radius: 16px; padding: 24px; box-shadow: 4px 4px 0px 0px #09090B; } .ds-panel-title { font-family: 'Space Grotesk', system-ui, sans-serif; font-size: 16px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #09090B; margin: 0 0 6px 0; } .ds-panel-body { font-family: 'Space Grotesk', system-ui, sans-serif; font-size: 14px; color: #52525B; margin: 0; }"
+    },
+    {
+      "name": "Table Row",
+      "kind": "custom",
+      "refersTo": "table-row",
+      "description": "Tabular data row with interactive hover state, active acid tint focus, and tabular mono numerals.",
+      "html": "<tr class=\"ds-table-row ds-table-row-focused\"><td class=\"ds-cell ds-cell-mono\">RFR-2026-00042</td><td class=\"ds-cell\">BANK OF TOKYO</td><td class=\"ds-cell ds-cell-mono\">¥1,450,000</td></tr>",
+      "css": ".ds-table-row { transition: background 100ms ease; cursor: pointer; border-bottom: 1px solid rgba(9, 9, 11, 0.1); } .ds-table-row:hover { background: rgba(237, 232, 213, 0.8); } .ds-table-row-focused { background: rgba(210, 232, 35, 0.25) !important; } .ds-cell { padding: 12px 16px; font-family: 'Space Grotesk', system-ui, sans-serif; font-size: 12px; color: #09090B; text-align: left; } .ds-cell-mono { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-variant-numeric: tabular-nums; }"
+    },
+    {
+      "name": "Navigation Link",
+      "kind": "nav",
+      "refersTo": "nav-link",
+      "description": "Primary navigation tab with solid border and acid background in active state.",
+      "html": "<a class=\"ds-nav-link ds-nav-link-active\" href=\"#\">Cases</a>",
+      "css": ".ds-nav-link { display: inline-flex; align-items: center; gap: 8px; font-family: 'Space Grotesk', system-ui, sans-serif; font-size: 14px; font-weight: 600; text-decoration: none; padding: 6px 12px; border-radius: 8px; border: 1px solid transparent; color: #09090B; background: transparent; transition: all 120ms ease; cursor: pointer; } .ds-nav-link:hover { background: #EDE8D5; } .ds-nav-link-active { background: #D2E823; border-color: #09090B; font-weight: 700; } .ds-nav-link:focus-visible { outline: 2px solid #09090B; outline-offset: 2px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Ledger Desk",
+    "overview": "ReliefOps evokes the physical gravity of a Japanese banking relief operations desk. Heavy black ink strokes, warm archival cream paper, and mechanical tactile feedback replace ephemeral tech aesthetics with bureaucratic permanence and statutory rigor. Every surface behaves like physical paper bound in heavy black ledger boards.\n\nThe interface prioritizes dense, unambiguous clarity for operators handling time-critical fraud claims under legal scrutiny. High-contrast typography and deliberate tactile feedback ensure operators work with absolute focus and confidence under strict statutory deadlines.",
+    "keyCharacteristics": [
+      "Archival cream paper foundations grounded by 2px solid ink structural outlines.",
+      "Hard neo-brutalist offset drop-shadows with zero blur radius and mechanical click action.",
+      "High-contrast tripartite typography: authoritative display headings, utilitarian body, and tabular monospace numerals.",
+      "Restrained high-visibility functional signals: acid yellow for focused action, coral red strictly for statutory danger."
+    ],
+    "rules": [
+      {
+        "name": "The Coral Discipline Rule",
+        "body": "Coral (#FF334B) is strictly reserved for statutory danger, critical failures, and overdue deadlines. It is never used for generic notification badges or decorative alerts.",
+        "section": "colors"
+      },
+      {
+        "name": "The Acid Accent Rule",
+        "body": "Acid yellow (#D2E823) represents operational focus and primary forward momentum: active navigation tabs, interactive focus states, primary selections, and high-priority action emphasis.",
+        "section": "colors"
+      },
+      {
+        "name": "The Restrained Display Rule",
+        "body": "Dela Gothic One is used exclusively for primary page h1 headings and modal dialog titles. It must never appear on card headers, subheaders, body text, or statistics counters.",
+        "section": "typography"
+      },
+      {
+        "name": "The Sentence Case Doctrine",
+        "body": "Page headings (h1) and modal titles are rendered in clean sentence case. Never apply uppercase to Dela Gothic One page titles.",
+        "section": "typography"
+      },
+      {
+        "name": "The Mechanical Press Rule",
+        "body": "Interactive elements press physically into their shadow on hover (translate(2px, 2px) with shadow reducing to 2px) and fully compress on active press (translate(4px, 4px) with zero shadow).",
+        "section": "elevation"
+      },
+      {
+        "name": "The Modal Nesting Rule",
+        "body": "Panels and cards nested inside a modal must omit all drop-shadows and use a muted border (border border-[#09090B]/15) to prevent visual stacking clash.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do use Dela Gothic One only for top-level page h1 and modal dialog titles.",
+      "Do format page h1 headings in sentence case with subtitle text-sm text-[#52525B].",
+      "Do build primary panels with border-2 border-[#09090B] rounded-2xl shadow-hard and p-4 sm:p-6 padding.",
+      "Do style nested panels inside modals with border border-[#09090B]/15 and zero shadow.",
+      "Do style table headers with text-xs font-bold uppercase tracking-wide text-[#52525B] on transparent background.",
+      "Do highlight focused table rows with bg-[#D2E823]/25 tint across the row.",
+      "Do apply focus-visible:ring-2 focus-visible:ring-[#09090B] for accessible keyboard focus rings.",
+      "Do use JetBrains Mono with tabular-nums for all currency amounts, case references, timestamps, and account numbers."
+    ],
+    "donts": [
+      "Don't use Dela Gothic One for card titles, stat values, table cells, badges, or buttons.",
+      "Don't use uppercase on page h1 headings.",
+      "Don't use coral (#FF334B) for standard counters, decorative badges, or non-urgent notifications.",
+      "Don't add colored side-stripe borders on focused table rows.",
+      "Don't use fuzzy, blurred, or ambient drop-shadows; keep all shadows crisp hard-edge 0px blur.",
+      "Don't use banned elements: glitch text, stickers, marquees, custom cursor, noise overlay, or side-stripe borders.",
+      "Don't use banned hype words in interfaces: syndicate, telemetry, command."
+    ]
+  }
+}
