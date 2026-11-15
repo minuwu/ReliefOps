@@ -117,6 +117,11 @@ class CircuitBreaker:
             if self._opened_at is not None or self._failures >= self._threshold:
                 self._opened_at = self._clock()
 
+    def release(self) -> None:
+        """End a half-open trial that never reached the AI, without counting it either way."""
+        with self._lock:
+            self._trial_running = False
+
     @property
     def is_open(self) -> bool:
         with self._lock:

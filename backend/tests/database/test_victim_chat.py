@@ -14,6 +14,7 @@ from app.models.chat import ChatFeedback, ChatQuestion
 from app.services import retrieval, victim_chat as chat
 from app.services.ai_errors import AIUnavailableError
 from app.services.caller import StaticCaller
+from app.services.extraction_engine import CircuitBreaker
 from app.services.service_errors import ServiceError
 from .conftest import insert_case, insert_user, set_scope
 
@@ -129,11 +130,38 @@ def test_model_timeout_is_bounded(chat_case):
     def slow(*args):
         time.sleep(.3)
         return {}
+    breaker = CircuitBreaker(threshold=1)
     started = time.monotonic()
     answer = chat.ask(caller, case_id, ChatQuestion(question="report"),
-                      replace(SETTINGS, answer=slow, timeout=.05)).answer
+                      replace(SETTINGS, answer=slow, timeout=.05, breaker=breaker)).answer
     assert answer.answer_type == "passages_only" and time.monotonic() - started < .25
-    assert not chat.get_thread(caller, case_id).assistant_available
+    assert not chat.assistant_available(breaker)
+
+
+def test_open_breaker_skips_the_ai_then_recovers(chat_case):
+    caller, case_id = chat_case
+    clock = [1000.0]
+    breaker = CircuitBreaker(threshold=3, cooldown=60, clock=lambda: clock[0])
+    calls = []
+
+    def down(*args):
+        calls.append(1)
+        raise AIUnavailableError("provider down")
+
+    for _ in range(3):
+        chat.ask(caller, case_id, ChatQuestion(question="report"), replace(SETTINGS, answer=down, breaker=breaker))
+    assert len(calls) == 3 and not chat.assistant_available(breaker)
+
+    started = time.monotonic()
+    answer = chat.ask(caller, case_id, ChatQuestion(question="report"),
+                      replace(SETTINGS, answer=down, breaker=breaker)).answer
+    assert len(calls) == 3  # skipped: nobody waits on a dead provider
+    assert answer.answer_type == "passages_only" and time.monotonic() - started < 1
+
+    clock[0] += 61  # cooldown over: one trial call, which succeeds and closes the breaker
+    answer = chat.ask(caller, case_id, ChatQuestion(question="report"),
+                      replace(SETTINGS, breaker=breaker)).answer
+    assert answer.answer_type == "grounded" and chat.assistant_available(breaker)
 
 
 def test_foreign_case_message_and_wrong_role(chat_case, callers, world):

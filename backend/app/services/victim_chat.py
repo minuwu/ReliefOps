@@ -28,6 +28,7 @@ from app.services import audit, case_sql, retrieval
 from app.services.ai_errors import AIUnavailableError
 from app.services.caller import Caller
 from app.services.documents import CaseRef
+from app.services.extraction_engine import CircuitBreaker
 from app.services.service_errors import ServiceError, forbidden, not_found, validation_error
 
 messages = table("chat_messages", *(column(k) for k in (
@@ -36,13 +37,18 @@ messages = table("chat_messages", *(column(k) for k in (
 )), column("citations", JSONB), column("used_passage_ids", ARRAY(PGUUID(as_uuid=True))))
 _POOL = ThreadPoolExecutor(max_workers=4, thread_name_prefix="case-assistant")
 _SLOTS = threading.BoundedSemaphore(4)
-_unavailable_until = 0.0
+# Guide §4.5: after 3 provider failures in a row, skip the AI for 60 s, then allow one trial call.
+_BREAKER = CircuitBreaker(threshold=3, cooldown=60.0)
 _WANTS_PERSON = re.compile(r"talk to (?:a |an )?(?:person|human|staff)|contact (?:a |the )?staff|担当者|人と話|কর্মী", re.I)
 
 
-def assistant_available() -> bool:
-    """Recent local provider status for health/thread output, not a network probe."""
-    return time.monotonic() >= _unavailable_until
+class AssistantBusy(AIUnavailableError):
+    """Every assistant slot is in use or the time budget is spent: not a provider failure."""
+
+
+def assistant_available(breaker: CircuitBreaker | None = None) -> bool:
+    """False while the circuit breaker is open; local state, not a network probe."""
+    return not (breaker or _BREAKER).is_open
 
 
 def _embed(question: str) -> list[float]:
@@ -62,11 +68,12 @@ class ChatSettings:
     ai_enabled: bool = True
     embed: Callable = _embed
     answer: Callable = _answer
+    breaker: CircuitBreaker | None = None  # None: the process-wide breaker
 
 
 def _bounded(fn: Callable, *args: Any, timeout: float) -> Any:
     if timeout <= 0 or not _SLOTS.acquire(blocking=False):
-        raise AIUnavailableError("Assistant busy")
+        raise AssistantBusy("Assistant busy")
     try:
         future = _POOL.submit(fn, *args)
     except Exception:
@@ -166,7 +173,6 @@ def _validated(raw: Any, passages: list[dict], language: str) -> dict[str, Any]:
 
 def ask(caller: Caller, case_id: UUID, data: ChatQuestion,
         settings: ChatSettings = ChatSettings()) -> ChatExchange:
-    global _unavailable_until
     if caller.role != "victim":
         raise forbidden()
     started = time.monotonic()
@@ -197,22 +203,35 @@ def ask(caller: Caller, case_id: UUID, data: ChatQuestion,
     safe_history = [{"role": m["role"], "body": retrieval.redact(m["body"], case)} for m in reversed(history)]
     vector = None
     wants_person = bool(_WANTS_PERSON.search(safe_question))
-    if settings.ai_enabled and not wants_person:
-        try:
-            vector = _bounded(settings.embed, safe_question, timeout=min(settings.embedding_timeout, settings.timeout))
-        except AIUnavailableError:
-            pass  # keyword retrieval remains available
-    passages = [] if wants_person else retrieval.retrieve(caller, case_id, safe_question, vector)
-    result = _fallback(passages, language)
-    if settings.ai_enabled and not wants_person:
-        try:
-            raw = _bounded(settings.answer, safe_question, retrieval.ai_passages(passages),
-                           retrieval.case_context(case), safe_history, language,
-                           timeout=settings.timeout - (time.monotonic() - started))
-            result = _validated(raw, passages, language)
-            _unavailable_until = 0.0
-        except AIUnavailableError:
-            _unavailable_until = time.monotonic() + 30.0
+    breaker = settings.breaker or _BREAKER
+    # While the breaker is open the AI is skipped at once: no victim waits out a dead provider.
+    use_ai = settings.ai_enabled and not wants_person and breaker.allow()
+    decided = False
+    try:
+        if use_ai:
+            try:
+                vector = _bounded(settings.embed, safe_question,
+                                  timeout=min(settings.embedding_timeout, settings.timeout))
+            except AIUnavailableError:
+                pass  # keyword retrieval remains available; only the answer call trips the breaker
+        passages = [] if wants_person else retrieval.retrieve(caller, case_id, safe_question, vector)
+        result = _fallback(passages, language)
+        if use_ai:
+            try:
+                raw = _bounded(settings.answer, safe_question, retrieval.ai_passages(passages),
+                               retrieval.case_context(case), safe_history, language,
+                               timeout=settings.timeout - (time.monotonic() - started))
+                result = _validated(raw, passages, language)
+                breaker.record_success()
+                decided = True
+            except AssistantBusy:
+                pass  # we never reached the provider: no verdict
+            except AIUnavailableError:
+                breaker.record_failure()
+                decided = True
+    finally:
+        if use_ai and not decided:
+            breaker.release()  # a trial that never reached the AI must not jam the breaker
 
     with db.scoped_session(replace(caller.scope(), bank_id=case["bank_id"])) as s:
         current = _check_case(s, caller, case_id)
