@@ -8,11 +8,43 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, StringConstraints
 
-from app.models.common import BankId
-from app.security import Role
+from app.models.common import BankId, Email, Language, Name
+from app.security import PASSWORD_MAX, PASSWORD_MIN, Role
 
 LoginEmail = Annotated[str, StringConstraints(strip_whitespace=True, to_lower=True, min_length=3, max_length=254)]
 LoginPassword = Annotated[str, StringConstraints(min_length=1, max_length=200)]
+NewPassword = Annotated[str, StringConstraints(min_length=PASSWORD_MIN, max_length=PASSWORD_MAX)]
+Token = Annotated[str, StringConstraints(strip_whitespace=True, min_length=16, max_length=200)]
+
+
+class SignupRequest(BaseModel):
+    """Always creates a victim: there is no ``role`` field, so sending one is ``422`` (unknown field)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    email: Email
+    password: NewPassword
+    name: Name
+    preferred_language: Language = "en"  # accepted per contract; users has no column for it yet
+
+
+class TokenRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    token: Token
+
+
+class EmailRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    email: Email
+
+
+class ResetPasswordRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    token: Token
+    new_password: NewPassword
 
 
 class LoginRequest(BaseModel):
