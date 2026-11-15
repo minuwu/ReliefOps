@@ -4,6 +4,22 @@ Owner: Galib (`Ga-lib`) — Role: AI / LLM — Branches: `galib/*`
 
 Update after each work session. Newest entry first. Bangladesh time (UTC+6). Link commits/PRs/XREQs.
 
+## 2026-11-15 — `extract_fields()` stub (XREQ-002, step 1)
+
+### Completed
+- `backend/app/services/ai_extraction.py`: `extract_fields()` stub per API_SPEC §7.1. Returns 5 fixed demo fields at confidence 0.5 (below the 0.75 threshold, so every result goes to the `low_confidence` lane for human review); evidence marks each value as a stub; empty file returns no fields.
+- `backend/tests/ai/test_ai_extraction.py`: output passes `parse_ai_output`; the engine's real lazy-import path routes it to human review.
+- `test_missing_ai_module_counts_as_unavailable` (Asif's) now simulates the missing module, since the module exists.
+- `pytest tests/ai tests/unit`: 57 passed.
+
+### Next
+- Pick the vision provider and model; first prompt in `backend/app/prompts/extract-v1`; real extraction on 3–4 synthetic slips.
+
+### Related issues / commits / PRs
+- Branch `galib/extract-fields-stub`; PR #9. PR #8 (XREQ-002 naming fixes) merged.
+
+---
+
 ## 2026-11-15 — XREQ-002 naming fixes
 
 ### Completed
