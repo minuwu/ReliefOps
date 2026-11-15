@@ -6,10 +6,10 @@ export function NotFoundPage() {
   const user = useAuthStore((s) => s.user);
   return (
     <div className="max-w-md mx-auto px-4 py-24 text-center space-y-4">
-      <h1 className="font-['Dela_Gothic_One'] text-2xl sm:text-3xl uppercase text-[#09090B]">
+      <h1 className="font-['Dela_Gothic_One'] text-2xl sm:text-3xl text-[#09090B]">
         Page not found
       </h1>
-      <p className="text-sm font-medium text-[#52525B]">
+      <p className="text-sm text-[#52525B]">
         This address does not exist, or you do not have access to it.
       </p>
       <div>

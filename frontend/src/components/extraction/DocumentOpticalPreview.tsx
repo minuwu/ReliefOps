@@ -95,10 +95,11 @@ export function DocumentOpticalPreview({
             <div className="grid grid-cols-2 gap-3 text-xs">
               <div>
                 <span className="text-xs uppercase font-bold text-[#52525B] block mb-1">Transfer date</span>
-                <div
+                <button
+                  type="button"
                   onClick={() => onSelectField?.('date')}
                   className={cn(
-                    'p-2 rounded-lg border transition-colors cursor-pointer',
+                    'text-left w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#09090B] p-2 rounded-lg border transition-colors cursor-pointer',
                     currentHover === 'date'
                       ? 'border-[#09090B] bg-[#D2E823]/30'
                       : 'border-dashed border-[#09090B]/30 bg-[#EDE8D5]/40'
@@ -113,22 +114,23 @@ export function DocumentOpticalPreview({
                   >
                     {dateConf}%
                   </span>
-                </div>
+                </button>
               </div>
 
               <div>
                 <span className="text-xs uppercase font-bold text-[#52525B] block mb-1">Destination bank</span>
-                <div
+                <button
+                  type="button"
                   onClick={() => onSelectField?.('bank_name')}
                   className={cn(
-                    'p-2 rounded-lg border transition-colors cursor-pointer',
+                    'text-left w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#09090B] p-2 rounded-lg border transition-colors cursor-pointer',
                     currentHover === 'bank_name'
                       ? 'border-[#09090B] bg-[#D2E823]/30'
                       : 'border-dashed border-[#09090B]/30 bg-[#EDE8D5]/40'
                   )}
                 >
                   <span className="font-bold text-[#09090B]">{getFieldValue('bank_name', 'Bank of Tokyo')}</span>
-                </div>
+                </button>
               </div>
             </div>
 
@@ -137,10 +139,11 @@ export function DocumentOpticalPreview({
               <span className="text-xs uppercase font-bold text-[#52525B] block mb-1">
                 Beneficiary account
               </span>
-              <div
+              <button
+                type="button"
                 onClick={() => onSelectField?.('account_number')}
                 className={cn(
-                  'p-2.5 rounded-lg border transition-colors flex items-center justify-between cursor-pointer',
+                  'text-left w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#09090B] p-2.5 rounded-lg border transition-colors flex items-center justify-between cursor-pointer',
                   currentHover === 'account_number'
                     ? 'border-[#09090B] bg-[#D2E823]/30'
                     : 'border border-[#09090B]/30 bg-[#EDE8D5]/30'
@@ -162,16 +165,17 @@ export function DocumentOpticalPreview({
                 >
                   {accountConf}%
                 </span>
-              </div>
+              </button>
             </div>
 
             {/* Row 3: Remitted Amount */}
             <div>
               <span className="text-xs uppercase font-bold text-[#52525B] block mb-1">Remitted amount</span>
-              <div
+              <button
+                type="button"
                 onClick={() => onSelectField?.('amount')}
                 className={cn(
-                  'p-2.5 rounded-lg border transition-colors flex items-center justify-between cursor-pointer',
+                  'text-left w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#09090B] p-2.5 rounded-lg border transition-colors flex items-center justify-between cursor-pointer',
                   currentHover === 'amount'
                     ? 'border-[#09090B] bg-[#D2E823]/30'
                     : 'border border-[#09090B]/30 bg-[#EDE8D5]/30'
@@ -191,7 +195,7 @@ export function DocumentOpticalPreview({
                 >
                   {amountConf}%
                 </span>
-              </div>
+              </button>
             </div>
           </div>
 

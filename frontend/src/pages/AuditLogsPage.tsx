@@ -66,7 +66,7 @@ export function AuditLogsPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
-              <tr className="border-b border-[#09090B]/10 text-xs uppercase text-[#52525B] font-bold">
+              <tr className="border-b border-[#09090B]/10 text-xs font-bold uppercase tracking-wide text-[#52525B] bg-transparent">
                 <th scope="col" className="whitespace-nowrap py-3.5 px-4 font-mono">Timestamp</th>
                 <th scope="col" className="whitespace-nowrap py-3.5 px-4">Actor</th>
                 <th scope="col" className="whitespace-nowrap py-3.5 px-4">Action</th>

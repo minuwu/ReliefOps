@@ -224,6 +224,7 @@ export function CaseDetailModal({
           activeTab={activeTab}
           onTabChange={setActiveTab}
           documentCount={caseItem.documents.length}
+          hasPendingQuestion={caseItem.flags?.victim_question_pending}
         />
 
         {/* Tab Panels */}

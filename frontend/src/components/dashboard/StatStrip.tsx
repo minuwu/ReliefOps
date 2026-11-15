@@ -16,7 +16,7 @@ export function StatStrip({
 }: StatStripProps) {
   return (
     <div className="rounded-2xl border-2 border-[#09090B] bg-[#F8F4E8] shadow-hard p-4 sm:p-6">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-0 lg:divide-x lg:divide-[#09090B]/15">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 lg:gap-0 lg:divide-x lg:divide-[#09090B]/15">
         <button
           type="button"
           onClick={() => onNavigateToCases?.()}
@@ -41,6 +41,17 @@ export function StatStrip({
             )}
           >
             {stats.overdue_cases}
+          </p>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onNavigateToCases?.('due_soon')}
+          className="text-left px-2 sm:px-4 py-2 hover:bg-[#09090B]/5 rounded-lg transition-colors cursor-pointer"
+        >
+          <p className="text-xs font-bold uppercase tracking-wide text-[#52525B]">Due within 48h</p>
+          <p className="text-2xl sm:text-3xl font-['Dela_Gothic_One'] text-[#09090B] mt-1">
+            {stats.due_soon_cases}
           </p>
         </button>
 

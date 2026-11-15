@@ -46,7 +46,7 @@ function toReport(bankId: BankId, v: CaseFormValues): VictimReport {
 
 function Section({ title, hint, children }: { title: string; hint: string; children: ReactNode }) {
   return (
-    <section className="rounded-2xl border-2 border-[#09090B] bg-[#F8F4E8] p-5 sm:p-6 shadow-hard space-y-4">
+    <section className="rounded-2xl border-2 border-[#09090B] bg-[#F8F4E8] p-4 sm:p-6 shadow-hard space-y-4">
       <div>
         <h2 className="text-sm font-bold uppercase tracking-wide text-[#09090B]">{title}</h2>
         <p className="text-xs text-[#52525B]">{hint}</p>
@@ -112,10 +112,10 @@ export function ReportCasePage() {
         <Link to={PATHS.portal} className="text-xs font-bold uppercase underline underline-offset-4 text-[#09090B]">
           ← Back to my cases
         </Link>
-        <h1 className="text-2xl sm:text-3xl font-['Dela_Gothic_One'] uppercase text-[#09090B]">
+        <h1 className="text-2xl sm:text-3xl font-['Dela_Gothic_One'] text-[#09090B]">
           Report a scam
         </h1>
-        <p className="text-sm font-medium text-[#52525B]">
+        <p className="text-sm text-[#52525B]">
           Tell us about the transfer. You can correct details online until staff verify the report.
         </p>
       </header>

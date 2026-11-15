@@ -48,7 +48,7 @@ function LockedDetails({ caseItem }: { caseItem: VictimCase }) {
   );
 }
 
-const panelClass = 'rounded-2xl border-2 border-[#09090B] bg-[#F8F4E8] p-5 sm:p-6 shadow-hard space-y-4';
+const panelClass = 'rounded-2xl border-2 border-[#09090B] bg-[#F8F4E8] p-4 sm:p-6 shadow-hard space-y-4';
 
 export function PortalCasePage() {
   const { caseId = '' } = useParams();
@@ -89,14 +89,14 @@ export function PortalCasePage() {
           ← Back to my cases
         </Link>
         <div className="flex flex-wrap items-baseline justify-between gap-2 pt-1">
-          <h1 className="text-2xl sm:text-3xl font-['Dela_Gothic_One'] uppercase text-[#09090B] font-mono">
+          <h1 className="text-2xl sm:text-3xl font-['Dela_Gothic_One'] text-[#09090B] font-mono">
             {caseItem.reference}
           </h1>
           <p className="text-xs font-mono font-bold uppercase text-[#52525B]">
             {caseItem.bank_name} · Reported {new Date(caseItem.submitted_at).toLocaleDateString()}
           </p>
         </div>
-        <p className="text-sm text-[#52525B] font-medium">
+        <p className="text-sm text-[#52525B]">
           Follow your claim progress, update information, and chat with staff.
         </p>
       </header>

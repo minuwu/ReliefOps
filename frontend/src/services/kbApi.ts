@@ -194,15 +194,13 @@ function mockArchive(id: string): KbDocument {
     throw apiError('FORBIDDEN', 'Only supervisors can archive bluebooks.');
   }
   const doc = db.kbDocuments.find((d) => d.id === id);
-  if (!doc) throw apiError('RESOURCE_NOT_FOUND', 'Document not found.');
-  if (doc.status !== 'published') {
-    throw apiError('INVALID_STATUS_TRANSITION', 'Only a published document can be archived', {
-      from: doc.status,
-      to: 'archived',
-      allowed: [],
-    });
+  if (!doc) throw apiError('RESOURCE_NOT_FOUND', 'Bluebook document not found.');
+
+  if (doc.status === 'archived') {
+    return doc;
   }
 
+  const previousStatus = doc.status;
   const updated: KbDocument = { ...doc, status: 'archived' };
   db.kbDocuments = db.kbDocuments.map((d) => (d.id === doc.id ? updated : d));
 
@@ -210,7 +208,7 @@ function mockArchive(id: string): KbDocument {
     'kb.document_archived',
     doc.bank_id,
     `Bluebook archived: ${doc.title} (v${doc.version})`,
-    { status: { from: 'published', to: 'archived' } },
+    { status: { from: previousStatus, to: 'archived' } },
     { document_id: doc.id, version: doc.version }
   );
   return updated;

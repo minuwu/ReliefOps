@@ -63,10 +63,10 @@ export function PortalHomePage() {
       <header className="flex flex-wrap items-end justify-between gap-4 border-b border-[#09090B]/15 pb-4">
         <div className="space-y-1">
           <p className="text-xs font-mono font-bold uppercase text-[#52525B]">Victim portal</p>
-          <h1 className="text-2xl sm:text-3xl font-['Dela_Gothic_One'] uppercase text-[#09090B]">
+          <h1 className="text-2xl sm:text-3xl font-['Dela_Gothic_One'] text-[#09090B]">
             {name ? `Hello, ${name}` : 'My cases'}
           </h1>
-          <p className="text-sm text-[#52525B] font-medium">
+          <p className="text-sm text-[#52525B]">
             Track your relief claims, update information, and chat with staff.
           </p>
         </div>

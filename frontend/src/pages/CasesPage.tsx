@@ -139,7 +139,7 @@ export function CasesPage() {
           <h1 className="text-2xl sm:text-3xl font-['Dela_Gothic_One'] text-[#09090B]">
             Cases
           </h1>
-          <p className="text-xs sm:text-sm text-[#52525B] mt-1">
+          <p className="text-sm text-[#52525B] mt-1">
             All relief claims across the partner banks.
           </p>
         </div>
@@ -156,7 +156,6 @@ export function CasesPage() {
         </div>
       </div>
 
-      {/* Telemetry Stat Strip */}
       <CaseStatStrip
         totalClaimed={totalClaimed}
         aiPendingCount={aiPendingCount}
@@ -165,7 +164,7 @@ export function CasesPage() {
       />
 
       {/* Filters Toolbar */}
-      <div className="p-4 sm:p-5 rounded-2xl border-2 border-[#09090B] bg-[#F8F4E8] shadow-hard space-y-4">
+      <div className="p-4 sm:p-6 rounded-2xl border-2 border-[#09090B] bg-[#F8F4E8] shadow-hard space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 flex-1 max-w-xl">
             {/* Search Input */}
@@ -192,7 +191,7 @@ export function CasesPage() {
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as 'deadline' | 'amount_desc' | 'amount_asc' | 'created_desc')}
                 aria-label="Sort cases"
-                className="text-xs bg-transparent border-0 focus:outline-none font-bold uppercase cursor-pointer text-[#09090B]"
+                className="text-xs bg-transparent border-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#09090B] font-bold uppercase cursor-pointer text-[#09090B]"
               >
                 <option value="deadline">Statutory Urgency</option>
                 <option value="amount_desc">Amount: High to Low</option>
