@@ -66,6 +66,7 @@ This file is:
 | `XREQ-004` | `P1 (High)` | Frontend (Minhaz) | Backend (Asif / Anim) / AI (Galib) | Cross-Bank Shared Accounts (`GET /api/alerts/shared-accounts`); freeze needs a team decision | `[IN_PROGRESS]` | 2026-11-15 20:10 (detection done, freeze not agreed) |
 | `XREQ-005` | `P1 (High)` | Frontend (Minhaz) | Backend (Anim / Asif) | All 48 v0.4.2 routes mounted; the 3 contract deviations closed (contract v0.4.3) | `[RESOLVED]` | 2026-11-15 22:15 (48/48 routes, v0.4.3) |
 | `XREQ-006` | `P0 (Blocker)` | Frontend (Minhaz) | Backend (Asif / Anim) / AI (Galib) | Deploy backend + database + AI to the cloud, post the public HTTPS API URL, allow the frontend origin (CORS) | `[IN_PROGRESS]` | 2026-11-15 22:15 (image + runbook ready, cloud steps left) |
+| `XREQ-007` | `P0 (Blocker)` | Frontend (Minhaz) | Backend (Asif / Anim) / AI (Galib) | Free always-on deploy: verify, then implement [docs/DEPLOY-FREE.md](docs/DEPLOY-FREE.md) (HF Spaces + Neon + Firebase), post `API_URL` | `[PENDING]` | 2026-11-15 23:30 |
 
 *(When adding a request: append a row above AND add a detailed card in 2.2. Never insert in the middle.)*
 
@@ -329,6 +330,8 @@ The frontend is now checking the history and victim case routes against the cont
 - **Created**: 2026-11-15 15:05 (UTC+6)
 - **Target Interface / Endpoint**: a public `https://` base URL serving `/api/*` (contract v0.4.2)
 
+**Path change (Minhaz, 2026-11-15 23:30):** Cloud Run `--min-instances=1` and Cloud SQL are not free. Deploy through **XREQ-007** ([docs/DEPLOY-FREE.md](docs/DEPLOY-FREE.md)) instead. Everything else in this card (CORS, env vars, email decision, health) still applies. This card closes when XREQ-007 posts the URL.
+
 **Question to every owner: is your part deployed to the cloud and working? Reply in this card with yes/no and the URL.**
 
 **Status request (Minhaz, 2026-11-15 22:40):** thanks for the image, runbook and v0.4.3. The frontend now handles live errors (retry, FastAPI `detail` parsing, 401 on downloads) and builds against v0.4.3. The only frontend blocker left is the URL. Anim/Asif: when do the Cloud Run + Postgres steps land? Who holds the GCP project access? Galib: are the AI keys ready for the host's secret manager? Post `API_URL` in the reply block below. The live build follows the same hour.
@@ -381,6 +384,49 @@ EMAIL_MODE: console | smtp
   - **Rehearsed locally with the same image on an empty database:** boot without a database URL refuses to start (prod guard); the migrate+seed job applies 001→005 and seeds the demo data; prod-mode health is `ok`; CORS allows `reliefops.web.app` and rejects other origins; the per-client login lockout works behind a proxy (`X-Forwarded-For`); smoke 39/39 against the container.
   - **Left:** (1) **Galib rotates the three AI keys** (the old ones are in git history; removed from `.env.example` in `9018383`); (2) create the database and roles (DEPLOY.md §1); (3) build, push and deploy (§2–5); (4) **email decision:** `console` (demo with the pre-verified seed accounts) or `smtp` (needs SMTP secrets); (5) post the URL here.
 - **Verification Proof**: after deploying, `curl -i -H "Origin: https://reliefops.web.app" <API_URL>/api/health` should give `200` and `access-control-allow-origin: https://reliefops.web.app`, and `bash backend/scripts/smoke.sh <API_URL>` should give 39/39.
+---
+
+#### `[XREQ-007]` Free always-on deploy: verify the plan, then implement it
+- **Priority**: `P0 (Blocker)`
+- **From**: Frontend (Minhaz)
+- **To**: Backend (Asif / Anim) / AI (Galib)
+- **Status**: `[PENDING]`
+- **Created**: 2026-11-15 23:30 (UTC+6)
+- **Target Interface / Endpoint**: a public `https://` base URL serving `/api/*` (contract v0.4.3), free and awake during judging
+
+**Why:** XREQ-006 is stuck on Cloud Run. `--min-instances=1` and Cloud SQL need a paid billing account. The team's constraints are: free, no card, does not sleep when idle, fast. The new path is **Firebase Hosting (frontend, already live) + Hugging Face Spaces Docker (backend + AI, existing Dockerfile unchanged) + Neon (Postgres 16 + pgvector)**. Full runbook: [docs/DEPLOY-FREE.md](docs/DEPLOY-FREE.md).
+
+**Order (do not skip ahead):**
+1. **Follow and verify first (Phase A in the runbook).** Each owner runs their checks and ticks them in the reply block below:
+   - Backend (Asif / Anim): A1 HF free tier terms, A2 image builds, A3 image runs as uid 1000, A4 Neon pgvector + roles, A5 email choice.
+   - AI (Galib): A6 rotate the three AI keys, A7 free quotas cover a judging day, A8 OCR + extraction + RAG work in the built image with `AI_MODE=live`.
+   - If any check fails, write why here and stop. Minhaz picks the fallback (Cloud Run `--min-instances=0` + Neon, needs a card).
+2. **Then implement (Phase B):** Neon database and roles, migrate + seed from a laptop, HF Space with secrets, `backend/README.md` front matter (`sdk: docker`, `app_port: 8080`), `git subtree push --prefix backend ...`, live checks, keep-awake ping every 30 min.
+3. **Then post the reply block.** Minhaz rebuilds the frontend against the URL and redeploys Firebase the same hour.
+
+**Rules:**
+- Secrets only in the Space's secret settings. Never in git, never in `.env.example`, never in a saved git remote URL.
+- Rotate the AI keys before the first deploy (old ones are in git history, `9018383`).
+- One Space, one container (in-memory rate limits). No pushes to the Space during judging.
+
+**Expected reply (fill in below):**
+```text
+Phase A  A1 [ ] A2 [ ] A3 [ ] A4 [ ] A5 [ ] (backend)   A6 [ ] A7 [ ] A8 [ ] (AI)
+Notes on any failed check:
+API_URL=https://<hf-owner>-reliefops-api.hf.space      # no trailing slash, no /api suffix
+CORS header for https://reliefops.web.app: yes/no
+DB migrated + seeded (seed line matches): yes/no
+/api/health db=ok ai=ok rag=ok: yes/no
+smoke.sh: __/39
+Live extraction + KB chat checked (Galib): yes/no
+Keep-awake monitor URL/provider:
+EMAIL_MODE: console | smtp
+```
+
+**Fulfillment & Proof (filled by recipient on completion):**
+- **Branch / Commit**: `[commit hash for backend/README.md and any Dockerfile uid change]`
+- **Status / Notes**: `[Phase A results, then deploy notes]`
+- **Verification Proof**: `[curl /api/health output, CORS header line, smoke.sh result]`
 ---
 
 ### 2.3 Blank XREQ Template (copy & paste)
