@@ -45,10 +45,8 @@ function mockReply(caseId: string, bodyText: string): ChatMessage {
     throw apiError('FORBIDDEN', 'Only operators and supervisors can send staff replies.');
   }
 
+  // Contract v0.4.3: staff chat replies stay allowed on closed cases.
   const c = findVisibleCase(caseId);
-  if (c.status === 'closed') {
-    throw apiError('CASE_CLOSED', 'This case is closed and cannot receive replies.');
-  }
 
   const existingThread = db.chatThreads[c.reference] ?? {
     case_reference: c.reference,
