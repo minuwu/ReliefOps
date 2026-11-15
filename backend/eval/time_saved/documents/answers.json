@@ -1,0 +1,23 @@
+{
+  "e01_receipt": {
+    "amount": 680000,
+    "currency": "JPY",
+    "transfer_date": "2026-10-12",
+    "account_number": "3141592",
+    "account_holder_name": "Harbor Light Trading"
+  },
+  "e02_receipt": {
+    "amount": 1120000,
+    "currency": "JPY",
+    "transfer_date": "2026-09-03",
+    "account_number": "2718281",
+    "account_holder_name": "Blue River Investments"
+  },
+  "e03_receipt": {
+    "amount": 215000,
+    "currency": "JPY",
+    "transfer_date": "2026-11-07",
+    "account_number": "1618033",
+    "account_holder_name": "Northgate Holdings"
+  }
+}
