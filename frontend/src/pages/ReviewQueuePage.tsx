@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useReviewQueueStore } from '@/store/useReviewQueueStore';
 import { PATHS } from '@/routes/paths';
 import { ExtractionReviewModal } from '@/components/extraction/ExtractionReviewModal';
@@ -9,8 +9,16 @@ import { cn, formatDate } from '@/lib/utils';
 import { ArrowRight, RefreshCw } from 'lucide-react';
 
 export function ReviewQueuePage() {
-  const { queue, fetchQueue, activeExtraction, fetchExtraction, clearActive, isLoading, error } =
-    useReviewQueueStore();
+  const {
+    queue,
+    fetchQueue,
+    activeExtraction,
+    fetchExtraction,
+    clearActive,
+    isLoading,
+    error,
+    extractionNotice,
+  } = useReviewQueueStore();
   const [laneFilter, setLaneFilter] = useState<'all' | 'standard' | 'low_confidence'>('all');
   const navigate = useNavigate();
   // The open extraction lives in the URL (/review/:extractionId), so it can be linked from a case.
@@ -61,6 +69,26 @@ export function ReviewQueuePage() {
           <RefreshCw className="w-3.5 h-3.5" /> REFRESH QUEUE
         </Button>
       </div>
+
+      {/* Notice for reviewed or missing extraction */}
+      {extractionNotice && (
+        <div
+          role="status"
+          className="p-5 rounded-2xl border-2 border-[#09090B] bg-[#EDE8D5] text-[#09090B] flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-hard-sm"
+        >
+          <p className="text-sm font-medium text-[#09090B]">
+            {extractionNotice}
+          </p>
+          <Link
+            to={PATHS.review}
+            role="button"
+            onClick={closeReview}
+            className="inline-flex items-center justify-center font-['Space_Grotesk',sans-serif] font-bold text-xs uppercase tracking-wider select-none cursor-pointer bg-[#F8F4E8] text-[#09090B] border-2 border-[#09090B] hover:bg-[#D2E823] transition-all h-8 px-3 py-1 gap-1.5 rounded-lg shadow-hard-sm hover:translate-x-[1px] hover:translate-y-[1px] shrink-0"
+          >
+            Back to review queue
+          </Link>
+        </div>
+      )}
 
       {/* Filter toolbar */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
@@ -126,7 +154,10 @@ export function ReviewQueuePage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => fetchQueue()}
+                        onClick={() => {
+                          void fetchQueue();
+                          if (extractionId) void fetchExtraction(extractionId);
+                        }}
                       >
                         Retry
                       </Button>
@@ -198,14 +229,16 @@ export function ReviewQueuePage() {
       </div>
 
       {/* Extraction review modal */}
-      {extractionId && activeExtraction?.id === extractionId && (
-        <ExtractionReviewModal
-          extraction={activeExtraction}
-          isOpen
-          onClose={closeReview}
-          onReviewed={closeReview}
-        />
-      )}
+      {extractionId &&
+        activeExtraction?.id === extractionId &&
+        activeExtraction.status === 'pending_review' && (
+          <ExtractionReviewModal
+            extraction={activeExtraction}
+            isOpen
+            onClose={closeReview}
+            onReviewed={closeReview}
+          />
+        )}
     </div>
   );
 }

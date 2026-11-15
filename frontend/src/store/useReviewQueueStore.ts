@@ -6,12 +6,30 @@ import { toast } from './useToastStore';
 
 type ApprovedFields = Partial<Record<ExtractableField, string | number | null>>;
 
+function isNotFoundOrConflict(err: unknown): boolean {
+  if (!isApiError(err)) return false;
+  const code = (err.code || '').toUpperCase();
+  if (
+    code === 'RESOURCE_NOT_FOUND' ||
+    code === 'NOT_FOUND' ||
+    code === 'CONFLICT' ||
+    code === 'ALREADY_REVIEWED' ||
+    code === 'HTTP_ERROR_404' ||
+    code === 'HTTP_ERROR_409' ||
+    err.message.toLowerCase().includes('not found')
+  ) {
+    return true;
+  }
+  return false;
+}
+
 interface ReviewQueueState {
   queue: ReviewQueueItem[];
   activeExtraction: Extraction | null;
   isLoading: boolean;
   isActionLoading: boolean;
   error: string | null;
+  extractionNotice: string | null;
 
   fetchQueue: () => Promise<void>;
   fetchExtraction: (extractionId: string) => Promise<void>;
@@ -31,6 +49,7 @@ export const useReviewQueueStore = create<ReviewQueueState>((set, get) => ({
   isLoading: false,
   isActionLoading: false,
   error: null,
+  extractionNotice: null,
 
   fetchQueue: async () => {
     set({ isLoading: true, error: null });
@@ -43,12 +62,36 @@ export const useReviewQueueStore = create<ReviewQueueState>((set, get) => ({
   },
 
   fetchExtraction: async (extractionId) => {
-    set({ isLoading: true, error: null });
+    set({ isLoading: true, error: null, extractionNotice: null });
     try {
       const res = await api.getExtraction(extractionId);
-      set({ activeExtraction: res.data, isLoading: false });
+      if (res.data.status !== 'pending_review') {
+        set({
+          activeExtraction: res.data,
+          isLoading: false,
+          extractionNotice:
+            'This extraction is no longer waiting for review. It may already have been accepted or rejected.',
+        });
+      } else {
+        set({ activeExtraction: res.data, isLoading: false, extractionNotice: null });
+      }
     } catch (err) {
-      set({ isLoading: false, error: errorMessage(err, 'Failed to load the extraction.') });
+      if (isNotFoundOrConflict(err)) {
+        set({
+          isLoading: false,
+          activeExtraction: null,
+          error: null,
+          extractionNotice:
+            'This extraction is no longer waiting for review. It may already have been accepted or rejected.',
+        });
+      } else {
+        set({
+          isLoading: false,
+          activeExtraction: null,
+          error: errorMessage(err, 'Failed to load the extraction.'),
+          extractionNotice: null,
+        });
+      }
     }
   },
 
@@ -67,7 +110,7 @@ export const useReviewQueueStore = create<ReviewQueueState>((set, get) => ({
         ...(decision === 'accept' && fields ? { fields } : {}),
         ...(note ? { note } : {}),
       });
-      set({ isActionLoading: false, activeExtraction: null });
+      set({ isActionLoading: false, activeExtraction: null, extractionNotice: null });
       toast(decision === 'accept' ? 'Values saved to the case.' : 'Extraction rejected.', 'success');
       void get().fetchQueue();
       return true;
@@ -89,5 +132,5 @@ export const useReviewQueueStore = create<ReviewQueueState>((set, get) => ({
     }
   },
 
-  clearActive: () => set({ activeExtraction: null }),
+  clearActive: () => set({ activeExtraction: null, extractionNotice: null }),
 }));

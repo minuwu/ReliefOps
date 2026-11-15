@@ -1,4 +1,4 @@
-import React, { useEffect, useId } from 'react';
+import React, { useEffect, useId, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { X } from 'lucide-react';
 
@@ -11,6 +11,20 @@ interface ModalProps {
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '4xl' | '5xl';
 }
 
+const openModals: HTMLElement[] = [];
+
+function getFocusableElements(container: HTMLElement): HTMLElement[] {
+  const selector =
+    'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+  const elements = Array.from(container.querySelectorAll<HTMLElement>(selector));
+  return elements.filter((el) => {
+    return (
+      (el.offsetWidth > 0 || el.offsetHeight > 0 || el.getClientRects().length > 0) &&
+      window.getComputedStyle(el).visibility !== 'hidden'
+    );
+  });
+}
+
 export function Modal({
   isOpen,
   onClose,
@@ -20,20 +34,117 @@ export function Modal({
   maxWidth = 'lg',
 }: ModalProps) {
   const titleId = useId();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const previousActiveElementRef = useRef<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
+    if (!isOpen) return;
+
+    previousActiveElementRef.current = (document.activeElement as HTMLElement) || null;
+
+    const dialogEl = dialogRef.current;
+    if (!dialogEl) return;
+
+    openModals.push(dialogEl);
+    document.body.style.overflow = 'hidden';
+
+    const focusInitial = () => {
+      if (!dialogEl.isConnected) return;
+      const focusables = getFocusableElements(dialogEl);
+      if (focusables.length > 0) {
+        focusables[0].focus();
+      } else {
+        dialogEl.focus();
+      }
+    };
+
+    focusInitial();
+    const animFrame = requestAnimationFrame(focusInitial);
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      const isTopmost = openModals[openModals.length - 1] === dialogEl;
+      if (!isTopmost) return;
+
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        onCloseRef.current();
+        return;
+      }
+
+      if (e.key === 'Tab') {
+        const focusables = getFocusableElements(dialogEl);
+        if (focusables.length === 0) {
+          e.preventDefault();
+          dialogEl.focus();
+          return;
+        }
+
+        const firstEl = focusables[0];
+        const lastEl = focusables[focusables.length - 1];
+        const activeEl = document.activeElement as HTMLElement | null;
+
+        if (e.shiftKey) {
+          if (
+            !activeEl ||
+            !dialogEl.contains(activeEl) ||
+            activeEl === firstEl ||
+            (activeEl !== dialogEl &&
+              Boolean(activeEl.compareDocumentPosition(firstEl) & Node.DOCUMENT_POSITION_FOLLOWING))
+          ) {
+            e.preventDefault();
+            lastEl.focus();
+          }
+        } else {
+          if (
+            !activeEl ||
+            !dialogEl.contains(activeEl) ||
+            activeEl === lastEl ||
+            Boolean(lastEl.compareDocumentPosition(activeEl) & Node.DOCUMENT_POSITION_FOLLOWING)
+          ) {
+            e.preventDefault();
+            firstEl.focus();
+          }
+        }
+      }
     };
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-      window.addEventListener('keydown', handleKeyDown);
-    }
+
+    window.addEventListener('keydown', handleKeyDown);
+
     return () => {
-      document.body.style.overflow = 'unset';
+      cancelAnimationFrame(animFrame);
       window.removeEventListener('keydown', handleKeyDown);
+
+      const idx = openModals.indexOf(dialogEl);
+      if (idx !== -1) {
+        openModals.splice(idx, 1);
+      }
+
+      if (openModals.length === 0) {
+        document.body.style.overflow = 'unset';
+      }
+
+      const prevEl = previousActiveElementRef.current;
+      if (prevEl && prevEl.isConnected && typeof prevEl.focus === 'function') {
+        try {
+          prevEl.focus();
+        } catch {
+          /* ignore */
+        }
+        requestAnimationFrame(() => {
+          if (prevEl.isConnected && document.activeElement !== prevEl) {
+            try {
+              prevEl.focus();
+            } catch {
+              /* ignore */
+            }
+          }
+        });
+      }
     };
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -56,11 +167,13 @@ export function Modal({
         aria-hidden="true"
       />
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? titleId : undefined}
+        tabIndex={-1}
         className={cn(
-          'relative z-10 w-full rounded-2xl border-2 border-[#09090B] bg-[#F8F4E8] text-[#09090B] p-6 sm:p-8 shadow-hard-lg max-h-[90vh] overflow-y-auto overscroll-contain animate-in',
+          'relative z-10 w-full rounded-2xl border-2 border-[#09090B] bg-[#F8F4E8] text-[#09090B] p-6 sm:p-8 shadow-hard-lg max-h-[90vh] overflow-y-auto overscroll-contain animate-in focus:outline-none',
           maxWidths[maxWidth]
         )}
       >

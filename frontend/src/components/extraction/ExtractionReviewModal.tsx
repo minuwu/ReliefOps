@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useId } from 'react';
 import { Extraction } from '@/types/api';
 import { useReviewQueueStore } from '@/store/useReviewQueueStore';
 import { Modal } from '@/components/ui/Modal';
@@ -24,6 +24,7 @@ export function ExtractionReviewModal({
   onSuccess,
   onReviewed,
 }: ExtractionReviewModalProps) {
+  const baseId = useId();
   const { reviewExtraction, isActionLoading } = useReviewQueueStore();
   const [editedFields, setEditedFields] = useState<Record<string, unknown>>({});
   const [reviewNote, setReviewNote] = useState('');
@@ -152,6 +153,7 @@ export function ExtractionReviewModal({
                   const conf = Math.round((field.confidence || 0) * 100);
                   const isLow = conf < 85;
                   const isModified = val !== field.value;
+                  const inputId = `${baseId}-field-${field.name}`;
 
                   return (
                     <div
@@ -168,7 +170,10 @@ export function ExtractionReviewModal({
                       )}
                     >
                       <div className="flex items-center justify-between mb-1.5">
-                        <label className="text-xs font-bold uppercase tracking-wider text-[#09090B]">
+                        <label
+                          htmlFor={inputId}
+                          className="text-xs font-bold uppercase tracking-wider text-[#09090B] cursor-pointer"
+                        >
                           {field.name.replace('_', ' ')}
                         </label>
                         <div className="flex items-center gap-2">
@@ -192,6 +197,7 @@ export function ExtractionReviewModal({
                       </div>
 
                       <input
+                        id={inputId}
                         type="text"
                         aria-label={`Edit ${field.name.replace(/_/g, ' ')}`}
                         value={String(val)}
@@ -205,11 +211,14 @@ export function ExtractionReviewModal({
 
               {/* Operator Verification Note */}
               <div className="space-y-1.5 pt-2">
-                <label htmlFor="review-note" className="block text-xs font-bold uppercase tracking-wider text-[#09090B]">
+                <label
+                  htmlFor={`${baseId}-review-note`}
+                  className="block text-xs font-bold uppercase tracking-wider text-[#09090B] cursor-pointer"
+                >
                   Review note
                 </label>
                 <input
-                  id="review-note"
+                  id={`${baseId}-review-note`}
                   type="text"
                   value={reviewNote}
                   onChange={(e) => setReviewNote(e.target.value)}
