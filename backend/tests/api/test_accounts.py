@@ -144,3 +144,21 @@ def test_signup_is_limited_to_five_an_hour(client: TestClient) -> None:
     rate_limit.reset_rate_limits()
     forgot = [client.post("/api/auth/forgot-password", json={"email": address}).status_code for _ in range(6)]
     assert forgot[-1] == 429
+
+
+def test_signup_stores_the_preferred_language(client: TestClient, settings) -> None:  # noqa: ANN001
+    from sqlalchemy import create_engine, text
+
+    address = _new_email()
+    _signup(client, address, preferred_language="bn")
+    engine = create_engine(settings.migrations_database_url)
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("select set_config('app.role', 'system', true)"))
+            language = conn.execute(
+                text("select preferred_language from users where email = :e"), {"e": address}
+            ).scalar_one()
+    finally:
+        engine.dispose()
+    assert language == "bn"
+    assert _signup(client, _new_email(), preferred_language="fr").status_code == 422

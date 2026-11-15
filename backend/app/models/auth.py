@@ -25,7 +25,7 @@ class SignupRequest(BaseModel):
     email: Email
     password: NewPassword
     name: Name
-    preferred_language: Language = "en"  # accepted per contract; users has no column for it yet
+    preferred_language: Language = "en"  # stored on users (migration 005)
 
 
 class TokenRequest(BaseModel):

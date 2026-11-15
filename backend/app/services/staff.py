@@ -254,10 +254,9 @@ def set_active(who: Principal, user_id: UUID, data: UserUpdate) -> User:
         )
         if not data.is_active:
             revoke_all_sessions(s, user_id)
-        # The contract's audit actions have no "user.reactivated"; the change itself shows the direction.
         audit.record(
             s,
-            action="user.deactivated",
+            action="user.deactivated" if not data.is_active else "user.reactivated",
             actor=who.actor(),
             summary=f"{row['name']} {'deactivated' if not data.is_active else 'reactivated'}",
             bank_id=row["bank_id"],

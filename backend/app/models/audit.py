@@ -16,7 +16,7 @@ ActorType = Literal["user", "public", "victim", "system", "ai"]
 AUDIT_ACTIONS: Final[tuple[str, ...]] = (
     "auth.login", "auth.login_failed", "auth.logout", "auth.signup", "auth.email_verified",
     "auth.password_reset", "user.invited", "user.invitation_revoked", "user.joined",
-    "user.deactivated", "case.created", "case.viewed", "case.updated", "case.status_changed",
+    "user.deactivated", "user.reactivated", "case.created", "case.viewed", "case.updated", "case.status_changed",
     "case.assigned", "case.deadline_changed", "case.victim_invited", "case.claimed",
     "note.added", "document.uploaded", "document.downloaded", "ai.extraction_completed",
     "ai.extraction_failed", "ai.review_accepted", "ai.review_rejected", "export.generated",

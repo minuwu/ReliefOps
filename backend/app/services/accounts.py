@@ -96,10 +96,16 @@ def signup(data: SignupRequest, *, client_ip: str, links: Links) -> None:
     with db.system_session() as s:
         new_id = s.exec(  # type: ignore[call-overload]
             text(
-                "insert into users (email, name, password_hash, role) values (:email, :name, :password_hash, 'victim') "
+                "insert into users (email, name, password_hash, role, preferred_language) "
+                "values (:email, :name, :password_hash, 'victim', :language) "
                 "on conflict (email) do nothing returning id"
             ),
-            params={"email": data.email, "name": data.name, "password_hash": hash_password(data.password)},
+            params={
+                "email": data.email,
+                "name": data.name,
+                "password_hash": hash_password(data.password),
+                "language": data.preferred_language,
+            },
         ).scalar_one_or_none()
         token = None
         if new_id is not None:
