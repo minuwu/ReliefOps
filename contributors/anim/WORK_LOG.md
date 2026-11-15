@@ -61,6 +61,11 @@ I read Asif's whole work log, [REMAINING_WORK.md](../asif/REMAINING_WORK.md), mi
   - **Fixed two of Asif's tests** (`test_db_scope.py`, `test_rls.py`): they asserted exactly one row in `sessions`, which broke once login tests created sessions (guide §8.2: no global counts). They now count the fixture's own session. Intent unchanged. **Asif, please check.**
   - **422 tests pass** (two runs in a row); Ruff clean.
 
+- **N4, email** ([email.py](../../backend/app/email.py)): `send(to, subject, body)` matches Asif's `claims.SendEmail`, so `send_email=email.send` plugs in.
+  - Modes: `console` (dev; the message and link go to the `app.email` log, with a warning if used in prod), `smtp` (STARTTLS, login when a user is set, 10 s timeout) and `outbox` (tests; `email.outbox.last_token(to)` reads the link's token).
+  - `send` never raises. Callers send after commit, so an SMTP error is logged with the recipient's domain only and never turns a saved change into a 500. `create_app` calls `email.configure(settings)`.
+  - [test_email.py](../../backend/tests/unit/test_email.py): 4 tests with a fake SMTP. **426 tests pass.**
+
 ### Local test database (for anyone on Windows without Postgres)
 ```bash
 docker run -d --name reliefops-pg -e POSTGRES_PASSWORD=postgres -p 127.0.0.1:55433:5432 pgvector/pgvector:pg16
@@ -76,7 +81,7 @@ cd backend && uv run pytest -q
 
 ### Next (in order, each: tests → commit → pull → push)
 - ~~N2~~ done.
-- ~~N3~~ done. **N4** `email.py`. **N5** seed. **N6** API test harness (`tests/api/conftest.py`).
+- ~~N3~~, ~~N4~~ done. **N5** seed. **N6** API test harness (`tests/api/conftest.py`).
 - Then N7 (sign-up, verify, reset), N8 `case_workflow.py`, N9–N11 (cases: XREQ-001).
 
 ### Blockers / handoff

@@ -14,7 +14,7 @@ from contextlib import asynccontextmanager
 from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app import db
+from app import db, email
 from app.config import Settings, get_settings
 from app.errors import register_error_handlers
 from app.middleware import RequestContextMiddleware
@@ -42,6 +42,7 @@ def configure_logging(settings: Settings) -> None:
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or get_settings()
     configure_logging(settings)
+    email.configure(settings)
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
