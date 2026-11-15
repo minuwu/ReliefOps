@@ -101,6 +101,12 @@ class VictimCaseUpdate(_Request):
         return sent
 
 
+class ClaimRequest(_Request):
+    """``POST /api/victim/claims``: the token from the case invite email."""
+
+    token: str = Field(min_length=1, max_length=200)
+
+
 class VictimOut(BaseModel):
     name: str
     phone: str | None

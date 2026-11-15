@@ -72,8 +72,10 @@ ONE_HOUR: Final = 60 * 60
 # guide §5.4: login 5 failures / 15 min; sign-up, resend and forgot-password 5 / hour (per IP and per email).
 login_failures = SlidingWindowLimiter(limit=5, window_seconds=FIFTEEN_MINUTES)
 email_requests = SlidingWindowLimiter(limit=5, window_seconds=ONE_HOUR)
+# API_SPEC §6.7 (Asif): a victim may file 10 reports per hour; stops form spam without blocking real reports.
+victim_reports = SlidingWindowLimiter(limit=10, window_seconds=ONE_HOUR)
 
-ALL_LIMITERS: Final = (login_failures, email_requests)
+ALL_LIMITERS: Final = (login_failures, email_requests, victim_reports)
 
 
 def reset_rate_limits() -> None:

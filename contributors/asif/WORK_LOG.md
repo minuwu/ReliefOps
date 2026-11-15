@@ -4,6 +4,18 @@ Owner: Asif (`MdAsif-Hossain`) — Role: Backend / Services / Database — Branc
 
 Use this log to share progress, planned work, and dependencies with the team. Update it after each work session, keep the newest entry first, and use Bangladesh time (UTC+6). Link to relevant issues, commits, or pull requests when available.
 
+## 2026-11-15 (session 15) — HTTP routes for my services (on Anim's framework)
+
+Anim's N1–N18 landed, so my services now have thin routers. All of them use his `StaffUser` / `AnyStaffUser` / `VictimUser` / `SessionDep` and the `ok()` envelope; rules, RLS and audit stay in the services.
+
+- [routers/documents.py](../../backend/app/routers/documents.py) (settings-built): `POST /api/cases/{id}/documents` (multipart; reads at most 10 MB + 1 byte), `GET /api/documents/{id}/file`, `POST /api/documents/{id}/extract` (AI budget and on/off from `Settings`), `GET /api/extractions/{id}`, `POST /api/extractions/{id}/review` (returns `{extraction, case}` with Anim's full `Case`), `GET /api/review-queue`.
+- [routers/history.py](../../backend/app/routers/history.py): `GET /api/cases/{id}/history` (+ `?format=csv` download), `GET /api/audit-logs` (`from`/`to` filters).
+- [routers/victim_cases.py](../../backend/app/routers/victim_cases.py) (settings-built): `POST/GET /api/victim/cases`, `GET/PATCH /api/victim/cases/{id}`, `POST /api/victim/claims`, and the staff `POST /api/cases/{id}/victim-invite` (sends through Anim's `email.send`).
+- **Report rate limit:** the contract marks `POST /api/victim/cases` rate-limited but gives no number. Chose **10 saved reports per victim per hour** (`rate_limit.victim_reports`, one line in Anim's `rate_limit.py` so the test reset clears it). Only saved reports count.
+- **Permission table:** 14 rows added in `tests/api/test_permissions.py`. Routes that would write (extract, invite, download) use a never-existing id, so allowed roles get 404 and the matrix writes nothing.
+- **Bug fixed, `db.init_engine`:** connections now run with `timezone=UTC`. On a database whose server time zone isn't UTC (mine is Asia/Dhaka), timestamps came out as `+06:00` instead of the contract's `Z` (Anim's deadline test failed here; it passed on his UTC Docker). Also a default 5 s `connect_timeout` unless the URL sets one, answering Anim's open question 3.
+- **754 tests pass** (whole backend suite), Ruff clean. Next: HTTP behaviour tests for each route against `openapi.yaml`, then A12 and the §8.8 happy path, then mark routes LIVE.
+
 ## 2026-11-15 (session 14) — A13 concurrency and failure sweep
 
 - [test_concurrency.py](../../backend/tests/database/test_concurrency.py) covers the guide §8.3/§8.6 checks that were still missing:

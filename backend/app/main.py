@@ -18,7 +18,19 @@ from app import db, email
 from app.config import Settings, get_settings
 from app.errors import register_error_handlers
 from app.middleware import RequestContextMiddleware
-from app.routers import auth, cases, dashboard, kb, reference, staff, staff_chat, victim_chat
+from app.routers import (
+    auth,
+    cases,
+    dashboard,
+    documents,
+    history,
+    kb,
+    reference,
+    staff,
+    staff_chat,
+    victim_cases,
+    victim_chat,
+)
 from app.security import get_principal
 from app.services import extraction_engine
 from app.services.victim_chat import ChatSettings
@@ -33,13 +45,18 @@ ROUTERS: tuple[APIRouter, ...] = (
     dashboard.router,
     staff_chat.router,
     kb.router,
+    history.router,
 )
 
 
 def settings_routers(settings: Settings) -> tuple[APIRouter, ...]:
     """Routers built from settings or with the auth dependency injected."""
     chat = ChatSettings(timeout=settings.ai_timeout_seconds, ai_enabled=settings.ai_configured)
-    return (victim_chat.create_router(get_principal, chat),)
+    return (
+        victim_chat.create_router(get_principal, chat),
+        victim_cases.create_router(settings),
+        documents.create_router(settings),
+    )
 
 
 def configure_logging(settings: Settings) -> None:
