@@ -22,15 +22,7 @@ import {
   Clock,
   Sparkles,
 } from 'lucide-react';
-
-const STAGE_ORDER: CaseStatus[] = [
-  'received',
-  'verified',
-  'account_check',
-  'notice_published',
-  'payout_review',
-  'closed',
-];
+import { STAGE_ORDER } from '@/lib/caseStages';
 
 function transitionLabel(from: CaseStatus, to: CaseStatus): string {
   const label = to.replace('_', ' ');

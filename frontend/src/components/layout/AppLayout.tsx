@@ -7,6 +7,7 @@ import { Toaster } from '@/components/ui/Toaster';
 import { CustomCursor } from '@/components/ui/CustomCursor';
 import { NoiseOverlay } from '@/components/ui/NoiseOverlay';
 import { DemoWalkthroughModal } from '@/components/walkthrough/DemoWalkthroughModal';
+import { DemoInbox } from '@/components/auth/DemoInbox';
 import { USE_MOCK } from '@/services/http';
 
 /** Shell shared by every route: navigation, page outlet, toasts, footer. */
@@ -40,6 +41,7 @@ export function AppLayout() {
             </button>
           </div>
           <DemoWalkthroughModal isOpen={isWalkthroughOpen} onClose={() => setIsWalkthroughOpen(false)} />
+          <DemoInbox />
         </>
       )}
 

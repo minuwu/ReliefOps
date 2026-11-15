@@ -67,9 +67,9 @@ const SCENARIOS: Scenario[] = [
     steps: [
       {
         number: '01',
-        action: 'Access Citizen Portal & Authenticate Claim',
+        action: 'Log In to the Victim Portal',
         outcome:
-          'Click 1-Click Demo Credential for RFR-2026-00042 (Access Code: K7QM-4XHP-2RTV) to load active claim.',
+          'Log in as victim1@mail.test (Haruto Tanaka). Case RFR-2026-00042 is already linked to his account. New victims sign up, confirm the email from the Demo inbox, then report online.',
       },
       {
         number: '02',
@@ -79,15 +79,15 @@ const SCENARIOS: Scenario[] = [
       },
       {
         number: '03',
-        action: 'Review Frozen Mule Funds & Restitution Ratio',
+        action: 'Correct Details Within the Allowed Window',
         outcome:
-          'Confirm that ¥1,450,000 claim is mapped against Birch Regional Bank frozen balance of ¥520,000.',
+          'Edit contact details at any stage. Report details (amount, account, scam type) lock once staff verify the case.',
       },
       {
         number: '04',
-        action: 'Interact With 2-Way Operator Chat & Legal Assistant',
+        action: 'Ask the Assistant About the Case',
         outcome:
-          'Send questions regarding pro-rata distribution formulas and police report synchronization.',
+          'Answers cite the bank bluebook. If the assistant cannot answer, staff are told and reply in the same thread.',
       },
     ],
     actionLabel: 'Launch Citizen Journey (Victim Portal)',

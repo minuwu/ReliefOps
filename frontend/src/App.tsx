@@ -10,12 +10,40 @@ const page = (load: () => Promise<{ Component: React.ComponentType }>): Pick<Rou
   lazy: load,
 });
 
+const emailPages = () => import('@/pages/auth/EmailLinkPages');
+
 const routes: RouteObject[] = [
   {
     element: <AppLayout />,
     children: [
       { index: true, element: <HomeRedirect /> },
       { path: PATHS.login, element: <LoginPage /> },
+
+      // Public account pages. Email links from the backend land here.
+      { path: PATHS.signup, ...page(() => import('@/pages/auth/SignupPage').then((m) => ({ Component: m.SignupPage }))) },
+      { path: PATHS.verifyEmail, ...page(() => emailPages().then((m) => ({ Component: m.VerifyEmailPage }))) },
+      { path: PATHS.forgotPassword, ...page(() => emailPages().then((m) => ({ Component: m.ForgotPasswordPage }))) },
+      { path: PATHS.resetPassword, ...page(() => emailPages().then((m) => ({ Component: m.ResetPasswordPage }))) },
+      { path: PATHS.acceptInvitation, ...page(() => emailPages().then((m) => ({ Component: m.AcceptInvitationPage }))) },
+
+      {
+        element: <RequireAuth roles={['victim']} />,
+        children: [
+          {
+            path: PATHS.portal,
+            ...page(() => import('@/pages/portal/PortalHomePage').then((m) => ({ Component: m.PortalHomePage }))),
+          },
+          {
+            path: PATHS.portalReport,
+            ...page(() => import('@/pages/portal/ReportCasePage').then((m) => ({ Component: m.ReportCasePage }))),
+          },
+          {
+            path: `${PATHS.portal}/cases/:caseId`,
+            ...page(() => import('@/pages/portal/PortalCasePage').then((m) => ({ Component: m.PortalCasePage }))),
+          },
+          { path: PATHS.claimCase, ...page(() => emailPages().then((m) => ({ Component: m.ClaimCasePage }))) },
+        ],
+      },
 
       {
         element: <RequireAuth roles={INSIGHT_ROLES} />,
