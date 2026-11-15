@@ -57,9 +57,12 @@ def redact(body: str, case: dict[str, Any]) -> str:
 
 
 def valid_vector(vector: Any) -> bool:
-    return (isinstance(vector, list) and len(vector) == EMBEDDING_DIM
-            and all(type(v) in (float, int) and math.isfinite(v) for v in vector)
-            and any(v != 0 for v in vector))
+    try:
+        return (isinstance(vector, list) and len(vector) == EMBEDDING_DIM
+                and all(type(v) in (float, int) and math.isfinite(v) for v in vector)
+                and any(v != 0 for v in vector))
+    except OverflowError:
+        return False
 
 
 def retrieve(caller: Caller, case_id: UUID, question: str,
