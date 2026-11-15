@@ -26,6 +26,8 @@ export const DEMO_USERS: User[] = [
     email: 'operator1@opscenter.test',
     role: 'operator',
     bank_id: null,
+    email_verified: true,
+    is_active: true,
   },
   {
     id: '22222222-2222-4222-8222-222222222222',
@@ -33,6 +35,8 @@ export const DEMO_USERS: User[] = [
     email: 'operator2@opscenter.test',
     role: 'operator',
     bank_id: null,
+    email_verified: true,
+    is_active: true,
   },
   {
     id: '33333333-3333-4333-8333-333333333333',
@@ -40,6 +44,8 @@ export const DEMO_USERS: User[] = [
     email: 'supervisor@opscenter.test',
     role: 'supervisor',
     bank_id: null,
+    email_verified: true,
+    is_active: true,
   },
   {
     id: '44444444-4444-4444-8444-444444444444',
@@ -47,6 +53,8 @@ export const DEMO_USERS: User[] = [
     email: 'viewer@bank-a.test',
     role: 'bank_viewer',
     bank_id: 'bank_a',
+    email_verified: true,
+    is_active: true,
   },
   {
     id: '55555555-5555-4555-8555-555555555555',
@@ -54,8 +62,48 @@ export const DEMO_USERS: User[] = [
     email: 'viewer@bank-b.test',
     role: 'bank_viewer',
     bank_id: 'bank_b',
+    email_verified: true,
+    is_active: true,
   },
 ];
+
+/** Victim demo accounts (API_SPEC §8). Kept apart from DEMO_USERS, which lists staff only. */
+export const DEMO_VICTIMS: User[] = [
+  {
+    id: 'v1111111-0000-4000-8000-000000000001',
+    name: 'Haruto Tanaka',
+    email: 'victim1@mail.test',
+    role: 'victim',
+    bank_id: null,
+    email_verified: true,
+    is_active: true,
+  },
+  {
+    id: 'v2222222-0000-4000-8000-000000000002',
+    name: 'Yuki Takahashi',
+    email: 'victim2@mail.test',
+    role: 'victim',
+    bank_id: null,
+    email_verified: true,
+    is_active: true,
+  },
+  {
+    id: 'v3333333-0000-4000-8000-000000000003',
+    name: 'Unverified Victim',
+    email: 'victim3@mail.test',
+    role: 'victim',
+    bank_id: null,
+    email_verified: false,
+    is_active: true,
+  },
+];
+
+/** Which demo victim owns which case reference. */
+export const DEMO_VICTIM_CASES: Record<string, string[]> = {
+  'victim1@mail.test': ['RFR-2026-00042'],
+  'victim2@mail.test': ['RFR-2026-00051'],
+  'victim3@mail.test': [],
+};
 
 export const DEMO_CASES: Case[] = [
   {
@@ -92,6 +140,8 @@ export const DEMO_CASES: Case[] = [
     description: 'Victim received an urgent phone call claiming his online banking was compromised. Directed to wire funds to an escrow safety account.',
     channel: 'web_form',
     closure_reason: null,
+    version: 1,
+    payout_amount: null,
     created_at: '2026-11-12T09:15:00Z',
     closed_at: null,
     allowed_transitions: ['account_check', 'received', 'closed'],
@@ -157,6 +207,8 @@ export const DEMO_CASES: Case[] = [
     description: 'Fake SMS about package delivery fee led to a cloned banking credentials capture site.',
     channel: 'web_form',
     closure_reason: null,
+    version: 1,
+    payout_amount: null,
     created_at: '2026-11-13T16:45:00Z',
     closed_at: null,
     allowed_transitions: ['verified', 'closed'],
@@ -198,6 +250,8 @@ export const DEMO_CASES: Case[] = [
     description: 'Crypto yield generation portal fraud. Account frozen upon bank liaison request.',
     channel: 'phone',
     closure_reason: null,
+    version: 1,
+    payout_amount: null,
     created_at: '2026-11-04T11:20:00Z',
     closed_at: null,
     allowed_transitions: ['notice_published', 'verified', 'closed'],
@@ -263,6 +317,8 @@ export const DEMO_CASES: Case[] = [
     description: 'International transfer scam under false promises of marriage and mutual relocation.',
     channel: 'paper',
     closure_reason: null,
+    version: 1,
+    payout_amount: null,
     created_at: '2026-11-01T15:00:00Z',
     closed_at: null,
     allowed_transitions: ['payout_review', 'account_check', 'closed'],
@@ -304,6 +360,8 @@ export const DEMO_CASES: Case[] = [
     description: 'Paid security deposit for remote translation contract work.',
     channel: 'web_form',
     closure_reason: null,
+    version: 1,
+    payout_amount: null,
     created_at: '2026-10-20T10:00:00Z',
     closed_at: null,
     allowed_transitions: ['notice_published', 'closed'],
@@ -345,6 +403,8 @@ export const DEMO_CASES: Case[] = [
     description: 'Advance fee lottery scam. Case paid out following full recovery of frozen account funds.',
     channel: 'phone',
     closure_reason: 'paid_out',
+    version: 6,
+    payout_amount: 400000,
     created_at: '2026-10-05T09:00:00Z',
     closed_at: '2026-10-28T16:00:00Z',
     allowed_transitions: [],
@@ -730,3 +790,6 @@ export const DEMO_KB_DOCUMENTS: KbDocument[] = [
     published_at: '2026-11-03T14:30:00Z',
   },
 ];
+
+/** Shared password of every seeded demo account (contract §3 seed data). */
+export const DEMO_PASSWORD = 'Demo@1234';

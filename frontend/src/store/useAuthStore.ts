@@ -1,51 +1,58 @@
 import { create } from 'zustand';
-import { User } from '@/types/api';
-import { api, getStoredUser, getAuthToken } from '@/services/api';
-import { DEMO_USERS } from '@/services/mockData';
+import type { User } from '@/types/api';
+import { authApi } from '@/services/authApi';
+import { errorMessage, getAuthToken, getStoredUser, isApiError, onUnauthorized } from '@/services/http';
 
 interface AuthState {
   user: User | null;
   token: string | null;
   isLoading: boolean;
   error: string | null;
-  login: (email: string, password?: string) => Promise<void>;
+  /** Code of the last login failure, e.g. EMAIL_NOT_VERIFIED, so the UI can offer a resend. */
+  errorCode: string | null;
+  login: (email: string, password: string) => Promise<User>;
   logout: () => Promise<void>;
-  initialize: () => void;
+  /** Clears the local session without calling the server (after a 401). */
+  expire: () => void;
+}
+
+function initialSession(): Pick<AuthState, 'user' | 'token'> {
+  const user = getStoredUser();
+  const token = getAuthToken();
+  // Never pretend to be logged in: no stored session means the login screen.
+  return user && token ? { user, token } : { user: null, token: null };
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
-  user: getStoredUser() || DEMO_USERS[0],
-  token: getAuthToken() || 'demo_token_supervisor',
+  ...initialSession(),
   isLoading: false,
   error: null,
+  errorCode: null,
 
-  initialize: () => {
-    const user = getStoredUser() || DEMO_USERS[0];
-    const token = getAuthToken() || 'demo_token_supervisor';
-    set({ user, token });
-  },
-
-  login: async (email: string, password?: string) => {
-    set({ isLoading: true, error: null });
+  login: async (email, password) => {
+    set({ isLoading: true, error: null, errorCode: null });
     try {
-      const response = await api.login(email, password);
-      set({
-        user: response.data.user,
-        token: response.data.token,
-        isLoading: false,
-        error: null,
-      });
-    } catch (err: any) {
+      const res = await authApi.login(email, password);
+      set({ user: res.data.user, token: res.data.token, isLoading: false });
+      return res.data.user;
+    } catch (err) {
       set({
         isLoading: false,
-        error: err.message || 'Login failed. Please check your credentials.',
+        error: errorMessage(err, 'Login failed.'),
+        errorCode: isApiError(err) ? String(err.code) : null,
       });
       throw err;
     }
   },
 
   logout: async () => {
-    await api.logout();
-    set({ user: null, token: null, error: null });
+    await authApi.logout();
+    set({ user: null, token: null, error: null, errorCode: null });
   },
+
+  expire: () => set({ user: null, token: null }),
 }));
+
+onUnauthorized(() => {
+  useAuthStore.getState().expire();
+});

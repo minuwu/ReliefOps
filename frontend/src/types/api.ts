@@ -1,9 +1,13 @@
 /**
- * API Contract Types matching docs/API_SPEC.md (v0.3.0)
+ * API Contract Types matching docs/API_SPEC.md (v0.4.2)
  * Single Source of Truth for Frontend, Backend, and AI interfaces.
  */
 
-export type Role = 'operator' | 'supervisor' | 'bank_viewer';
+export type Role = 'operator' | 'supervisor' | 'bank_viewer' | 'victim';
+
+export type StaffRole = Exclude<Role, 'victim'>;
+
+export type BankId = 'bank_a' | 'bank_b' | 'bank_c' | 'bank_d' | 'bank_e';
 
 export type CaseStatus =
   | 'received'
@@ -107,6 +111,25 @@ export type VictimEditableField =
   | 'scam_type'
   | 'description';
 
+export type ErrorCode =
+  | 'BAD_REQUEST'
+  | 'UNAUTHORIZED'
+  | 'INVALID_CREDENTIALS'
+  | 'FORBIDDEN'
+  | 'RESOURCE_NOT_FOUND'
+  | 'INVALID_STATUS_TRANSITION'
+  | 'ALREADY_REVIEWED'
+  | 'CASE_LOCKED'
+  | 'FILE_TOO_LARGE'
+  | 'VALIDATION_ERROR'
+  | 'MISSING_REQUIRED_INFO'
+  | 'RATE_LIMITED'
+  | 'INTERNAL_ERROR'
+  | 'INVALID_TOKEN'
+  | 'EMAIL_NOT_VERIFIED'
+  | 'STALE_CASE'
+  | 'CASE_CLOSED';
+
 /* --- Standard Envelope --- */
 
 export interface ApiResponse<T> {
@@ -116,9 +139,18 @@ export interface ApiResponse<T> {
 }
 
 export interface ApiErrorDetail {
-  code: string;
+  /** An ErrorCode from the contract, or a client-side code such as NETWORK_ERROR / HTTP_ERROR_502. */
+  code: ErrorCode | string;
   message: string;
-  details?: Record<string, unknown> | { fields?: Array<{ field: string; message: string }> };
+  details?: Record<string, unknown> & {
+    fields?: Array<{ field: string; message: string }>;
+    current_version?: number;
+    allowed?: string[];
+    missing_fields?: string[];
+    locked_fields?: string[];
+  };
+  /** Seconds from the Retry-After header on 429 RATE_LIMITED. */
+  retry_after?: number;
 }
 
 export interface ApiErrorResponse {
@@ -146,9 +178,12 @@ export interface User {
   email: string;
   role: Role;
   bank_id: string | null;
+  email_verified: boolean;
+  is_active: boolean;
 }
 
 export interface AuthSession {
+  /** Opaque session token (not a JWT). Send as Authorization: Bearer <token>. */
   token: string;
   expires_at: string;
   user: User;
@@ -225,6 +260,9 @@ export interface Case extends CaseSummary {
   allowed_closure_reasons: ClosureReason[];
   documents: DocumentMeta[];
   notes: Note[];
+  /** Send back as expected_version on every write; a mismatch returns 409 STALE_CASE. */
+  version: number;
+  payout_amount: number | null;
 }
 
 export interface ExtractedField {
@@ -318,6 +356,9 @@ export interface SharedAccountAlert {
 }
 
 export interface VictimCase {
+  /** Use this in /api/victim/cases/{id}, not the reference. */
+  id: string;
+  version: number;
   reference: string;
   bank_name: string;
   status: CaseStatus;
@@ -374,6 +415,7 @@ export interface KbDocument {
   version: string;
   language: Language;
   status: KbDocumentStatus;
+  audience?: 'victim_facing' | 'staff_only';
   passage_count: number | null;
   error: string | null;
   uploaded_by: UserRef;
@@ -386,4 +428,82 @@ export interface PaginatedResult<T> {
   page: number;
   page_size: number;
   total: number;
+}
+
+/* --- v0.4 request bodies --- */
+
+export interface TransitionPayload {
+  to_status: CaseStatus;
+  expected_version: number;
+  /** Required when to_status is 'closed'. */
+  closure_reason?: ClosureReason;
+  /** Required when closure_reason is 'paid_out'. */
+  payout_amount?: number;
+  /** Required when moving back a step or closing. */
+  note?: string;
+}
+
+export interface ReviewPayload {
+  decision: 'accept' | 'reject';
+  /** The CASE's version. */
+  expected_version: number;
+  /** Accept only. */
+  fields?: Partial<Record<ExtractableField, string | number | null>>;
+  /** Required to reject. */
+  note?: string;
+}
+
+export interface VictimReport {
+  bank_id: BankId;
+  victim: {
+    name: string;
+    phone?: string | null;
+    email?: string | null;
+    address?: string | null;
+    preferred_language?: Language;
+  };
+  amount: number;
+  currency?: string;
+  transfer_date: string;
+  account_number?: string | null;
+  account_holder_name?: string | null;
+  scam_type: ScamType;
+  description?: string | null;
+  consent: true;
+}
+
+export interface VictimCaseUpdate {
+  expected_version: number;
+  victim?: Partial<Victim>;
+  amount?: number;
+  currency?: string;
+  transfer_date?: string;
+  account_number?: string | null;
+  account_holder_name?: string | null;
+  scam_type?: ScamType;
+  description?: string | null;
+}
+
+export interface ChatExchange {
+  question: ChatMessage;
+  answer: ChatMessage;
+}
+
+export interface Invitation {
+  id: string;
+  email: string;
+  name: string;
+  role: StaffRole;
+  bank_id: BankId | null;
+  status: 'pending' | 'accepted' | 'revoked' | 'expired';
+  invited_by: UserRef;
+  created_at: string;
+  expires_at: string;
+}
+
+export interface InvitationCreate {
+  email: string;
+  name: string;
+  role: StaffRole;
+  bank_id?: BankId | null;
 }
