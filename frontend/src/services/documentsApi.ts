@@ -282,8 +282,12 @@ function mockExtract(documentId: string): Extraction {
 
 /* --- Live HTTP Helpers --------------------------------------------------- */
 
-function liveListDocs(caseId: string): Promise<ApiResponse<DocumentMeta[]>> {
-  return request<DocumentMeta[]>(`/api/cases/${caseId}/documents`);
+async function liveListDocs(caseId: string): Promise<ApiResponse<DocumentMeta[]>> {
+  const res = await request<Case>(`/api/cases/${caseId}`);
+  return {
+    ...res,
+    data: res.data?.documents ?? [],
+  };
 }
 
 async function liveUploadDoc(

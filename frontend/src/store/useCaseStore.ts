@@ -110,7 +110,15 @@ export const useCaseStore = create<CaseState>((set, get) => {
     addNote: async (caseId, body) => {
       try {
         const res = await api.addCaseNote(caseId, body);
-        set({ selectedCase: res.data });
+        const current = get().selectedCase;
+        if (current && current.id === caseId) {
+          set({
+            selectedCase: {
+              ...current,
+              notes: [res.data, ...current.notes],
+            },
+          });
+        }
       } catch (err) {
         set({ error: errorMessage(err, 'Failed to add note.') });
         throw err;

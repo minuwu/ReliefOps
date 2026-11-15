@@ -15,10 +15,12 @@ import type {
   ClosureReason,
   DashboardStats,
   Extraction,
+  Health,
   Invitation,
   InvitationCreate,
   IntakeChannel,
   KbDocument,
+  Note,
   PaginatedResult,
   ReviewPayload,
   ReviewQueueItem,
@@ -45,7 +47,6 @@ import { DEMO_ALERTS, DEMO_BANKS, DEMO_STATS } from './mockData';
 
 export { USE_MOCK, API_BASE_URL, getAuthToken, getStoredUser } from './http';
 
-const CONTRACT_VERSION = '0.4.2';
 const STAGES: CaseStatus[] = [
   'received',
   'verified',
@@ -62,6 +63,7 @@ export interface CaseQuery {
   bank_id?: string;
   deadline_state?: string;
   search?: string;
+  q?: string;
   page?: number;
   page_size?: number;
 }
@@ -220,7 +222,7 @@ function mockReview(extractionId: string, p: ReviewPayload): Extraction {
 
 function mockListCases(params: CaseQuery): PaginatedResult<CaseSummary> {
   const user = currentUser();
-  const term = params.search?.toLowerCase();
+  const term = (params.q ?? params.search)?.toLowerCase();
   const items = db.cases
     .filter((c) => user.role !== 'bank_viewer' || c.bank_id === user.bank_id)
     .filter((c) => !params.status || c.status === params.status)
@@ -256,7 +258,13 @@ function mockCreateCase(body: CaseCreate): Case {
     assigned_operator: null,
     reported_date: at.slice(0, 10),
     updated_at: at,
-    flags: { missing_fields: ['document'], ai_review_pending: false, shared_account_case_count: 0, victim_question_pending: false },
+    flags: {
+      missing_fields: ['document'],
+      ai_review_pending: false,
+      shared_account_case_count: 0,
+      victim_question_pending: false,
+      possible_duplicate: false,
+    },
     victim: {
       name: body.victim.name,
       phone: body.victim.phone ?? null,
@@ -360,10 +368,16 @@ function mockVictimInvite(caseId: string): null {
 
 export const api = {
   /* 6.2 Reference data */
-  getHealth(): Promise<ApiResponse<{ status: string; ai: string; rag: string; version: string }>> {
+  getHealth(): Promise<ApiResponse<Health>> {
     return USE_MOCK
-      ? mockEnvelope({ status: 'healthy', ai: 'available', rag: 'available', version: CONTRACT_VERSION })
-      : request('/api/health');
+      ? mockEnvelope({
+          status: 'healthy',
+          db: 'ok',
+          ai: 'available',
+          rag: 'available',
+          timestamp: new Date().toISOString(),
+        })
+      : request<Health>('/api/health');
   },
 
   getBanks(): Promise<ApiResponse<Bank[]>> {
@@ -404,9 +418,11 @@ export const api = {
 
   /* 6.3 Cases */
   getCases(params: CaseQuery = {}): Promise<ApiResponse<PaginatedResult<CaseSummary>>> {
-    return USE_MOCK
-      ? mocked(() => mockListCases(params))
-      : request<PaginatedResult<CaseSummary>>(`/api/cases${query(params)}`);
+    if (USE_MOCK) return mocked(() => mockListCases(params));
+    const { search, q: queryParam, ...rest } = params;
+    const term = queryParam ?? search;
+    const liveParams = { ...rest, ...(term ? { q: term } : {}) };
+    return request<PaginatedResult<CaseSummary>>(`/api/cases${query(liveParams)}`);
   },
 
   getCaseById(caseId: string): Promise<ApiResponse<Case>> {
@@ -435,15 +451,30 @@ export const api = {
     );
   },
 
-  addCaseNote(caseId: string, body: string): Promise<ApiResponse<Case>> {
-    if (!USE_MOCK) return send<Case>(`/api/cases/${caseId}/notes`, 'POST', { body });
-    return mocked(() =>
-      mockUpdateCase(caseId, (c) => {
-        const user = currentUser();
-        const note = { id: `note-${Date.now()}`, body, author: { id: user.id, name: user.name }, created_at: nowIso() };
-        return { notes: [note, ...c.notes] };
-      })
-    );
+  addCaseNote(caseId: string, body: string): Promise<ApiResponse<Note>> {
+    if (!USE_MOCK) return send<Note>(`/api/cases/${caseId}/notes`, 'POST', { body });
+    return mocked(() => {
+      const c = findVisibleCase(caseId);
+      const user = currentUser();
+      const note: Note = {
+        id: `note-${Date.now()}`,
+        body,
+        author: { id: user.id, name: user.name },
+        created_at: nowIso(),
+      };
+      saveCase({ ...c, notes: [note, ...c.notes], updated_at: nowIso() });
+      addAudit({
+        actor: actorOf(user),
+        action: 'note.added',
+        case_id: c.id,
+        case_reference: c.reference,
+        bank_id: c.bank_id,
+        summary: `Note added by ${user.name}`,
+        changes: null,
+        metadata: null,
+      });
+      return note;
+    }, 'Note added');
   },
 
   /** Emails the victim a link to attach this phone/paper case to their account. */

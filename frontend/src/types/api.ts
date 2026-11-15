@@ -162,6 +162,14 @@ export type ApiResult<T> = ApiResponse<T> | ApiErrorResponse;
 
 /* --- Domain Entities --- */
 
+export interface Health {
+  status: 'healthy';
+  db: 'ok' | 'unavailable';
+  ai: 'available' | 'unavailable' | 'disabled';
+  rag: 'available' | 'degraded' | 'unavailable' | 'disabled';
+  timestamp: string;
+}
+
 export interface Bank {
   id: string;
   name: string;
@@ -202,6 +210,7 @@ export interface CaseFlags {
   ai_review_pending: boolean;
   shared_account_case_count: number;
   victim_question_pending: boolean;
+  possible_duplicate: boolean;
 }
 
 export interface CaseSummary {

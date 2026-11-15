@@ -75,6 +75,7 @@ function mockReport(body: VictimReport): VictimCase {
       ai_review_pending: false,
       shared_account_case_count: 0,
       victim_question_pending: false,
+      possible_duplicate: false,
     },
     victim: {
       name: body.victim.name,

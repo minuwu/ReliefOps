@@ -126,6 +126,7 @@ export const DEMO_CASES: Case[] = [
       ai_review_pending: true,
       shared_account_case_count: 2,
       victim_question_pending: true,
+      possible_duplicate: false,
     },
     victim: {
       name: 'Rina Example',
@@ -193,6 +194,7 @@ export const DEMO_CASES: Case[] = [
       ai_review_pending: false,
       shared_account_case_count: 0,
       victim_question_pending: false,
+      possible_duplicate: false,
     },
     victim: {
       name: 'Haruto Tanaka',
@@ -236,6 +238,7 @@ export const DEMO_CASES: Case[] = [
       ai_review_pending: true,
       shared_account_case_count: 2,
       victim_question_pending: false,
+      possible_duplicate: false,
     },
     victim: {
       name: 'Kenji Sato',
@@ -303,6 +306,7 @@ export const DEMO_CASES: Case[] = [
       ai_review_pending: false,
       shared_account_case_count: 0,
       victim_question_pending: false,
+      possible_duplicate: false,
     },
     victim: {
       name: 'Emi Watanabe',
@@ -346,6 +350,7 @@ export const DEMO_CASES: Case[] = [
       ai_review_pending: false,
       shared_account_case_count: 0,
       victim_question_pending: false,
+      possible_duplicate: false,
     },
     victim: {
       name: 'Ren Ito',
@@ -389,6 +394,7 @@ export const DEMO_CASES: Case[] = [
       ai_review_pending: false,
       shared_account_case_count: 0,
       victim_question_pending: false,
+      possible_duplicate: false,
     },
     victim: {
       name: 'Sora Hayashi',
