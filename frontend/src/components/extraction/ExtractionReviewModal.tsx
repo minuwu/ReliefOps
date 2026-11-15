@@ -4,14 +4,11 @@ import { useReviewQueueStore } from '@/store/useReviewQueueStore';
 import { Modal } from '@/components/ui/Modal';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { GlitchText } from '@/components/ui/GlitchText';
 import { DocumentOpticalPreview } from './DocumentOpticalPreview';
 import {
-  Sparkles,
   CheckCircle2,
   XCircle,
-  AlertTriangle,
-  Quote,
-  ShieldCheck,
   ScanLine,
 } from 'lucide-react';
 
@@ -20,6 +17,7 @@ interface ExtractionReviewModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+  onReviewed?: () => void;
 }
 
 export function ExtractionReviewModal({
@@ -27,6 +25,7 @@ export function ExtractionReviewModal({
   isOpen,
   onClose,
   onSuccess,
+  onReviewed,
 }: ExtractionReviewModalProps) {
   const { reviewExtraction, isActionLoading } = useReviewQueueStore();
   const [editedFields, setEditedFields] = useState<Record<string, any>>({});
@@ -54,12 +53,14 @@ export function ExtractionReviewModal({
   const handleAccept = async () => {
     await reviewExtraction(extraction.id, 'accept', editedFields, reviewNote);
     onSuccess?.();
+    onReviewed?.();
     onClose();
   };
 
   const handleReject = async () => {
     await reviewExtraction(extraction.id, 'reject', undefined, reviewNote || 'Rejected by operator');
     onSuccess?.();
+    onReviewed?.();
     onClose();
   };
 
@@ -67,193 +68,162 @@ export function ExtractionReviewModal({
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} maxWidth="5xl">
-      <div className="space-y-6">
+      <div className="space-y-6 font-['Space_Grotesk',sans-serif]">
         {/* Header Ribbon */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-muted/40 border border-border">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-[#EDE8D5] border-2 border-[#09090B] shadow-hard-sm">
           <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-lg text-foreground flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-primary" />
-                Human-in-the-Loop AI Extraction Review
-              </span>
+            <div className="flex items-center gap-3">
+              <GlitchText as="h2" className="text-lg sm:text-xl font-['Dela_Gothic_One'] text-[#09090B]">
+                HITL OCR OPTICAL VERIFICATION
+              </GlitchText>
               <Badge reviewLane={extraction.review_lane || 'standard'}>
-                {extraction.review_lane === 'low_confidence' ? 'Low Confidence Lane' : 'Standard Lane'}
+                {extraction.review_lane === 'low_confidence' ? 'LOW CONFIDENCE' : 'STANDARD LANE'}
               </Badge>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Case Ref: <span className="font-mono font-bold text-foreground">{extraction.case_reference}</span> •
-              Model: <span className="font-mono">{extraction.model || 'rules_fallback'}</span> •
-              Prompt: <span className="font-mono">{extraction.prompt_version || 'v2.4'}</span>
+            <p className="text-xs font-mono text-[#52525B]">
+              Case Ref: <span className="font-bold text-[#09090B]">{extraction.case_reference}</span> •
+              Model Engine: <span className="text-[#09090B]">{extraction.model || 'vision-ocr-v2'}</span>
             </p>
           </div>
 
           {/* Overall Confidence Meter */}
-          <div className="flex items-center gap-3 bg-card px-4 py-2 rounded-lg border border-border">
+          <div className="flex items-center gap-3 bg-[#F8F4E8] px-4 py-2 rounded-xl border-2 border-[#09090B] shadow-hard-sm">
             <div className="text-right">
-              <p className="text-[10px] text-muted-foreground uppercase font-semibold">Overall Confidence</p>
-              <p className={`text-base font-bold font-mono ${confidencePct < 70 ? 'text-amber-600' : 'text-emerald-600'}`}>
+              <p className="text-[10px] font-mono font-bold uppercase text-[#52525B]">OVERALL CONF</p>
+              <p className={`text-base font-['Dela_Gothic_One'] ${confidencePct < 70 ? 'text-[#FF334B]' : 'text-[#16A34A]'}`}>
                 {confidencePct}%
               </p>
             </div>
-            <div className="w-16 h-2 rounded-full bg-muted overflow-hidden">
+            <div className="w-16 h-3 rounded-full bg-[#EDE8D5] border border-[#09090B] overflow-hidden">
               <div
-                className={`h-full ${confidencePct < 70 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                className={`h-full ${confidencePct < 70 ? 'bg-[#FF334B]' : 'bg-[#16A34A]'}`}
                 style={{ width: `${confidencePct}%` }}
               />
             </div>
           </div>
         </div>
 
-        {/* Human-in-the-Loop Safe Directive Banner & Optical Toggle */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-xs text-blue-800 dark:text-blue-300">
-          <div className="flex items-center gap-2.5">
-            <ShieldCheck className="w-4 h-4 shrink-0 text-blue-600 dark:text-blue-400" />
-            <span>
-              <strong>AI Safety Mandate (D3):</strong> Suggestions require human verification.
-              Compare optical geometry against the evidence quotes and case values before applying.
-            </span>
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setShowOpticalPreview(!showOpticalPreview)}
-            className="shrink-0 text-xs border-blue-300 dark:border-blue-700 hover:bg-blue-100/50 dark:hover:bg-blue-900/40 gap-1.5"
-          >
-            <ScanLine className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-            {showOpticalPreview ? 'Hide Optical Preview' : 'Show Optical Geometry'}
-          </Button>
-        </div>
-
-        {/* Optical Document Geometry Canvas (Interactive Visual Inspection) */}
-        {showOpticalPreview && (
-          <DocumentOpticalPreview extraction={extraction} activeFieldHover={hoveredField} />
-        )}
-
-        {/* Fields Comparison Table */}
-        <div className="border border-border rounded-xl overflow-hidden bg-card">
-          <div className="grid grid-cols-12 bg-muted/60 p-3 text-[11px] font-bold text-muted-foreground uppercase tracking-wider border-b border-border">
-            <div className="col-span-3">Field</div>
-            <div className="col-span-4">AI Extraction & Supporting Evidence</div>
-            <div className="col-span-2">Current Case Value</div>
-            <div className="col-span-3">Approved / Final Value</div>
-          </div>
-
-          <div className="divide-y divide-border">
-            {extraction.fields.map((field) => {
-              const fieldConf = Math.round(field.confidence * 100);
-              return (
-                <div
-                  key={field.name}
-                  onMouseEnter={() => setHoveredField(field.name)}
-                  onMouseLeave={() => setHoveredField(null)}
-                  className={`grid grid-cols-12 p-3.5 items-start gap-3 transition-colors ${
-                    hoveredField === field.name ? 'bg-primary/5' : 'hover:bg-muted/20'
-                  }`}
-                >
-                  {/* Field Name & Confidence */}
-                  <div className="col-span-3 space-y-1">
-                    <p className="text-xs font-bold text-foreground font-mono">
-                      {field.name}
-                    </p>
-                    <div className="flex items-center gap-1.5">
-                      <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${
-                        fieldConf >= 90 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' :
-                        fieldConf >= 70 ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300' :
-                        'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                      }`}>
-                        {fieldConf}% conf
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* AI Value & Evidence Quote */}
-                  <div className="col-span-4 space-y-1.5">
-                    <p className="text-sm font-semibold text-foreground">
-                      {String(field.value ?? '—')}
-                    </p>
-                    {field.evidence && (
-                      <p className="text-[11px] text-muted-foreground italic flex items-start gap-1 bg-muted/40 p-2 rounded border border-border/50">
-                        <Quote className="w-3 h-3 shrink-0 mt-0.5 text-primary/60" />
-                        <span>{field.evidence}</span>
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Current Case Value */}
-                  <div className="col-span-2 text-xs text-muted-foreground font-mono pt-1 space-y-1">
-                    <p>{String(field.current_case_value ?? '(empty)')}</p>
-                    {String(field.current_case_value ?? '') !== String(field.value ?? '') && (
-                      <span className="inline-block text-[9px] font-bold text-amber-800 dark:text-amber-300 bg-amber-500/10 px-1.5 py-0.2 rounded">
-                        Diff Detected
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Final Approved Value Input */}
-                  <div className="col-span-3">
-                    <input
-                      type="text"
-                      value={editedFields[field.name] ?? ''}
-                      onChange={(e) => handleFieldChange(field.name, e.target.value)}
-                      className="w-full text-xs font-mono font-medium rounded border border-input bg-background p-2 focus:ring-1 focus:ring-primary focus:outline-none"
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Missing Fields Flag */}
-        {extraction.missing_fields.length > 0 && (
-          <div className="flex items-center gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-800 dark:text-amber-300">
-            <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600" />
-            <span>
-              <strong>Unidentified Fields:</strong> Document did not contain:{' '}
-              {extraction.missing_fields.join(', ')}.
-            </span>
-          </div>
-        )}
-
-        {/* Operator Note */}
-        <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-foreground">
-            Reviewer Audit Note (optional):
-          </label>
-          <input
-            type="text"
-            value={reviewNote}
-            onChange={(e) => setReviewNote(e.target.value)}
-            placeholder="Add reviewer comments or verification notes..."
-            className="w-full text-xs rounded-md border border-input bg-background p-2 focus:ring-1 focus:ring-primary focus:outline-none"
-          />
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex items-center justify-between pt-4 border-t border-border">
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={handleReject}
-            isLoading={isActionLoading}
-            className="gap-1.5"
-          >
-            <XCircle className="w-4 h-4" /> Reject Extraction
-          </Button>
-
+        {/* Optical Document Preview Toggle */}
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button
-              size="sm"
-              onClick={handleAccept}
-              isLoading={isActionLoading}
-              className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
-            >
-              <CheckCircle2 className="w-4 h-4" /> Accept & Update Case
-            </Button>
+            <ScanLine className="w-4 h-4 text-[#09090B]" />
+            <span className="text-xs font-bold uppercase tracking-wider text-[#09090B]">
+              RAW PHYSICAL VOUCHER FACSIMILE
+            </span>
+          </div>
+          <button
+            onClick={() => setShowOpticalPreview(!showOpticalPreview)}
+            className="text-xs font-bold font-mono text-[#09090B] hover:underline cursor-pointer"
+          >
+            {showOpticalPreview ? 'HIDE VOUCHER' : 'SHOW VOUCHER'}
+          </button>
+        </div>
+
+        {/* Side-by-Side Optical Document & Fields Canvas */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* Left Column: Optical Voucher Preview (5 Cols) */}
+          {showOpticalPreview && (
+            <div className="lg:col-span-5">
+              <DocumentOpticalPreview
+                activeField={hoveredField}
+                onSelectField={(f) => setHoveredField(f)}
+              />
+            </div>
+          )}
+
+          {/* Right Column: Extracted Fields Review (7 or 12 Cols) */}
+          <div className={showOpticalPreview ? 'lg:col-span-7' : 'lg:col-span-12'}>
+            <div className="p-5 rounded-2xl border-2 border-[#09090B] bg-[#F8F4E8] shadow-hard space-y-4">
+              <h4 className="text-xs font-['Dela_Gothic_One'] uppercase tracking-wider text-[#09090B]">
+                EXTRACTED FIELD VALUES (DIFF VERIFICATION)
+              </h4>
+
+              <div className="space-y-3">
+                {extraction.fields.map((field) => {
+                  const val = editedFields[field.name] ?? field.value ?? '';
+                  const conf = Math.round((field.confidence || 0) * 100);
+                  const isModified = val !== field.value;
+
+                  return (
+                    <div
+                      key={field.name}
+                      onMouseEnter={() => setHoveredField(field.name)}
+                      onMouseLeave={() => setHoveredField(null)}
+                      className={`p-3.5 rounded-xl border-2 transition-all ${
+                        hoveredField === field.name
+                          ? 'border-[#09090B] bg-[#EDE8D5] shadow-hard-sm'
+                          : isModified
+                          ? 'border-[#D2E823] bg-[#D2E823]/10'
+                          : 'border-[#09090B]/30 bg-[#F8F4E8]'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-xs font-bold uppercase tracking-wider text-[#09090B]">
+                          {field.name.replace('_', ' ')}
+                        </label>
+                        <div className="flex items-center gap-2">
+                          {isModified && (
+                            <span className="text-[10px] font-mono font-bold uppercase text-[#09090B] bg-[#D2E823] px-2 py-0.5 rounded border border-[#09090B]">
+                              MODIFIED
+                            </span>
+                          )}
+                          <span
+                            className={`text-[11px] font-mono font-bold ${
+                              conf < 75 ? 'text-[#FF334B]' : 'text-[#16A34A]'
+                            }`}
+                          >
+                            {conf}% CONF
+                          </span>
+                        </div>
+                      </div>
+
+                      <input
+                        type="text"
+                        value={val}
+                        onChange={(e) => handleFieldChange(field.name, e.target.value)}
+                        className="w-full text-xs font-mono font-bold bg-[#F8F4E8] border-2 border-[#09090B] rounded-lg p-2 shadow-[2px_2px_0px_0px_#09090B] focus:outline-none"
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Operator Verification Note */}
+              <div className="space-y-1.5 pt-2">
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#09090B]">
+                  OPERATOR CERTIFICATION AUDIT NOTE:
+                </label>
+                <input
+                  type="text"
+                  value={reviewNote}
+                  onChange={(e) => setReviewNote(e.target.value)}
+                  placeholder="e.g. Visual confirmation of wire seal match against bank registry..."
+                  className="w-full text-xs font-bold bg-[#F8F4E8] border-2 border-[#09090B] rounded-xl p-3 shadow-hard-sm focus:outline-none"
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-3 pt-4 border-t-2 border-[#09090B]">
+                <Button
+                  variant="destructive"
+                  size="md"
+                  onClick={handleReject}
+                  isLoading={isActionLoading}
+                  className="gap-2 shadow-hard-sm"
+                >
+                  <XCircle className="w-4 h-4" /> REJECT EXTRACTION
+                </Button>
+                <Button
+                  variant="primary"
+                  size="md"
+                  onClick={handleAccept}
+                  isLoading={isActionLoading}
+                  className="gap-2 shadow-hard"
+                >
+                  <CheckCircle2 className="w-4 h-4" /> ACCEPT & UPDATE RECORD
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       </div>

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { User } from '@/types/api';
 import { api, getStoredUser, getAuthToken } from '@/services/api';
+import { DEMO_USERS } from '@/services/mockData';
 
 interface AuthState {
   user: User | null;
@@ -13,14 +14,14 @@ interface AuthState {
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
-  user: getStoredUser(),
-  token: getAuthToken(),
+  user: getStoredUser() || DEMO_USERS[0],
+  token: getAuthToken() || 'demo_token_supervisor',
   isLoading: false,
   error: null,
 
   initialize: () => {
-    const user = getStoredUser();
-    const token = getAuthToken();
+    const user = getStoredUser() || DEMO_USERS[0];
+    const token = getAuthToken() || 'demo_token_supervisor';
     set({ user, token });
   },
 

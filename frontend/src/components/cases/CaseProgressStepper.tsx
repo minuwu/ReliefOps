@@ -1,5 +1,6 @@
 import { CaseStatus } from '@/types/api';
-import { Check, Clock, ShieldCheck } from 'lucide-react';
+import { Check, Clock } from 'lucide-react';
+import { StickerBadge } from '@/components/ui/StickerBadge';
 
 interface CaseProgressStepperProps {
   currentStatus: CaseStatus;
@@ -7,24 +8,24 @@ interface CaseProgressStepperProps {
 }
 
 const STAGES: { key: CaseStatus; label: string; description: string }[] = [
-  { key: 'received', label: 'Received', description: 'Intake Registered' },
-  { key: 'verified', label: 'Verified', description: 'Receipt Verified' },
-  { key: 'account_check', label: 'Account Check', description: 'Funds Frozen' },
-  { key: 'notice_published', label: 'Notice Published', description: '60-Day Gazette' },
-  { key: 'payout_review', label: 'Payout Review', description: 'Supervisor Audit' },
-  { key: 'closed', label: 'Closed', description: 'Relief Disbursed' },
+  { key: 'received', label: '1. Received', description: 'Intake Registered' },
+  { key: 'verified', label: '2. Verified', description: 'Voucher Verified' },
+  { key: 'account_check', label: '3. Freeze Check', description: 'Mule Frozen' },
+  { key: 'notice_published', label: '4. 60D Gazette', description: 'Public Notice' },
+  { key: 'payout_review', label: '5. Audit Review', description: 'Pro-Rata Calc' },
+  { key: 'closed', label: '6. Disbursed', description: 'Claim Closed' },
 ];
 
 export function CaseProgressStepper({ currentStatus, closureReason }: CaseProgressStepperProps) {
   const currentIndex = STAGES.findIndex((s) => s.key === currentStatus);
 
   return (
-    <div className="w-full py-4">
+    <div className="w-full py-4 font-['Space_Grotesk',sans-serif]">
       <div className="relative flex items-center justify-between">
-        {/* Connecting track line */}
-        <div className="absolute left-6 right-6 top-4 -translate-y-1/2 h-0.5 bg-border -z-0">
+        {/* Connecting channeled track line */}
+        <div className="absolute left-6 right-6 top-4 -translate-y-1/2 h-2.5 bg-[#EDE8D5] border-2 border-[#09090B] rounded-full overflow-hidden -z-0">
           <div
-            className="h-full bg-primary transition-all duration-500"
+            className="h-full bg-[#D2E823] border-r-2 border-[#09090B] transition-all duration-500"
             style={{
               width: `${(Math.max(0, currentIndex) / (STAGES.length - 1)) * 100}%`,
             }}
@@ -39,32 +40,36 @@ export function CaseProgressStepper({ currentStatus, closureReason }: CaseProgre
           return (
             <div key={stage.key} className="flex flex-col items-center relative z-10 group">
               <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
+                className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold transition-all duration-200 border-2 border-[#09090B] ${
                   isPassed
-                    ? 'bg-primary text-primary-foreground shadow-xs'
+                    ? 'bg-[#09090B] text-[#D2E823] shadow-hard-sm'
                     : isCurrent
-                    ? 'bg-background border-2 border-primary text-primary ring-4 ring-primary/15 shadow-sm scale-110'
-                    : 'bg-muted border border-border text-muted-foreground'
+                    ? 'bg-[#D2E823] text-[#09090B] shadow-hard scale-110'
+                    : 'bg-[#EDE8D5] text-[#52525B]'
                 }`}
               >
                 {isPassed ? (
-                  <Check className="w-4 h-4 stroke-[2.5]" />
+                  <Check className="w-4 h-4 stroke-[3]" />
                 ) : isCurrent ? (
-                  <Clock className="w-3.5 h-3.5 animate-pulse text-primary" />
+                  <Clock className="w-4 h-4 animate-spin text-[#09090B]" />
                 ) : (
                   <span>{idx + 1}</span>
                 )}
               </div>
 
-              <div className="text-center mt-2 space-y-0.5 max-w-[80px]">
+              <div className="text-center mt-2.5 space-y-0.5 max-w-[90px]">
                 <p
-                  className={`text-[11px] font-bold leading-tight ${
-                    isCurrent ? 'text-primary' : isPassed ? 'text-foreground' : 'text-muted-foreground'
+                  className={`text-[11px] font-bold uppercase tracking-wider ${
+                    isCurrent
+                      ? 'text-[#09090B] font-["Dela_Gothic_One"] text-xs'
+                      : isPassed
+                      ? 'text-[#09090B]'
+                      : 'text-[#71717A]'
                   }`}
                 >
                   {stage.label}
                 </p>
-                <p className="text-[9px] text-muted-foreground leading-none hidden sm:block">
+                <p className="text-[10px] font-mono text-[#52525B] hidden sm:block">
                   {stage.description}
                 </p>
               </div>
@@ -73,10 +78,11 @@ export function CaseProgressStepper({ currentStatus, closureReason }: CaseProgre
         })}
       </div>
 
-      {currentStatus === 'closed' && closureReason && (
-        <div className="mt-4 p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-800 dark:text-emerald-300 flex items-center justify-center gap-2 font-medium">
-          <ShieldCheck className="w-4 h-4 text-emerald-600" />
-          Case settled & closed with resolution: <strong>{closureReason.replace('_', ' ').toUpperCase()}</strong>
+      {closureReason && currentStatus === 'closed' && (
+        <div className="mt-4 flex justify-center">
+          <StickerBadge variant="acid" rotate="rotate-0">
+            CLOSURE REASON: {closureReason}
+          </StickerBadge>
         </div>
       )}
     </div>

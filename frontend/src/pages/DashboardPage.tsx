@@ -1,20 +1,31 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/services/api';
-import { DashboardStats, SharedAccountAlert } from '@/types/api';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import { DashboardStats, SharedAccountAlert, CaseSummary } from '@/types/api';
+import { useCaseStore } from '@/store/useCaseStore';
+import { HeroCommandSection } from '@/components/dashboard/HeroCommandSection';
+import { BentoMetricsGrid } from '@/components/dashboard/BentoMetricsGrid';
+import { UrgentCasesCarousel } from '@/components/dashboard/UrgentCasesCarousel';
 import { FraudRingVisualizer } from '@/components/dashboard/FraudRingVisualizer';
-import {
-  BarChart3,
-  AlertOctagon,
-  Clock,
-  BrainCircuit,
-  TrendingUp,
-} from 'lucide-react';
+import { Marquee } from '@/components/ui/Marquee';
+import { CaseDetailModal } from '@/components/cases/CaseDetailModal';
+import { CaseIntakeModal } from '@/components/cases/CaseIntakeModal';
+import { ExtractionReviewModal } from '@/components/extraction/ExtractionReviewModal';
+import { useReviewQueueStore } from '@/store/useReviewQueueStore';
 
-export function DashboardPage() {
+interface DashboardPageProps {
+  onNavigateToCases?: (filter?: string) => void;
+  onNavigateToReview?: () => void;
+}
+
+export function DashboardPage({ onNavigateToCases, onNavigateToReview }: DashboardPageProps) {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [alerts, setAlerts] = useState<SharedAccountAlert[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isIntakeOpen, setIsIntakeOpen] = useState(false);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+
+  const { cases, fetchCases, fetchCaseById, selectedCase } = useCaseStore();
+  const { activeExtraction, fetchExtraction, clearActive } = useReviewQueueStore();
 
   useEffect(() => {
     async function loadData() {
@@ -26,6 +37,7 @@ export function DashboardPage() {
         ]);
         setStats(statsRes.data);
         setAlerts(alertsRes.data);
+        await fetchCases();
       } finally {
         setIsLoading(false);
       }
@@ -33,136 +45,113 @@ export function DashboardPage() {
     loadData();
   }, []);
 
+  const totalClaimedJPY = cases.reduce((acc, c) => acc + (c.amount || 0), 0);
+
+  const handleSelectCase = async (c: CaseSummary) => {
+    await fetchCaseById(c.id);
+    setIsDetailOpen(true);
+  };
+
+  const handleInspectCaseById = async (caseId: string) => {
+    await fetchCaseById(caseId);
+    setIsDetailOpen(true);
+  };
+
   if (isLoading || !stats) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-12 text-center text-muted-foreground text-sm">
-        Loading supervisor metrics...
+      <div className="max-w-7xl mx-auto px-4 py-24 text-center">
+        <p className="font-['Dela_Gothic_One'] text-2xl uppercase tracking-tighter text-[#09090B]">
+          SYNCHRONIZING 5-BANK CLEARINGHOUSE...
+        </p>
+        <p className="text-xs font-mono text-[#52525B] mt-2">Connecting to distributed ledger nodes</p>
       </div>
     );
   }
 
+  // Marquee Alert Items
+  const marqueeItems = [
+    `CRITICAL ESCALATION: ${stats.overdue_cases} CASES EXCEEDED STATUTORY DEADLINE`,
+    `AI OCR QUEUE: ${stats.ai_review_pending} WIRE VOUCHERS AWAITING HUMAN CONFIRMATION`,
+    `FIVE-BANK ALLIANCE: TOKYO • OSAKA • NAGOYA • FUKUOKA • SAPPORO NODES ACTIVE`,
+    `MULE SYNDICATE THREAT DETECTED: 3 BENEFICIARY ACCOUNTS FLAGGED ACROSS BANKS`,
+    `TOTAL VALUE PROTECTED: ¥${(totalClaimedJPY / 1000000).toFixed(1)}M PRO-RATA RECOVERY`,
+  ];
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
-          <BarChart3 className="w-6 h-6 text-primary" />
-          Supervisor Operations Dashboard
-        </h1>
-        <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-          Real-time workload, deadline compliance, and multi-victim fraud syndicate detection
-        </p>
+    <div className="space-y-6 sm:space-y-8 w-full max-w-full overflow-x-hidden min-w-0">
+      {/* Continuous Marquee Banner */}
+      <Marquee items={marqueeItems} speed="24s" />
+
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 space-y-8 sm:space-y-12">
+        {/* Hero Command Section (12 Columns) */}
+        <HeroCommandSection
+          onOpenIntake={() => setIsIntakeOpen(true)}
+          onOpenReview={onNavigateToReview}
+          overdueCount={stats.overdue_cases}
+        />
+
+        {/* Bento Category Grid */}
+        <div>
+          <div className="border-b-2 border-[#09090B] pb-2 mb-4 sm:mb-6">
+            <h2 className="text-lg sm:text-2xl font-['Dela_Gothic_One'] uppercase text-[#09090B]">
+              CONSORTIUM TELEMETRY BENTO
+            </h2>
+          </div>
+          <BentoMetricsGrid
+            stats={stats}
+            totalClaimedJPY={totalClaimedJPY}
+            onNavigateToCases={onNavigateToCases}
+            onNavigateToReview={onNavigateToReview}
+          />
+        </div>
+
+        {/* Urgent Escalation Horizontal Scrolling Section */}
+        <UrgentCasesCarousel cases={cases} onSelectCase={handleSelectCase} />
+
+        {/* Fraud Ring Visualizer */}
+        <FraudRingVisualizer alerts={alerts} onInspectCase={handleInspectCaseById} />
       </div>
 
-      {/* KPI Cards Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {/* Open Cases */}
-        <Card className="p-4 flex items-center gap-4">
-          <div className="p-3 rounded-lg bg-primary/10 text-primary">
-            <TrendingUp className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground font-semibold uppercase">Total Open Cases</p>
-            <p className="text-2xl font-bold text-foreground font-mono">{stats.open_cases}</p>
-          </div>
-        </Card>
+      {/* Case Intake Modal */}
+      {isIntakeOpen && (
+        <CaseIntakeModal
+          isOpen={isIntakeOpen}
+          onClose={() => setIsIntakeOpen(false)}
+          onCaseCreated={() => {
+            setIsIntakeOpen(false);
+            fetchCases();
+          }}
+        />
+      )}
 
-        {/* Overdue (Critical) */}
-        <Card className="p-4 flex items-center gap-4 border-rose-200 dark:border-rose-900/60 bg-rose-50/30 dark:bg-rose-950/20">
-          <div className="p-3 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400">
-            <AlertOctagon className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-xs text-rose-700 dark:text-rose-300 font-semibold uppercase">Overdue Cases</p>
-            <p className="text-2xl font-bold text-rose-700 dark:text-rose-300 font-mono">{stats.overdue_cases}</p>
-          </div>
-        </Card>
+      {/* Case Detail Inspection Modal */}
+      {isDetailOpen && selectedCase && (
+        <CaseDetailModal
+          caseItem={selectedCase}
+          isOpen={isDetailOpen}
+          onClose={() => setIsDetailOpen(false)}
+          onCaseUpdated={() => {
+            fetchCases();
+            if (selectedCase) fetchCaseById(selectedCase.id);
+          }}
+          onOpenExtraction={(extractionId) => {
+            fetchExtraction(extractionId);
+          }}
+        />
+      )}
 
-        {/* Due Soon */}
-        <Card className="p-4 flex items-center gap-4">
-          <div className="p-3 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
-            <Clock className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground font-semibold uppercase">Due Soon (&lt;48h)</p>
-            <p className="text-2xl font-bold text-foreground font-mono">{stats.due_soon_cases}</p>
-          </div>
-        </Card>
-
-        {/* AI Reviews Pending */}
-        <Card className="p-4 flex items-center gap-4">
-          <div className="p-3 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400">
-            <BrainCircuit className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground font-semibold uppercase">AI Triage Pending</p>
-            <p className="text-2xl font-bold text-foreground font-mono">{stats.ai_review_pending}</p>
-          </div>
-        </Card>
-      </div>
-
-      {/* Shared Account Fraud Syndicate Alerts (High Value Hackathon Demo Feature) */}
-      <FraudRingVisualizer alerts={alerts} />
-
-      {/* Grid: Status Distribution & Workload */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Status Distribution */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-bold">Cases by Operational Stage</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {Object.entries(stats.cases_by_status).map(([status, count]) => (
-              <div key={status} className="space-y-1">
-                <div className="flex justify-between text-xs font-medium">
-                  <span className="capitalize">{status.replace('_', ' ')}</span>
-                  <span className="font-mono font-bold">{count}</span>
-                </div>
-                <div className="w-full h-2 rounded-full bg-muted overflow-hidden">
-                  <div
-                    className="h-full bg-primary"
-                    style={{ width: `${Math.max(5, (count / stats.open_cases) * 100)}%` }}
-                  />
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-
-        {/* Operator Workload */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-bold">Staff Operator Workload</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {stats.workload.map((w) => (
-              <div
-                key={w.operator.id}
-                className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/20"
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs">
-                    {w.operator.name.charAt(0)}
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-foreground">{w.operator.name}</p>
-                    <p className="text-[11px] text-muted-foreground">Center Operator</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 text-right">
-                  <div>
-                    <p className="text-xs font-mono font-bold text-foreground">{w.open_cases} Active</p>
-                    {w.overdue_cases > 0 && (
-                      <p className="text-[10px] text-rose-600 font-semibold">{w.overdue_cases} Overdue</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      </div>
+      {/* Extraction Review Modal */}
+      {activeExtraction && (
+        <ExtractionReviewModal
+          extraction={activeExtraction}
+          isOpen={Boolean(activeExtraction)}
+          onClose={clearActive}
+          onReviewed={() => {
+            clearActive();
+            fetchCases();
+          }}
+        />
+      )}
     </div>
   );
 }

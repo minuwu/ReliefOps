@@ -1,21 +1,20 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useCaseStore } from '@/store/useCaseStore';
 import { useReviewQueueStore } from '@/store/useReviewQueueStore';
+import { useAuthStore } from '@/store/useAuthStore';
 import { CaseSummary } from '@/types/api';
 import { CaseDetailModal } from '@/components/cases/CaseDetailModal';
 import { ExtractionReviewModal } from '@/components/extraction/ExtractionReviewModal';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { GlitchText } from '@/components/ui/GlitchText';
+import { StickerBadge } from '@/components/ui/StickerBadge';
 import { DEMO_BANKS } from '@/services/mockData';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, pluralize } from '@/lib/utils';
 import {
   Search,
   Building2,
-  Calendar,
-  AlertCircle,
   BrainCircuit,
-  MessageSquare,
-  Users,
   ChevronRight,
   PlusCircle,
   RefreshCw,
@@ -23,16 +22,17 @@ import {
   Clock,
   AlertOctagon,
   ArrowUpDown,
+  Keyboard,
 } from 'lucide-react';
 
 const STATUS_TABS: { label: string; value: string }[] = [
-  { label: 'All Cases', value: '' },
-  { label: 'Received', value: 'received' },
-  { label: 'Verified', value: 'verified' },
-  { label: 'Account Check', value: 'account_check' },
-  { label: 'Notice Published', value: 'notice_published' },
-  { label: 'Payout Review', value: 'payout_review' },
-  { label: 'Closed', value: 'closed' },
+  { label: 'ALL CLAIMS', value: '' },
+  { label: '1. RECEIVED', value: 'received' },
+  { label: '2. VERIFIED', value: 'verified' },
+  { label: '3. ACCOUNT CHECK', value: 'account_check' },
+  { label: '4. NOTICE PUB', value: 'notice_published' },
+  { label: '5. PAYOUT REV', value: 'payout_review' },
+  { label: '6. CLOSED', value: 'closed' },
 ];
 
 interface CasesPageProps {
@@ -40,6 +40,7 @@ interface CasesPageProps {
 }
 
 export function CasesPage({ onOpenIntake }: CasesPageProps) {
+  const { user } = useAuthStore();
   const { cases, filters, setFilters, fetchCases, fetchCaseById, selectedCase, isLoading } =
     useCaseStore();
   const { activeExtraction, fetchExtraction, clearActive } = useReviewQueueStore();
@@ -47,6 +48,8 @@ export function CasesPage({ onOpenIntake }: CasesPageProps) {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState(filters.search || '');
   const [sortBy, setSortBy] = useState<'deadline' | 'amount_desc' | 'amount_asc' | 'created_desc'>('deadline');
+  const [focusedIndex, setFocusedIndex] = useState(0);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchCases();
@@ -83,100 +86,159 @@ export function CasesPage({ onOpenIntake }: CasesPageProps) {
     return 0;
   });
 
+  // High-Velocity Keyboard Navigation: J/K, Enter, Space, Slash
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (isDetailOpen || Boolean(activeExtraction)) return;
+      const target = e.target as HTMLElement;
+      const isInput =
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'SELECT';
+
+      if (e.key === '/' && !isInput) {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        return;
+      }
+
+      if (isInput) {
+        if (e.key === 'Escape') {
+          searchInputRef.current?.blur();
+        }
+        return;
+      }
+
+      if (e.key === 'j' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        setFocusedIndex((prev) => Math.min(prev + 1, Math.max(sortedCases.length - 1, 0)));
+      } else if (e.key === 'k' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        setFocusedIndex((prev) => Math.max(prev - 1, 0));
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (sortedCases[focusedIndex]) {
+          handleSelectCase(sortedCases[focusedIndex]);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [sortedCases, focusedIndex, isDetailOpen, activeExtraction]);
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 sm:space-y-8 font-['Space_Grotesk',sans-serif]">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b-2 border-[#09090B] pb-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            Multi-Bank Case Operations Roster
-          </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-            Operational triage across five regional banks adhering to statutory restitution deadlines
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <GlitchText as="h1" className="text-xl sm:text-3xl font-['Dela_Gothic_One'] text-[#09090B] break-words">
+              CASE OPERATIONS ROSTER
+            </GlitchText>
+            <StickerBadge variant="acid" rotate="rotate-1" className="text-xs">
+              5-BANK ALLIANCE
+            </StickerBadge>
+          </div>
+          <p className="text-xs sm:text-sm font-medium text-[#52525B] mt-1">
+            Real-time multi-bank claim triage and statutory milestone progression under Japan Law No. 133
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
-          <Button variant="outline" size="sm" onClick={() => fetchCases()} isLoading={isLoading}>
-            <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Refresh
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <Button variant="outline" size="sm" onClick={() => fetchCases()} isLoading={isLoading} className="gap-1.5">
+            <RefreshCw className="w-3.5 h-3.5" /> REFRESH
           </Button>
-          <Button size="sm" onClick={onOpenIntake} className="gap-1.5">
-            <PlusCircle className="w-4 h-4" /> Open New Case Intake
+          <Button variant="primary" size="sm" onClick={onOpenIntake} className="gap-1.5">
+            <PlusCircle className="w-4 h-4" /> NEW CASE INTAKE
           </Button>
         </div>
       </div>
 
       {/* Telemetry Summary Bar */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="p-3.5 rounded-xl border border-border bg-card shadow-xs flex items-center gap-3">
-          <div className="p-2.5 rounded-lg bg-primary/10 text-primary">
+      <div className="grid grid-cols-1 min-[450px]:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {/* Total Claims */}
+        <div className="p-4 rounded-2xl border-2 border-[#09090B] bg-[#F8F4E8] shadow-hard flex items-center gap-4 bg-dot-pattern">
+          <div className="p-2.5 rounded-xl bg-[#09090B] text-[#D2E823] border border-[#09090B]">
             <TrendingUp className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Total Claims Value</p>
-            <p className="text-base font-bold font-mono text-foreground">{formatCurrency(totalClaimed, 'JPY')}</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-[#52525B]">TOTAL CLAIMS VALUE</p>
+            <p className="text-lg sm:text-xl font-['Dela_Gothic_One'] text-[#09090B] tracking-tight">
+              {formatCurrency(totalClaimed, 'JPY')}
+            </p>
           </div>
         </div>
 
-        <div className="p-3.5 rounded-xl border border-border bg-card shadow-xs flex items-center gap-3">
-          <div className="p-2.5 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400">
+        {/* AI OCR Pending */}
+        <div className="p-4 rounded-2xl border-2 border-[#09090B] bg-[#D2E823] text-[#09090B] shadow-hard flex items-center gap-4">
+          <div className="p-2.5 rounded-xl bg-[#09090B] text-[#D2E823] border border-[#09090B]">
             <BrainCircuit className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">AI Reviews Pending</p>
-            <p className="text-base font-bold font-mono text-foreground">{aiPendingCount} Documents</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-[#09090B]">AI OCR PENDING</p>
+            <p className="text-lg sm:text-xl font-['Dela_Gothic_One'] text-[#09090B]">
+              {pluralize(aiPendingCount, 'document')}
+            </p>
           </div>
         </div>
 
-        <div className="p-3.5 rounded-xl border border-amber-500/20 bg-amber-500/5 shadow-xs flex items-center gap-3">
-          <div className="p-2.5 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
+        {/* Due Soon */}
+        <div className="p-4 rounded-2xl border-2 border-[#09090B] bg-[#F8F4E8] shadow-hard flex items-center gap-4 bg-dot-pattern">
+          <div className="p-2.5 rounded-xl bg-[#FBBF24] text-[#09090B] border border-[#09090B]">
             <Clock className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-[10px] text-amber-800 dark:text-amber-300 font-semibold uppercase tracking-wider">Due Soon (&lt;48h)</p>
-            <p className="text-base font-bold font-mono text-foreground">{dueSoonCount} Case(s)</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-[#52525B]">DUE SOON (&lt;48H)</p>
+            <p className="text-lg sm:text-xl font-['Dela_Gothic_One'] text-[#09090B]">
+              {pluralize(dueSoonCount, 'case')}
+            </p>
           </div>
         </div>
 
-        <div className="p-3.5 rounded-xl border border-rose-500/20 bg-rose-500/5 shadow-xs flex items-center gap-3">
-          <div className="p-2.5 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400">
+        {/* Overdue */}
+        <div className="p-4 rounded-2xl border-2 border-[#09090B] bg-[#F8F4E8] shadow-hard flex items-center gap-4 bg-dot-pattern">
+          <div className="p-2.5 rounded-xl bg-[#FF334B] text-[#09090B] border border-[#09090B]">
             <AlertOctagon className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-[10px] text-rose-700 dark:text-rose-300 font-semibold uppercase tracking-wider">Statutory Overdue</p>
-            <p className="text-base font-bold font-mono text-rose-700 dark:text-rose-300">{overdueCount} Case(s)</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-[#FF334B]">STATUTORY OVERDUE</p>
+            <p className="text-lg sm:text-xl font-['Dela_Gothic_One'] text-[#FF334B]">
+              {pluralize(overdueCount, 'case')}
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Filter Ribbon: Banks & Search */}
-      <div className="p-4 rounded-xl border border-border bg-card space-y-4 shadow-xs">
-        {/* Top Filter Row: Search, Sort & Bank Selector */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div className="flex items-center gap-2 flex-1 max-w-lg">
-            {/* Search bar */}
+      {/* Filter Ribbon: Banks, Search & Status */}
+      <div className="p-5 rounded-2xl border-2 border-[#09090B] bg-[#F8F4E8] shadow-hard space-y-5">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-1 max-w-xl">
+            {/* Search Input */}
             <div className="relative flex-1">
-              <Search className="w-4 h-4 absolute left-3 top-2.5 text-muted-foreground" />
+              <Search className="w-4 h-4 absolute left-3.5 top-3.5 text-[#52525B]" />
               <input
+                ref={searchInputRef}
                 type="text"
                 value={searchTerm}
                 onChange={(e) => {
                   setSearchTerm(e.target.value);
                   setFilters({ search: e.target.value });
                 }}
-                placeholder="Search by reference (RFR-...), victim name, or bank..."
-                className="w-full pl-9 pr-3 py-1.5 text-xs bg-background border border-input rounded-md focus:outline-none focus:ring-1 focus:ring-primary font-medium"
+                placeholder="Search reference, victim, or account (Press '/' to focus)"
+                aria-label="Search cases"
+                className="w-full pl-10 pr-4 py-2.5 text-xs bg-[#F8F4E8] border-2 border-[#09090B] rounded-xl shadow-hard-sm focus:outline-none focus:shadow-hard font-bold text-[#09090B] placeholder:text-[#71717A]"
               />
             </div>
 
-            {/* Sort selector */}
-            <div className="flex items-center gap-1.5 shrink-0 bg-background border border-input rounded-md px-2 py-1">
-              <ArrowUpDown className="w-3.5 h-3.5 text-muted-foreground" />
+            {/* Sort Dropdown */}
+            <div className="flex items-center gap-2 shrink-0 bg-[#F8F4E8] border-2 border-[#09090B] rounded-xl px-3 py-2 shadow-hard-sm">
+              <ArrowUpDown className="w-4 h-4 text-[#09090B]" />
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as any)}
                 aria-label="Sort cases"
-                className="text-xs bg-transparent border-0 focus:outline-none font-medium cursor-pointer text-foreground"
+                className="text-xs bg-transparent border-0 focus:outline-none font-bold uppercase cursor-pointer text-[#09090B]"
               >
                 <option value="deadline">Statutory Urgency</option>
                 <option value="amount_desc">Amount: High to Low</option>
@@ -187,46 +249,52 @@ export function CasesPage({ onOpenIntake }: CasesPageProps) {
           </div>
 
           {/* Bank selector pills */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-            <button
-              onClick={() => setFilters({ bank_id: undefined })}
-              className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap ${
-                !filters.bank_id
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              All 5 Banks
-            </button>
-            {DEMO_BANKS.map((b) => (
-              <button
-                key={b.id}
-                onClick={() => setFilters({ bank_id: b.id })}
-                className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap ${
-                  filters.bank_id === b.id
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {b.name.split(' ')[0]}
-              </button>
-            ))}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+            {user?.role === 'bank_viewer' ? (
+              <div className="px-3.5 py-1.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider border-2 border-[#09090B] bg-[#D2E823] text-[#09090B] shadow-hard-sm flex items-center gap-1.5">
+                <span>TENANT LOCKED:</span>
+                <span>{user.bank_id?.toUpperCase() || 'ASSIGNED BANK'}</span>
+              </div>
+            ) : (
+              <>
+                <button
+                  onClick={() => setFilters({ bank_id: undefined })}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap border-2 border-[#09090B] ${!filters.bank_id
+                      ? 'bg-[#09090B] text-[#D2E823] shadow-hard-sm'
+                      : 'bg-[#F8F4E8] text-[#09090B] hover:bg-[#D2E823]'
+                    }`}
+                >
+                  ALL 5 BANKS
+                </button>
+                {DEMO_BANKS.map((b) => (
+                  <button
+                    key={b.id}
+                    onClick={() => setFilters({ bank_id: b.id })}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap border-2 border-[#09090B] ${filters.bank_id === b.id
+                        ? 'bg-[#09090B] text-[#D2E823] shadow-hard-sm'
+                        : 'bg-[#F8F4E8] text-[#09090B] hover:bg-[#D2E823]'
+                      }`}
+                  >
+                    {b.name.split(' ')[0]}
+                  </button>
+                ))}
+              </>
+            )}
           </div>
         </div>
 
         {/* Status Tab Bar */}
-        <div className="flex items-center gap-1 border-t border-border pt-3 overflow-x-auto">
+        <div className="flex items-center gap-2 border-t-2 border-[#09090B] pt-4 overflow-x-auto">
           {STATUS_TABS.map((tab) => {
             const isActive = (filters.status || '') === tab.value;
             return (
               <button
                 key={tab.value}
                 onClick={() => setFilters({ status: tab.value || undefined })}
-                className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap ${
-                  isActive
-                    ? 'bg-foreground text-background font-bold shadow-xs'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
-                }`}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap border-2 border-[#09090B] ${isActive
+                    ? 'bg-[#09090B] text-[#D2E823] shadow-hard-sm translate-x-[1px] translate-y-[1px]'
+                    : 'bg-transparent text-[#09090B] hover:bg-[#D2E823]'
+                  }`}
               >
                 {tab.label}
               </button>
@@ -236,158 +304,170 @@ export function CasesPage({ onOpenIntake }: CasesPageProps) {
       </div>
 
       {/* Cases Table */}
-      <div className="rounded-xl border border-border bg-card shadow-xs overflow-hidden">
+      <div className="rounded-2xl border-2 border-[#09090B] bg-[#F8F4E8] shadow-hard-lg overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-border bg-muted/40 text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
-                <th className="py-3 px-4">Case Reference</th>
-                <th className="py-3 px-4">Bank</th>
-                <th className="py-3 px-4">Victim</th>
-                <th className="py-3 px-4">Amount (JPY)</th>
-                <th className="py-3 px-4">Status</th>
-                <th className="py-3 px-4">Deadline</th>
-                <th className="py-3 px-4">Flags & Indicators</th>
-                <th className="py-3 px-4 text-right">Action</th>
+              <tr className="border-b-2 border-[#09090B] bg-[#09090B] text-[#D2E823] text-xs font-['Space_Grotesk'] font-bold uppercase tracking-wider">
+                <th scope="col" className="whitespace-nowrap py-3.5 px-4">Case Reference</th>
+                <th scope="col" className="whitespace-nowrap py-3.5 px-4">Bank</th>
+                <th scope="col" className="whitespace-nowrap py-3.5 px-4">Victim</th>
+                <th scope="col" className="whitespace-nowrap py-3.5 px-4">Claim Amount</th>
+                <th scope="col" className="whitespace-nowrap py-3.5 px-4">Statutory Stage</th>
+                <th scope="col" className="whitespace-nowrap py-3.5 px-4">Statutory Clock</th>
+                <th scope="col" className="whitespace-nowrap py-3.5 px-4">Flags</th>
+                <th scope="col" className="whitespace-nowrap py-3.5 px-4 text-right">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border text-xs">
+            <tbody className="divide-y-2 divide-[#09090B] text-xs">
               {sortedCases.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-muted-foreground italic">
-                    No cases match the selected filters.
+                  <td colSpan={8} className="py-12 text-center text-[#52525B]">
+                    <p className="font-['Dela_Gothic_One'] text-base uppercase text-[#09090B]">NO MATCHING CLAIMS</p>
+                    <p className="text-xs font-mono mt-1">Adjust search terms or reset statutory stage filters</p>
                   </td>
                 </tr>
               ) : (
-                sortedCases.map((c) => (
-                  <tr
-                    key={c.id}
-                    onClick={() => handleSelectCase(c)}
-                    className="hover:bg-muted/30 transition-colors cursor-pointer group"
-                  >
-                    {/* Reference */}
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-foreground group-hover:text-primary transition-colors">
-                          {c.reference}
+                sortedCases.map((caseItem, idx) => {
+                  const isFocused = idx === focusedIndex;
+                  return (
+                    <tr
+                      key={caseItem.id}
+                      onClick={() => {
+                        setFocusedIndex(idx);
+                        handleSelectCase(caseItem);
+                      }}
+                      className={`hover:bg-[#EDE8D5] transition-colors cursor-pointer group ${isFocused ? 'bg-[#EDE8D5] border-l-4 border-l-[#D2E823]' : ''
+                        }`}
+                    >
+                      {/* Case Number */}
+                      <td className="py-3 px-4 font-mono font-bold text-[#09090B]">
+                        <span className="inline-flex items-center gap-1.5">
+                          {isFocused && (
+                            <span className="text-[#09090B] font-black text-xs">▶</span>
+                          )}
+                          <span className="px-2 py-0.5 rounded bg-[#09090B] text-[#D2E823] border border-[#09090B]">
+                            {caseItem.reference}
+                          </span>
                         </span>
-                      </div>
-                      <span className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5">
-                        <Calendar className="w-3 h-3" /> {formatDate(c.reported_date)}
-                      </span>
-                    </td>
+                      </td>
 
-                    {/* Bank */}
-                    <td className="py-3.5 px-4 font-medium text-foreground">
-                      <span className="flex items-center gap-1.5">
-                        <Building2 className="w-3.5 h-3.5 text-primary" />
-                        {c.bank_name}
-                      </span>
-                    </td>
+                      {/* Bank */}
+                      <td className="py-3 px-4 font-mono font-bold uppercase text-[#09090B]">
+                        <span className="flex items-center gap-1.5">
+                          <Building2 className="w-3.5 h-3.5 text-[#52525B]" />
+                          {caseItem.bank_id}
+                        </span>
+                      </td>
 
-                    {/* Victim */}
-                    <td className="py-3.5 px-4">
-                      <p className="font-semibold text-foreground">{c.victim_name}</p>
-                      <span className="text-[10px] text-muted-foreground capitalize">
-                        {c.scam_type || 'Unclassified'}
-                      </span>
-                    </td>
+                      {/* Victim */}
+                      <td className="py-3 px-4 font-bold text-[#09090B] uppercase">
+                        {caseItem.victim_name}
+                      </td>
 
-                    {/* Amount */}
-                    <td className="py-3.5 px-4 font-mono font-bold text-foreground">
-                      {formatCurrency(c.amount, c.currency)}
-                    </td>
+                      {/* Amount */}
+                      <td className="py-3 px-4 font-mono font-bold text-[#09090B]">
+                        {formatCurrency(caseItem.amount || 0, 'JPY')}
+                      </td>
 
-                    {/* Status */}
-                    <td className="py-3.5 px-4">
-                      <Badge status={c.status}>{c.status.replace('_', ' ').toUpperCase()}</Badge>
-                    </td>
+                      {/* Status */}
+                      <td className="py-3 px-4">
+                        <Badge status={caseItem.status}>{caseItem.status.replace('_', ' ')}</Badge>
+                      </td>
 
-                    {/* Deadline & State */}
-                    <td className="py-3.5 px-4">
-                      <Badge deadlineState={c.deadline_state}>
-                        {c.deadline_state.replace('_', ' ')}
-                      </Badge>
-                    </td>
+                      {/* Deadline */}
+                      <td className="py-3 px-4">
+                        <Badge deadlineState={caseItem.deadline_state}>
+                          {caseItem.deadline_state.replace('_', ' ')}
+                        </Badge>
+                      </td>
 
-                    {/* Flags */}
-                    <td className="py-3.5 px-4">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        {c.flags.ai_review_pending && (
-                          <span
-                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300 text-[10px] font-semibold"
-                            title="AI document extraction ready for HITL review"
-                          >
-                            <BrainCircuit className="w-3 h-3" /> AI Review
-                          </span>
-                        )}
-                        {c.flags.shared_account_case_count > 0 && (
-                          <span
-                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300 text-[10px] font-bold"
-                            title="Account linked to multiple fraud victims"
-                          >
-                            <Users className="w-3 h-3" /> {c.flags.shared_account_case_count} Shared
-                          </span>
-                        )}
-                        {c.flags.victim_question_pending && (
-                          <span
-                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 dark:bg-amber-950 dark:text-amber-300 text-[10px] font-bold animate-pulse"
-                            title="Victim question escalated to center staff"
-                          >
-                            <MessageSquare className="w-3 h-3" /> Chat Escalated
-                          </span>
-                        )}
-                        {c.flags.missing_fields.length > 0 && (
-                          <span
-                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-[10px]"
-                            title={`Missing: ${c.flags.missing_fields.join(', ')}`}
-                          >
-                            <AlertCircle className="w-3 h-3" /> {c.flags.missing_fields.length} Missing
-                          </span>
-                        )}
-                      </div>
-                    </td>
+                      {/* Flags */}
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-1.5">
+                          {caseItem.flags.ai_review_pending && (
+                            <span
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-[#D2E823] text-[#09090B] border border-[#09090B] shadow-[1px_1px_0px_0px_#09090B]"
+                            >
+                              <BrainCircuit className="w-3 h-3" /> OCR PENDING
+                            </span>
+                          )}
+                          {caseItem.flags.shared_account_case_count > 0 && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-[#FF334B] text-[#09090B] border border-[#09090B]">
+                              SYNDICATE ({caseItem.flags.shared_account_case_count})
+                            </span>
+                          )}
+                        </div>
+                      </td>
 
-                    {/* Action */}
-                    <td className="py-3.5 px-4 text-right">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 px-2 text-xs text-primary"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleSelectCase(c);
-                        }}
-                      >
-                        Inspect <ChevronRight className="w-3.5 h-3.5 ml-1" />
-                      </Button>
-                    </td>
-                  </tr>
-                ))
+                      {/* Action */}
+                      <td className="py-3 px-4 text-right">
+                        <span className="inline-flex items-center gap-1 font-bold text-xs text-[#09090B] group-hover:text-[#09090B] group-hover:underline">
+                          INSPECT <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
       </div>
 
+      {/* Keyboard Shortcuts Status Ribbon (Desktop / Tablet) */}
+      <div className="hidden sm:flex flex-wrap items-center justify-between gap-3 px-5 py-3 rounded-xl border-2 border-[#09090B] bg-[#09090B] text-[#D2E823] text-xs font-mono shadow-hard-sm">
+        <div className="flex items-center gap-5 flex-wrap">
+          <span className="flex items-center gap-1.5 text-[#F8F4E8] font-bold">
+            <Keyboard className="w-4 h-4 text-[#D2E823]" /> HOTKEYS:
+          </span>
+          <span className="flex items-center gap-1.5 text-[#F8F4E8]">
+            <span className="px-1.5 py-0.5 rounded bg-[#18181B] border border-[#3F3F46] text-[#D2E823] font-bold">J</span>
+            <span className="px-1.5 py-0.5 rounded bg-[#18181B] border border-[#3F3F46] text-[#D2E823] font-bold">K</span>
+            <span className="text-[#A1A1AA]">Navigate</span>
+          </span>
+          <span className="flex items-center gap-1.5 text-[#F8F4E8]">
+            <span className="px-1.5 py-0.5 rounded bg-[#18181B] border border-[#3F3F46] text-[#D2E823] font-bold">Enter</span>
+            <span className="text-[#A1A1AA]">Inspect Claim</span>
+          </span>
+          <span className="flex items-center gap-1.5 text-[#F8F4E8]">
+            <span className="px-1.5 py-0.5 rounded bg-[#18181B] border border-[#3F3F46] text-[#D2E823] font-bold">/</span>
+            <span className="text-[#A1A1AA]">Focus Search</span>
+          </span>
+        </div>
+        <span className="text-[#A1A1AA] text-[11px] font-bold">
+          ACTIVE ROW: {sortedCases.length > 0 && sortedCases[focusedIndex] ? sortedCases[focusedIndex].reference : 'NONE'}
+        </span>
+      </div>
+
       {/* Case Detail Modal */}
-      <CaseDetailModal
-        caseItem={selectedCase}
-        isOpen={isDetailOpen}
-        onClose={() => setIsDetailOpen(false)}
-        onOpenExtraction={handleOpenExtraction}
-      />
+      {isDetailOpen && selectedCase && (
+        <CaseDetailModal
+          caseItem={selectedCase}
+          isOpen={isDetailOpen}
+          onClose={() => setIsDetailOpen(false)}
+          onCaseUpdated={() => {
+            fetchCases();
+            if (selectedCase) fetchCaseById(selectedCase.id);
+          }}
+          onOpenExtraction={(extractionId) => {
+            handleOpenExtraction(extractionId);
+          }}
+        />
+      )}
 
       {/* Extraction Review Modal */}
-      <ExtractionReviewModal
-        extraction={activeExtraction}
-        isOpen={Boolean(activeExtraction)}
-        onClose={clearActive}
-        onSuccess={() => {
-          fetchCases();
-          if (selectedCase) fetchCaseById(selectedCase.id);
-        }}
-      />
+      {activeExtraction && (
+        <ExtractionReviewModal
+          extraction={activeExtraction}
+          isOpen={Boolean(activeExtraction)}
+          onClose={clearActive}
+          onReviewed={() => {
+            clearActive();
+            fetchCases();
+          }}
+        />
+      )}
     </div>
   );
 }

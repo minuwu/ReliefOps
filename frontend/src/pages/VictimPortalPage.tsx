@@ -4,12 +4,12 @@ import { api } from '@/services/api';
 import { DEMO_BANKS } from '@/services/mockData';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Card, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
+import { GlitchText } from '@/components/ui/GlitchText';
+import { StickerBadge } from '@/components/ui/StickerBadge';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { CaseProgressStepper } from '@/components/cases/CaseProgressStepper';
 import {
-  FileSpreadsheet,
   Send,
   Building2,
   CheckCircle2,
@@ -17,6 +17,7 @@ import {
   AlertCircle,
   KeyRound,
   Sparkles,
+  ArrowRight,
 } from 'lucide-react';
 
 export function VictimPortalPage() {
@@ -33,7 +34,7 @@ export function VictimPortalPage() {
   const [amount, setAmount] = useState('');
   const [transferDate, setTransferDate] = useState(new Date().toISOString().split('T')[0]);
   const [accountNumber, setAccountNumber] = useState('');
-  const [accountHolderName, setAccountHolderName] = useState('');
+  const [accountHolderName] = useState('');
   const [scamType, setScamType] = useState('impersonation');
   const [description, setDescription] = useState('');
   const [isSubmittingIntake, setIsSubmittingIntake] = useState(false);
@@ -112,71 +113,80 @@ export function VictimPortalPage() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <div className="max-w-5xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 sm:space-y-8 font-['Space_Grotesk',sans-serif]">
       {/* Top Banner */}
-      <div className="p-6 rounded-2xl bg-linear-to-r from-teal-900 to-slate-900 text-white shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="px-2 py-0.5 rounded bg-teal-500/30 text-teal-300 font-semibold text-xs border border-teal-400/30">
-              Public Victim Protection Portal
+      <div className="p-4 sm:p-8 rounded-2xl border-2 border-[#09090B] bg-[#09090B] text-[#F8F4E8] shadow-hard sm:shadow-hard-lg flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6 relative overflow-hidden">
+        <div className="absolute inset-0 bg-dot-pattern-inverted opacity-10 pointer-events-none" />
+
+        <div className="relative z-10 space-y-2">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <StickerBadge variant="acid" rotate="-rotate-1" className="text-xs">
+              CITIZEN SELF-SERVICE PORTAL
+            </StickerBadge>
+            <span className="text-[11px] sm:text-xs font-mono text-[#D2E823] font-bold uppercase">
+              PROTECTED UNDER LAW NO. 133
             </span>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            Fraud Victim Relief & Bluebook Assistant
-          </h1>
-          <p className="text-xs text-slate-300 max-w-xl">
-            Submit a relief claim across any of the 5 participating regional banks, check your case status, or ask our Bluebook AI Assistant regarding restitution policies.
+          <GlitchText as="h1" className="text-xl sm:text-3xl font-['Dela_Gothic_One'] text-[#F8F4E8] break-words">
+            FRAUD RELIEF & CITIZEN CLAIMS
+          </GlitchText>
+          <p className="text-xs text-[#A1A1AA] max-w-xl font-medium">
+            Track your scam restitution claim, verify frozen mule funds, or consult our 24/7 Bluebook AI Assistant regarding pro-rata distribution rights.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 bg-slate-800/80 p-1.5 rounded-xl border border-slate-700">
+        <div className="relative z-10 flex items-center gap-2 bg-[#18181B] p-1.5 rounded-xl border-2 border-[#27272A]">
           <button
             onClick={() => setActiveTab('track')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              activeTab === 'track' ? 'bg-teal-600 text-white shadow-xs' : 'text-slate-300 hover:text-white'
-            }`}
+            className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${activeTab === 'track'
+                ? 'bg-[#D2E823] text-[#09090B] shadow-[2px_2px_0px_0px_#F8F4E8]'
+                : 'text-[#A1A1AA] hover:text-[#F8F4E8]'
+              }`}
           >
-            Track Existing Case
+            TRACK CASE
           </button>
           <button
             onClick={() => setActiveTab('intake')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              activeTab === 'intake' ? 'bg-teal-600 text-white shadow-xs' : 'text-slate-300 hover:text-white'
-            }`}
+            className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${activeTab === 'intake'
+                ? 'bg-[#D2E823] text-[#09090B] shadow-[2px_2px_0px_0px_#F8F4E8]'
+                : 'text-[#A1A1AA] hover:text-[#F8F4E8]'
+              }`}
           >
-            File New Report
+            FILE REPORT
           </button>
         </div>
       </div>
 
       {/* ====================================================================
-       * TAB 1: TRACK EXISTING CASE & ASK RAG CHATBOT
+       * TAB 1: TRACK EXISTING CASE
        * ==================================================================== */}
       {activeTab === 'track' && (
         <>
           {!victimCase ? (
             /* Login Box */
-            <Card className="max-w-md mx-auto p-6 space-y-5">
-              <div className="text-center space-y-1">
-                <div className="w-10 h-10 rounded-full bg-teal-50 text-teal-700 dark:bg-teal-950 dark:text-teal-300 flex items-center justify-center mx-auto mb-2">
-                  <KeyRound className="w-5 h-5" />
+            <div className="max-w-md mx-auto p-6 sm:p-8 rounded-2xl border-2 border-[#09090B] bg-[#F8F4E8] shadow-hard-lg space-y-6">
+              <div className="text-center space-y-2">
+                <div className="w-12 h-12 rounded-xl bg-[#09090B] text-[#D2E823] flex items-center justify-center mx-auto border-2 border-[#09090B] shadow-hard-sm">
+                  <KeyRound className="w-6 h-6" />
                 </div>
-                <h2 className="text-lg font-bold text-foreground">Access Your Relief Case</h2>
-                <p className="text-xs text-muted-foreground">
-                  Enter the Reference ID and 12-character Access Code provided upon intake.
+                <h2 className="text-lg font-['Dela_Gothic_One'] uppercase text-[#09090B]">
+                  ACCESS YOUR CLAIM
+                </h2>
+                <p className="text-xs text-[#52525B] font-medium">
+                  Enter your Case Reference ID and 12-character Access Code issued by your bank.
                 </p>
               </div>
 
               <form onSubmit={handleLogin} className="space-y-4">
                 <Input
-                  label="Case Reference"
+                  label="Case Reference *"
                   placeholder="e.g. RFR-2026-00042"
                   value={refInput}
                   onChange={(e) => setRefInput(e.target.value)}
                   required
                 />
                 <Input
-                  label="One-Time Access Code"
+                  label="One-Time Access Code *"
                   placeholder="e.g. K7QM-4XHP-2RTV"
                   value={codeInput}
                   onChange={(e) => setCodeInput(e.target.value)}
@@ -184,338 +194,332 @@ export function VictimPortalPage() {
                 />
 
                 {loginError && (
-                  <p className="text-xs text-destructive font-medium bg-destructive/10 p-2.5 rounded border border-destructive/20">
+                  <p className="text-xs text-[#FF334B] font-bold bg-[#FF334B]/10 p-3 rounded-xl border-2 border-[#FF334B]">
                     {loginError}
                   </p>
                 )}
 
-                <Button type="submit" className="w-full bg-teal-600 hover:bg-teal-700 text-white" isLoading={isLoggingIn}>
-                  Verify & Open Case
+                <Button type="submit" variant="primary" size="lg" className="w-full gap-2 shadow-hard hover:shadow-hard-sm" isLoading={isLoggingIn}>
+                  <span>AUTHENTICATE & TRACK CLAIM</span>
+                  <ArrowRight className="w-4 h-4" />
                 </Button>
               </form>
 
-              {/* Demo Quick Fills */}
-              <div className="pt-4 border-t border-border space-y-2">
-                <p className="text-[11px] font-semibold text-muted-foreground uppercase text-center">
-                  Judge Demo One-Click Access
+              {/* Demo Quick Fills for Judges */}
+              <div className="pt-5 border-t-2 border-[#09090B] space-y-2.5">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-[#52525B] text-center">
+                  1-CLICK DEMO CREDENTIALS (JUDGES)
                 </p>
-                <div className="flex flex-col gap-1.5">
+                <div className="flex flex-col gap-2">
                   <button
                     onClick={() => handleQuickDemoFill('RFR-2026-00042', 'K7QM-4XHP-2RTV')}
-                    className="p-2 rounded-lg border border-border bg-muted/40 hover:bg-muted text-xs text-left flex justify-between items-center cursor-pointer"
+                    className="p-3 rounded-xl border-2 border-[#09090B] bg-[#EDE8D5] hover:bg-[#D2E823] transition-colors text-xs text-left flex justify-between items-center cursor-pointer shadow-hard-sm"
                   >
-                    <span>
-                      <strong>RFR-2026-00042</strong> (Birch Bank • Verified)
-                    </span>
-                    <span className="text-[10px] text-teal-600 font-mono">Use Code →</span>
+                    <div>
+                      <strong className="font-mono text-[#09090B]">RFR-2026-00042</strong>
+                      <span className="text-[10px] text-[#52525B] block">Bank of Tokyo • Verified</span>
+                    </div>
+                    <span className="text-xs font-bold text-[#09090B] uppercase">USE CODE →</span>
                   </button>
                   <button
                     onClick={() => handleQuickDemoFill('RFR-2026-00051', 'M3PX-8KWN-5QDA')}
-                    className="p-2 rounded-lg border border-border bg-muted/40 hover:bg-muted text-xs text-left flex justify-between items-center cursor-pointer"
+                    className="p-3 rounded-xl border-2 border-[#09090B] bg-[#EDE8D5] hover:bg-[#D2E823] transition-colors text-xs text-left flex justify-between items-center cursor-pointer shadow-hard-sm"
                   >
-                    <span>
-                      <strong>RFR-2026-00051</strong> (Cobalt Bank • Received)
-                    </span>
-                    <span className="text-[10px] text-teal-600 font-mono">Use Code →</span>
+                    <div>
+                      <strong className="font-mono text-[#09090B]">RFR-2026-00051</strong>
+                      <span className="text-[10px] text-[#52525B] block">Osaka Bank • Received</span>
+                    </div>
+                    <span className="text-xs font-bold text-[#09090B] uppercase">USE CODE →</span>
                   </button>
                 </div>
               </div>
-            </Card>
+            </div>
           ) : (
-            /* Logged-In Victim Workspace */
+            /* Logged-In Citizen Workspace */
             <div className="space-y-6">
               {/* Stepper Card */}
-              <div className="p-4 rounded-xl border border-border bg-card shadow-xs">
+              <div className="p-6 rounded-2xl border-2 border-[#09090B] bg-[#F8F4E8] shadow-hard">
                 <CaseProgressStepper currentStatus={victimCase.status} closureReason={victimCase.closure_reason} />
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              {/* Left Column: Case Summary & Facts */}
-              <div className="lg:col-span-5 space-y-5">
-                <Card className="p-5 space-y-4">
-                  <div className="flex items-start justify-between border-b border-border pb-3">
-                    <div>
-                      <span className="font-mono text-lg font-bold text-foreground">
-                        {victimCase.reference}
-                      </span>
-                      <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5 font-medium">
-                        <Building2 className="w-3.5 h-3.5 text-teal-600" />
-                        {victimCase.bank_name}
-                      </p>
-                    </div>
-                    <Badge status={victimCase.status}>
-                      {victimCase.status.replace('_', ' ').toUpperCase()}
-                    </Badge>
-                  </div>
-
-                  <div className="space-y-2 text-xs">
-                    <div className="flex justify-between border-b border-border/50 pb-1.5">
-                      <span className="text-muted-foreground">Victim:</span>
-                      <span className="font-semibold text-foreground">{victimCase.victim.name}</span>
-                    </div>
-                    <div className="flex justify-between border-b border-border/50 pb-1.5">
-                      <span className="text-muted-foreground">Reported Amount:</span>
-                      <span className="font-mono font-bold text-foreground">
-                        {formatCurrency(victimCase.amount, victimCase.currency)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between border-b border-border/50 pb-1.5">
-                      <span className="text-muted-foreground">Incident Date:</span>
-                      <span className="text-foreground">
-                        {victimCase.transfer_date ? formatDate(victimCase.transfer_date) : '—'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between border-b border-border/50 pb-1.5">
-                      <span className="text-muted-foreground">Suspect Account:</span>
-                      <span className="font-mono text-foreground">{victimCase.account_number}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Reported Date:</span>
-                      <span className="text-foreground">{formatDate(victimCase.submitted_at)}</span>
-                    </div>
-                  </div>
-
-                  {/* Privacy Safe Note */}
-                  <div className="p-3 rounded-lg bg-muted/40 border border-border text-[11px] text-muted-foreground leading-relaxed">
-                    <strong>Victim Privacy Protection (D13):</strong> Internal staff notes, investigator identity, and other case files are strictly quarantined from victim sessions.
-                  </div>
-
-                  <Button variant="outline" size="sm" onClick={clearSession} className="w-full text-xs">
-                    Exit Case Session
-                  </Button>
-                </Card>
-              </div>
-
-              {/* Right Column: Case Assistant RAG Chatbot */}
-              <div className="lg:col-span-7">
-                <Card className="flex flex-col h-[560px]">
-                  {/* Chat Header */}
-                  <CardHeader className="py-3 px-5 border-b border-border bg-muted/20 flex flex-row items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-full bg-teal-500/20 text-teal-700 dark:text-teal-300 flex items-center justify-center font-bold">
-                        <Sparkles className="w-4 h-4" />
-                      </div>
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                {/* Left Column: Case Facts & Verification (5 Cols) */}
+                <div className="lg:col-span-5 space-y-5">
+                  <div className="p-6 rounded-2xl border-2 border-[#09090B] bg-[#F8F4E8] shadow-hard space-y-4">
+                    <div className="flex items-start justify-between border-b-2 border-[#09090B] pb-3">
                       <div>
-                        <CardTitle className="text-sm font-bold flex items-center gap-2">
-                          Bank Bluebook Case Assistant
-                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300">
-                            RAG Grounded
-                          </span>
-                        </CardTitle>
-                        <p className="text-[11px] text-muted-foreground">
-                          Grounded strictly in <strong>{victimCase.bank_name}</strong>'s published policies
+                        <span className="font-mono text-xl font-black text-[#09090B]">
+                          {victimCase.reference}
+                        </span>
+                        <p className="text-xs text-[#52525B] flex items-center gap-1 mt-0.5 font-bold uppercase">
+                          <Building2 className="w-3.5 h-3.5 text-[#09090B]" />
+                          {victimCase.bank_name}
                         </p>
                       </div>
+                      <Badge status={victimCase.status}>
+                        {victimCase.status.replace('_', ' ')}
+                      </Badge>
                     </div>
-                  </CardHeader>
 
-                  {/* Chat Messages Scroller */}
-                  <div className="flex-1 p-4 overflow-y-auto space-y-4">
-                    {chatThread?.messages.map((msg) => (
-                      <div
-                        key={msg.id}
-                        className={`flex flex-col ${
-                          msg.role === 'victim' ? 'items-end' : 'items-start'
-                        }`}
-                      >
-                        <div
-                          className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-xs leading-relaxed ${
-                            msg.role === 'victim'
-                              ? 'bg-teal-600 text-white rounded-br-none'
-                              : 'bg-muted border border-border text-foreground rounded-bl-none space-y-2'
-                          }`}
-                        >
-                          <p>{msg.body}</p>
-
-                          {/* Grounded Bluebook Citations */}
-                          {msg.citations && msg.citations.length > 0 && (
-                            <div className="pt-2 border-t border-border/60 space-y-1">
-                              <p className="text-[10px] font-bold text-teal-700 dark:text-teal-300 flex items-center gap-1 uppercase tracking-wider">
-                                <Quote className="w-3 h-3" />
-                                Official Policy Citation:
-                              </p>
-                              {msg.citations.map((c, i) => (
-                                <div key={i} className="p-2 rounded bg-background/60 border border-border/60 text-[11px] space-y-0.5">
-                                  <p className="font-semibold text-foreground">{c.document_title} (v{c.version})</p>
-                                  <p className="text-muted-foreground">{c.section} • Page {c.page}</p>
-                                  <p className="italic text-foreground/80 mt-1">"{c.quote}"</p>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-
-                          {/* Escalated flag */}
-                          {msg.needs_staff && (
-                            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-500/10 p-1.5 rounded">
-                              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                              Staff Escalation Triggered — Operations team will review in case thread.
-                            </div>
-                          )}
-                        </div>
-                        <span className="text-[10px] text-muted-foreground mt-1 px-1">
-                          {msg.role === 'victim' ? 'You' : 'Assistant'} •{' '}
-                          {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    <div className="space-y-2 text-xs font-medium">
+                      <div className="flex justify-between border-b-2 border-[#09090B]/20 pb-1.5">
+                        <span className="text-[#52525B]">Claimant:</span>
+                        <span className="font-bold text-[#09090B] uppercase">{victimCase.victim.name}</span>
+                      </div>
+                      <div className="flex justify-between border-b-2 border-[#09090B]/20 pb-1.5">
+                        <span className="text-[#52525B]">Reported Loss:</span>
+                        <span className="font-['Dela_Gothic_One'] text-sm text-[#09090B]">
+                          {formatCurrency(victimCase.amount, victimCase.currency)}
                         </span>
                       </div>
-                    ))}
-                  </div>
+                      <div className="flex justify-between border-b-2 border-[#09090B]/20 pb-1.5">
+                        <span className="text-[#52525B]">Transfer Date:</span>
+                        <span className="font-mono text-[#09090B]">
+                          {victimCase.transfer_date ? formatDate(victimCase.transfer_date) : '—'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between border-b-2 border-[#09090B]/20 pb-1.5">
+                        <span className="text-[#52525B]">Suspect Account:</span>
+                        <span className="font-mono font-bold text-[#FF334B]">{victimCase.account_number}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-[#52525B]">Report Date:</span>
+                        <span className="font-mono text-[#09090B]">{formatDate(victimCase.submitted_at)}</span>
+                      </div>
+                    </div>
 
-                  {/* Suggested Question Pills for Instant Demo */}
-                  <div className="px-4 py-2 border-t border-border/60 bg-muted/30 flex items-center gap-1.5 overflow-x-auto text-[11px]">
-                    <span className="text-muted-foreground font-semibold shrink-0">Ask:</span>
-                    <button
-                      type="button"
-                      onClick={() => setQuestionText('How long does Birch Regional Bank take to freeze the fraudulent account?')}
-                      className="px-2 py-0.5 rounded-full bg-background border border-border hover:border-teal-500 hover:text-teal-600 transition-colors whitespace-nowrap cursor-pointer"
-                    >
-                      Freezing procedures?
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setQuestionText('Will my bank compensate before the official 60-day notice ends?')}
-                      className="px-2 py-0.5 rounded-full bg-background border border-border hover:border-teal-500 hover:text-teal-600 transition-colors whitespace-nowrap cursor-pointer"
-                    >
-                      60-day notice payout?
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setQuestionText('What documents are required to support my wire transfer claim?')}
-                      className="px-2 py-0.5 rounded-full bg-background border border-border hover:border-teal-500 hover:text-teal-600 transition-colors whitespace-nowrap cursor-pointer"
-                    >
-                      Required documents?
-                    </button>
-                  </div>
-
-                  {/* Question Input */}
-                  <form onSubmit={handleSendChat} className="p-3 border-t border-border bg-card flex gap-2">
-                    <input
-                      type="text"
-                      value={questionText}
-                      onChange={(e) => setQuestionText(e.target.value)}
-                      placeholder={`Ask about restitution, freezing rules, or deadlines for ${victimCase.bank_name}...`}
-                      className="flex-1 text-xs bg-background border border-input rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-teal-500"
-                    />
-                    <Button
-                      type="submit"
-                      size="sm"
-                      isLoading={isChatSending}
-                      disabled={!questionText.trim()}
-                      className="bg-teal-600 hover:bg-teal-700 text-white px-3"
-                    >
-                      <Send className="w-4 h-4" />
+                    <Button variant="outline" size="sm" onClick={clearSession} className="w-full text-xs shadow-hard-sm">
+                      EXIT SESSION
                     </Button>
-                  </form>
-                </Card>
+                  </div>
+                </div>
+
+                {/* Right Column: Case Assistant RAG Chatbot (7 Cols) */}
+                <div className="lg:col-span-7">
+                  <div className="rounded-2xl border-2 border-[#09090B] bg-[#F8F4E8] shadow-hard flex flex-col h-[580px] overflow-hidden">
+                    {/* Chat Header */}
+                    <div className="p-4 border-b-2 border-[#09090B] bg-[#EDE8D5] flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="w-8 h-8 rounded-lg bg-[#09090B] text-[#D2E823] flex items-center justify-center font-bold text-xs border border-[#09090B]">
+                          <Sparkles className="w-4 h-4" />
+                        </span>
+                        <div>
+                          <p className="text-xs font-['Dela_Gothic_One'] uppercase text-[#09090B]">
+                            BANK BLUEBOOK RESTITUTION ASSISTANT
+                          </p>
+                          <p className="text-[10px] font-mono text-[#52525B]">
+                            RAG Grounded in {victimCase.bank_name} Statutory Policies
+                          </p>
+                        </div>
+                      </div>
+                      <StickerBadge variant="acid" rotate="rotate-0" className="text-[10px] py-0 px-2">
+                        LAW 133 GROUNDED
+                      </StickerBadge>
+                    </div>
+
+                    {/* Chat Messages */}
+                    <div className="flex-1 p-4 overflow-y-auto space-y-4">
+                      {chatThread?.messages.map((msg) => (
+                        <div
+                          key={msg.id}
+                          className={`flex flex-col ${msg.role === 'victim' ? 'items-end' : 'items-start'
+                            }`}
+                        >
+                          <div
+                            className={`max-w-[85%] rounded-2xl p-4 text-xs font-medium leading-relaxed border-2 border-[#09090B] ${msg.role === 'victim'
+                                ? 'bg-[#09090B] text-[#D2E823] shadow-hard-sm rounded-br-none'
+                                : 'bg-[#F8F4E8] text-[#09090B] shadow-hard-sm rounded-bl-none space-y-2'
+                              }`}
+                          >
+                            <p>{msg.body}</p>
+
+                            {/* Citations */}
+                            {msg.citations && msg.citations.length > 0 && (
+                              <div className="pt-2 border-t-2 border-[#09090B]/20 space-y-1.5">
+                                <p className="text-[10px] font-bold text-[#09090B] uppercase flex items-center gap-1">
+                                  <Quote className="w-3 h-3" /> OFFICIAL CITATION:
+                                </p>
+                                {msg.citations.map((c, i) => (
+                                  <div key={i} className="p-2 rounded-lg bg-[#EDE8D5] border border-[#09090B] text-[10px] space-y-0.5">
+                                    <p className="font-bold text-[#09090B]">{c.document_title} (v{c.version})</p>
+                                    <p className="text-[#52525B]">{c.section} • Page {c.page}</p>
+                                    <p className="italic text-[#09090B] mt-1">"{c.quote}"</p>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {msg.needs_staff && (
+                              <div className="flex items-center gap-1.5 text-[10px] font-bold text-[#09090B] bg-[#FF334B] p-2 rounded-lg border border-[#09090B]">
+                                <AlertCircle className="w-3.5 h-3.5" />
+                                Escalation Triggered: Operations staff will review in queue.
+                              </div>
+                            )}
+                          </div>
+                          <span className="text-[10px] font-mono text-[#52525B] mt-1 px-1">
+                            {msg.role === 'victim' ? 'You' : 'Bluebook Assistant'} •{' '}
+                            {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Quick Starter Chips */}
+                    <div className="px-3 py-2 bg-[#EDE8D5] border-t-2 border-[#09090B] flex flex-wrap gap-1.5">
+                      {[
+                        'What is the 30-day notice period?',
+                        'How does pro-rata distribution work?',
+                        'Will I recover 100% of my loss?',
+                        'What if the mule account balance is zero?',
+                      ].map((prompt) => (
+                        <button
+                          key={prompt}
+                          type="button"
+                          onClick={() => {
+                            setQuestionText(prompt);
+                            sendMessage(prompt);
+                          }}
+                          className="text-[10px] font-bold px-2.5 py-1 rounded-lg border-2 border-[#09090B] bg-[#F8F4E8] text-[#09090B] hover:bg-[#D2E823] transition-colors cursor-pointer shadow-hard-sm"
+                        >
+                          {prompt}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Chat Input */}
+                    <form onSubmit={handleSendChat} className="p-3 border-t-2 border-[#09090B] bg-[#EDE8D5] flex gap-2">
+                      <input
+                        type="text"
+                        value={questionText}
+                        onChange={(e) => setQuestionText(e.target.value)}
+                        placeholder="Ask about pro-rata distribution, timeline, or required evidence..."
+                        className="flex-1 text-xs font-bold rounded-xl border-2 border-[#09090B] bg-[#F8F4E8] px-3.5 py-2 shadow-hard-sm focus:outline-none placeholder:text-[#71717A]"
+                      />
+                      <Button type="submit" variant="primary" size="sm" isLoading={isChatSending} disabled={!questionText.trim()} className="shadow-hard-sm">
+                        <Send className="w-3.5 h-3.5 mr-1" /> ASK
+                      </Button>
+                    </form>
+                  </div>
+                </div>
               </div>
-            </div>
             </div>
           )}
         </>
       )}
 
       {/* ====================================================================
-       * TAB 2: PUBLIC INTAKE FORM (SUBMIT FRAUD REPORT)
+       * TAB 2: FILE NEW REPORT
        * ==================================================================== */}
       {activeTab === 'intake' && (
-        <Card className="max-w-2xl mx-auto p-6 space-y-6">
-          <div className="border-b border-border pb-4 space-y-1">
-            <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
-              <FileSpreadsheet className="w-5 h-5 text-teal-600" />
-              Submit Incident Report (Public Intake)
+        <div className="max-w-2xl mx-auto p-6 sm:p-8 rounded-2xl border-2 border-[#09090B] bg-[#F8F4E8] shadow-hard-lg space-y-6">
+          <div className="space-y-1">
+            <h2 className="text-xl font-['Dela_Gothic_One'] uppercase text-[#09090B]">
+              PUBLIC CITIZEN CLAIM REGISTRATION
             </h2>
-            <p className="text-xs text-muted-foreground">
-              Register fraudulent wire transfer details directly into the operations relief network.
+            <p className="text-xs text-[#52525B] font-medium">
+              Submit an official scam report under Japan's Furikome Sagi Relief Act across any of the 5 partner regional banks.
             </p>
           </div>
 
           {intakeSuccessResult ? (
-            <div className="p-6 rounded-xl bg-teal-50 dark:bg-teal-950/40 border border-teal-300 dark:border-teal-800 text-center space-y-4">
-              <div className="w-12 h-12 rounded-full bg-teal-600 text-white flex items-center justify-center mx-auto">
+            <div className="p-6 rounded-2xl bg-[#D2E823] text-[#09090B] border-2 border-[#09090B] shadow-hard space-y-4">
+              <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-6 h-6" />
+                <h3 className="font-['Dela_Gothic_One'] uppercase text-base">REPORT OFFICIALLY REGISTERED</h3>
               </div>
-              <div>
-                <h3 className="text-base font-bold text-teal-950 dark:text-teal-200">
-                  Incident Report Filed Successfully
-                </h3>
-                <p className="text-xs text-teal-800 dark:text-teal-300 mt-1">
-                  Save your Case Reference and Access Code immediately. You will need both to track case progress and speak with the AI assistant.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 max-w-sm mx-auto text-left">
-                <div className="p-3 bg-card rounded-lg border border-border">
-                  <p className="text-[10px] text-muted-foreground uppercase font-bold">Reference ID</p>
-                  <p className="text-sm font-mono font-bold text-foreground mt-0.5">
-                    {intakeSuccessResult.reference}
-                  </p>
+              <p className="text-xs font-medium">
+                Your scam claim has been securely received by the Operations Center. Save your access code to track pro-rata distribution progress.
+              </p>
+              <div className="p-4 rounded-xl bg-[#F8F4E8] border-2 border-[#09090B] space-y-2 font-mono text-xs">
+                <div className="flex justify-between">
+                  <span className="text-[#52525B]">CASE REFERENCE:</span>
+                  <span className="font-bold text-[#09090B]">{intakeSuccessResult.reference}</span>
                 </div>
-                <div className="p-3 bg-card rounded-lg border border-border">
-                  <p className="text-[10px] text-muted-foreground uppercase font-bold">Access Code</p>
-                  <p className="text-sm font-mono font-bold text-foreground mt-0.5">
-                    {intakeSuccessResult.access_code}
-                  </p>
+                <div className="flex justify-between">
+                  <span className="text-[#52525B]">ACCESS CODE:</span>
+                  <span className="font-black text-[#09090B] tracking-widest text-sm">{intakeSuccessResult.access_code}</span>
                 </div>
               </div>
-
               <Button
+                variant="primary"
+                size="md"
                 onClick={() => {
-                  handleQuickDemoFill(intakeSuccessResult.reference, intakeSuccessResult.access_code);
+                  setIntakeSuccessResult(null);
                   setActiveTab('track');
+                  setRefInput(intakeSuccessResult.reference);
+                  setCodeInput(intakeSuccessResult.access_code);
                 }}
-                className="bg-teal-600 hover:bg-teal-700 text-white"
+                className="w-full shadow-hard"
               >
-                Track Case Now
+                PROCEED TO CASE TRACKER
               </Button>
             </div>
           ) : (
             <form onSubmit={handleSubmitIntake} className="space-y-4">
-              {/* Select Bank */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-foreground">Destination Bank (Account Held At):</label>
-                <select
-                  value={bankId}
-                  onChange={(e) => setBankId(e.target.value)}
-                  className="w-full text-xs bg-background border border-input rounded-md p-2 focus:ring-1 focus:ring-teal-500"
-                >
-                  {DEMO_BANKS.map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.name}
-                    </option>
-                  ))}
-                </select>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-[#09090B]">
+                    TARGET REGIONAL BANK
+                  </label>
+                  <select
+                    value={bankId}
+                    onChange={(e) => setBankId(e.target.value)}
+                    className="w-full text-xs font-bold bg-[#F8F4E8] border-2 border-[#09090B] rounded-xl p-3 shadow-hard-sm focus:outline-none"
+                  >
+                    {DEMO_BANKS.map((b) => (
+                      <option key={b.id} value={b.id}>
+                        {b.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-[#09090B]">
+                    SCAM CATEGORY
+                  </label>
+                  <select
+                    value={scamType}
+                    onChange={(e) => setScamType(e.target.value)}
+                    className="w-full text-xs font-bold bg-[#F8F4E8] border-2 border-[#09090B] rounded-xl p-3 shadow-hard-sm focus:outline-none"
+                  >
+                    <option value="impersonation">Police / Financial Impersonation</option>
+                    <option value="investment">Fraudulent Investment Solicitation</option>
+                    <option value="romance">International Romance Fraud</option>
+                    <option value="tech_support">Remote Desktop Extortion</option>
+                  </select>
+                </div>
               </div>
 
-              {/* Victim Contact */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <Input
-                  label="Your Full Name"
-                  placeholder="e.g. Kenji Sato"
+                  label="Your Full Name *"
                   value={victimName}
                   onChange={(e) => setVictimName(e.target.value)}
+                  placeholder="e.g. Kenji Tanaka"
                   required
                 />
                 <Input
                   label="Phone Number"
-                  placeholder="e.g. 090-0000-1122"
                   value={victimPhone}
                   onChange={(e) => setVictimPhone(e.target.value)}
+                  placeholder="+81 90-1234-5678"
                 />
                 <Input
                   label="Email Address"
-                  placeholder="e.g. sato@example.jp"
+                  type="email"
                   value={victimEmail}
                   onChange={(e) => setVictimEmail(e.target.value)}
+                  placeholder="victim@domain.jp"
                 />
               </div>
 
-              {/* Financial Facts */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <Input
-                  label="Amount Sent (JPY)"
+                  label="Amount Lost (JPY) *"
                   type="number"
-                  placeholder="e.g. 1500000"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
+                  placeholder="e.g. 1500000"
                   required
                 />
                 <Input
@@ -525,63 +529,40 @@ export function VictimPortalPage() {
                   onChange={(e) => setTransferDate(e.target.value)}
                   required
                 />
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-foreground">Scam Type:</label>
-                  <select
-                    value={scamType}
-                    onChange={(e) => setScamType(e.target.value)}
-                    className="w-full text-xs bg-background border border-input rounded-md p-2 focus:ring-1 focus:ring-teal-500"
-                  >
-                    <option value="phishing">Phishing</option>
-                    <option value="impersonation">Impersonation / Police Escrow</option>
-                    <option value="investment">Investment / Crypto Yield</option>
-                    <option value="romance">Romance Scam</option>
-                    <option value="lottery_prize">Lottery / Advance Fee</option>
-                    <option value="job_offer">Fake Employment</option>
-                    <option value="other">Other</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Recipient Account Facts */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Input
-                  label="Beneficiary Account Number"
-                  placeholder="e.g. 9876543210"
+                  label="Destination Account *"
                   value={accountNumber}
                   onChange={(e) => setAccountNumber(e.target.value)}
+                  placeholder="e.g. 9823-1049-21"
                   required
                 />
-                <Input
-                  label="Beneficiary Account Name"
-                  placeholder="e.g. GLOBAL ASSET TRUST"
-                  value={accountHolderName}
-                  onChange={(e) => setAccountHolderName(e.target.value)}
-                />
               </div>
 
-              {/* Narrative Description */}
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-foreground">Incident Description:</label>
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#09090B]">
+                  INCIDENT DETAILS / POLICE STATION REFERENCE
+                </label>
                 <textarea
-                  rows={3}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Describe how the fraudulent contact occurred and where you were instructed to send money..."
-                  className="w-full text-xs bg-background border border-input rounded-md p-2.5 focus:ring-1 focus:ring-teal-500"
+                  rows={3}
+                  placeholder="Describe the scam communication, wire transfer instructions, or police report filing number..."
+                  className="w-full text-xs font-bold rounded-xl border-2 border-[#09090B] bg-[#F8F4E8] p-3 shadow-hard-sm focus:outline-none placeholder:text-[#71717A]"
                 />
               </div>
 
-              <Button
-                type="submit"
-                className="w-full bg-teal-600 hover:bg-teal-700 text-white"
-                isLoading={isSubmittingIntake}
-              >
-                Submit Incident Report & Generate Case ID
-              </Button>
+              <div className="flex justify-end gap-3 pt-3 border-t-2 border-[#09090B]">
+                <Button variant="outline" size="md" type="button" onClick={() => setActiveTab('track')} className="shadow-hard-sm">
+                  CANCEL
+                </Button>
+                <Button variant="primary" size="md" type="submit" isLoading={isSubmittingIntake} className="gap-2 shadow-hard">
+                  <span>SUBMIT STATUTORY REPORT</span>
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
+              </div>
             </form>
           )}
-        </Card>
+        </div>
       )}
     </div>
   );
