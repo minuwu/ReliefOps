@@ -124,6 +124,15 @@ I read Asif's whole work log, [REMAINING_WORK.md](../asif/REMAINING_WORK.md), mi
   - [test_case_moves.py](../../backend/tests/api/test_case_moves.py): 9 tests, including **the full received → paid_out lifecycle**, `MISSING_REQUIRED_INFO` `[document]`, a skipped step, a back move without a note, money closures, **two concurrent transitions → one `200`, one `409`, one audit entry**, and every role. **535 tests pass.**
   - **XREQ-001 → `[RESOLVED]`** in AGENTS.md, with proof. Minhaz can switch the case screens off the mock.
 
+- **N12, staff accounts** ([services/staff.py](../../backend/app/services/staff.py), [routers/staff.py](../../backend/app/routers/staff.py)):
+  - `POST /api/invitations` (supervisor) → `201` `Invitation`, plus an email with a 72 h link `/accept-invitation?token=…`. `bank_id` is required for `bank_viewer` and refused for other roles (`422`). An email that already has an account or a pending invitation → `409 BAD_REQUEST` (the contract's code). An expired pending invitation is marked `expired` so the email can be invited again.
+  - `GET /api/invitations` lists newest first; the status reads `expired` after 72 h. `POST /api/invitations/{id}/revoke` works only on pending ones (`409 INVALID_STATUS_TRANSITION` `{from, to: "revoked", allowed: []}`; unknown → `404`).
+  - `POST /api/auth/accept-invitation` creates the account with the invited role and bank, email verified, and marks the invitation accepted in one transaction (single-use, `400 INVALID_TOKEN` after that).
+  - `GET /api/users` (operator, supervisor): active users, with a `role` filter; `include_inactive` works only for supervisors. `PATCH /api/users/{id}` `{is_active}` (supervisor): deactivating **ends every session** and blocks login (`401 INVALID_CREDENTIALS`); reactivating restores it. A supervisor can't deactivate themselves (`422`).
+  - Audited: `user.invited`, `user.invitation_revoked`, `user.joined`, `user.deactivated`.
+  - **Open (Asif, contract):** there's no `user.reactivated` audit action, so a reactivation is recorded as `user.deactivated` with `changes.is_active {from: false, to: true}` and the summary "reactivated". Add the action in a migration and the contract?
+  - [test_staff.py](../../backend/tests/api/test_staff.py): 8 tests, including **an invited bank_c viewer who, once joined, sees only bank_c cases**. Responses are validated against `openapi.yaml`. **545 tests pass.**
+
 ### Local test database (for anyone on Windows without Postgres)
 ```bash
 docker run -d --name reliefops-pg -e POSTGRES_PASSWORD=postgres -p 127.0.0.1:55433:5432 pgvector/pgvector:pg16
@@ -139,8 +148,8 @@ cd backend && uv run pytest -q
 
 ### Next (in order, each: tests → commit → pull → push)
 - ~~N2~~ done.
-- ~~N3~~, ~~N4~~, ~~N5~~, ~~N6~~, ~~N7~~, ~~N8~~, ~~N9~~, ~~N10~~, ~~N11~~ done (Phase 2 complete; XREQ-001 resolved).
-- Next, Phase 3: N12 (invitations, accept, deactivate, users list), N13 (notes), N14 (dashboard, alerts), N15 (permission table), N16 (smoke script).
+- ~~N3~~, ~~N4~~, ~~N5~~, ~~N6~~, ~~N7~~, ~~N8~~, ~~N9~~, ~~N10~~, ~~N11~~ done (Phase 2 complete; XREQ-001 resolved). ~~N12~~ done.
+- Next, Phase 3: N13 (notes), N14 (dashboard, alerts), N15 (permission table), N16 (smoke script).
 
 ### Blockers / handoff
 - **Galib:** rotate the AI keys (critical finding above).
