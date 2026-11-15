@@ -32,6 +32,7 @@ out/
 .next/
 .nuxt/
 .turbo/
+.vite/
 coverage/
 .nyc_output/
 # Firebase & Cloud Credentials (sensitive)
