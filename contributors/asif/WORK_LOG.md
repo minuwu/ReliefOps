@@ -51,6 +51,12 @@ Decision (Asif): build all my business logic as **service functions with databas
   - Filters by `lane` and `bank_id` (`422` if unknown), paginated, with the case reference, bank name, filename and assigned operator.
   - (The CSV export part of A11 shipped with A7.)
   - 8 tests.
+- **A14, victim invite and claim** ([claims.py](../../backend/app/services/claims.py)): `POST /api/cases/{id}/victim-invite` and `POST /api/victim/claims`.
+  - **Invite:** emails a 7-day link to the case's victim. Only the SHA-256 hash is stored; the token is never audited. A new invite cancels the old link.
+  - **Claim:** the logged-in victim with the **same verified email** links the case to their account. A used, expired or made-up link is `400 INVALID_TOKEN`; another email is `403`; an unverified account is `403 EMAIL_NOT_VERIFIED`.
+  - **Scope:** checks run in the caller's scope, and the token write runs with its audit entry in one system transaction (`auth_tokens` is system-only under RLS).
+  - **Email:** sending is passed in (`send_email`), so Anim's `email.send` plugs straight in.
+  - 12 tests.
 
 ## 2026-11-15 (session 10) — backend Phase 1 done
 
