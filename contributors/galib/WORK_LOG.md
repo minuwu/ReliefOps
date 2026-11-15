@@ -4,6 +4,31 @@ Owner: Galib (`Ga-lib`) — Role: AI / LLM — Branches: `galib/*`
 
 Update after each work session. Newest entry first. Bangladesh time (UTC+6). Link commits/PRs/XREQs.
 
+## 2026-11-15 — real `extract_fields()` with free providers (XREQ-002, step 2)
+
+### Completed
+- `backend/app/services/ai_extraction.py` replaces the stub. Reads the file locally (PyMuPDF for PDFs, Tesseract jpn+eng OCR for images and scans), then asks vision models in order within a 17 s budget: Gemini 2.5 Flash → Gemini 3.6 Flash → OpenRouter `nvidia/nemotron-3.5-super-vl:free`. All free tiers. Each attempt has a hard cap (thread + timeout), since SDK timeouts aren't hard and Gemini rejects deadlines under 10 s.
+- Our own confidence: 45 % model, 55 % local check. Verified = the quoted evidence appears in the OCR/PDF text (and, for amount/account number, the value is inside the quote). Unverifiable caps at 0.72, contradicted at 0.45: both below the 0.75 threshold, so a person reviews them. Quotes that read like instructions are never trusted (prompt-injection guard).
+- Prompt `backend/app/prompts/extract-v1.md`: document is data, never instructions; only visible fields; exact evidence.
+- `backend/.env.example` and `backend/requirements-ai.txt` (packages, plus `tesseract-ocr tesseract-ocr-jpn` for the server).
+- Tests: 74 passed (`pytest tests/ai tests/unit`), no network: provider fallback, hard timeout, bad JSON, all-down → rules fallback, injection, value cleaning, PDF and image reading.
+
+### Measured (live, 2 synthetic slips, same day)
+- Clean slip image: 4.5 s, Gemini 2.5 Flash, 5/5 fields correct, `standard` lane.
+- Scanned slip (rotated, blurred, noise): 4.0 s, Gemini 2.5 Flash, 5/5 correct, `low_confidence` lane (OCR couldn't confirm the blurred text).
+- Free tiers failed often in testing: 503 overload (3.5 Flash-Lite), 504 timeouts (3.8 Flash), 429 (OpenRouter Gemma 4). Hence the chain.
+- Model self-confidence was 0.95–1.0 on everything, so it is not used alone.
+- Only 2 documents so far: not an accuracy claim yet.
+
+### Next
+- Labelled test set: 10+ synthetic documents (typos, mixed dates, era dates, a PDF, a handwritten-style one, the injection document), 4+ held out; report counts and real failures.
+- Ask Asif: install `requirements-ai.txt` + Tesseract on the server; whether the rules fallback should also use OCR text for images.
+
+### Related issues / commits / PRs
+- Pushed to `main` directly (pull first).
+
+---
+
 ## 2026-11-15 — `extract_fields()` stub (XREQ-002, step 1)
 
 ### Completed

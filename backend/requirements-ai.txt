@@ -1,0 +1,11 @@
+# Python packages for the AI module (app/services/ai_extraction.py). Move into pyproject.toml when it exists.
+# Without them the module raises AIUnavailableError and the engine's rules fallback runs.
+google-genai>=1.0
+openai>=1.0
+pymupdf>=1.24
+pytesseract>=0.3.10
+pillow>=10.0
+python-dotenv>=1.0
+
+# System packages on the server (Debian/Ubuntu Dockerfile):
+#   apt-get install -y tesseract-ocr tesseract-ocr-jpn
