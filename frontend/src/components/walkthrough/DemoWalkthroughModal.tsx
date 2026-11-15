@@ -4,8 +4,11 @@ import { Button } from '@/components/ui/Button';
 import { StickerBadge } from '@/components/ui/StickerBadge';
 import { GlitchText } from '@/components/ui/GlitchText';
 import { useAuthStore } from '@/store/useAuthStore';
-import { useVictimSessionStore } from '@/store/useVictimSessionStore';
-import { DEMO_USERS } from '@/services/mockData';
+import { useNavigate } from 'react-router-dom';
+import { DEMO_PASSWORD } from '@/services/mockData';
+import { errorMessage } from '@/services/http';
+import { toast } from '@/store/useToastStore';
+import { PATHS } from '@/routes/paths';
 import {
   LifeBuoy,
   Inbox,
@@ -25,7 +28,6 @@ import {
 export interface DemoWalkthroughModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelectTab: (tab: 'cases' | 'review' | 'dashboard' | 'audit' | 'victim') => void;
 }
 
 interface Scenario {
@@ -37,7 +39,8 @@ interface Scenario {
   subtitle: string;
   persona: string;
   roleDescription: string;
-  targetTab: 'cases' | 'review' | 'dashboard' | 'audit' | 'victim';
+  /** URL the scenario opens after switching account. */
+  targetPath: string;
   userEmail: string;
   story: string;
   goal: string;
@@ -56,17 +59,17 @@ const SCENARIOS: Scenario[] = [
     subtitle: 'Citizen Self-Service Under Furikomi Relief Act (Law No. 133)',
     persona: 'Haruto Tanaka (67, Scam Victim, Shibuya Tokyo)',
     roleDescription: 'Defrauded citizen seeking recovery of illicitly transferred savings',
-    targetTab: 'victim',
-    userEmail: 'operator1@opscenter.test',
+    targetPath: PATHS.portal,
+    userEmail: 'victim1@mail.test',
     story:
       'Haruto received a fraudulent phone call from an imposter claiming his national pension was locked, directing him to transfer ¥1,450,000 into an "escrow safety account" at Birch Regional Bank. Realizing he was defrauded, Haruto urgently accesses the ReliefOps Citizen Portal.',
     goal: 'Submit an emergency relief claim, upload the ATM Furikomi receipt, track the 6-stage statutory recovery lifecycle, and communicate with center triage operators.',
     steps: [
       {
         number: '01',
-        action: 'Access Citizen Portal & Authenticate Claim',
+        action: 'Log In to the Victim Portal',
         outcome:
-          'Click 1-Click Demo Credential for RFR-2026-00042 (Access Code: K7QM-4XHP-2RTV) to load active claim.',
+          'Log in as victim1@mail.test. Case RFR-2026-00042 is already linked to that account. New victims sign up, confirm the email from the Demo inbox, then report online.',
       },
       {
         number: '02',
@@ -76,15 +79,15 @@ const SCENARIOS: Scenario[] = [
       },
       {
         number: '03',
-        action: 'Review Frozen Mule Funds & Restitution Ratio',
+        action: 'Correct Details Within the Allowed Window',
         outcome:
-          'Confirm that ¥1,450,000 claim is mapped against Birch Regional Bank frozen balance of ¥520,000.',
+          'Edit contact details at any stage. Report details (amount, account, scam type) lock once staff verify the case.',
       },
       {
         number: '04',
-        action: 'Interact With 2-Way Operator Chat & Legal Assistant',
+        action: 'Ask the Assistant About the Case',
         outcome:
-          'Send questions regarding pro-rata distribution formulas and police report synchronization.',
+          'Answers cite the bank bluebook. If the assistant cannot answer, staff are told and reply in the same thread.',
       },
     ],
     actionLabel: 'Launch Citizen Journey (Victim Portal)',
@@ -100,7 +103,7 @@ const SCENARIOS: Scenario[] = [
     subtitle: 'Workstation Prioritization, SLA Timers & Inter-Bank Freezes',
     persona: 'Aoi Sato (Operator One, Tokyo Shared Operations Center)',
     roleDescription: 'Frontline triage specialist managing high-velocity cross-bank queues',
-    targetTab: 'cases',
+    targetPath: PATHS.cases,
     userEmail: 'operator1@opscenter.test',
     story:
       'Aoi oversees the shared intake workstation. With 38 cases incoming from 5 regional banks, she must prioritize claims facing strict 48-hour statutory deadlines and issue swift freeze orders to recipient financial institutions.',
@@ -144,7 +147,7 @@ const SCENARIOS: Scenario[] = [
     subtitle: 'Rule D3: Mandatory Human Certification for All AI Extractions',
     persona: 'Operator Two (Certified Optical & Forensic Reviewer)',
     roleDescription: 'Auditor verifying low-confidence document OCR extractions before ledger commit',
-    targetTab: 'review',
+    targetPath: PATHS.review,
     userEmail: 'operator2@opscenter.test',
     story:
       'A victim submitted an ATM receipt with a fold line and faint thermal printer text. The Vision OCR engine processed the voucher but scored only 68% confidence on the recipient account number. Under statutory rules, AI can never commit data to banking records without certified operator sign-off.',
@@ -188,7 +191,7 @@ const SCENARIOS: Scenario[] = [
     subtitle: '5-Bank Ecosystem Oversight & Fraud Ring Topology',
     persona: 'Supervisor Sarah (Chief Operations Officer, Tokyo Ops Hub)',
     roleDescription: 'Executive supervisor directing inter-bank intelligence and regulatory compliance',
-    targetTab: 'dashboard',
+    targetPath: PATHS.dashboard,
     userEmail: 'supervisor@opscenter.test',
     story:
       'Sarah manages the shared operations command center for Aster, Birch, Cobalt, Dune, and Ember Regional Banks. She tracks high-altitude KPIs, monitors SLA breaches, and investigates organized crime rings laundering stolen funds across multiple banks simultaneously.',
@@ -232,7 +235,7 @@ const SCENARIOS: Scenario[] = [
     subtitle: 'Strict Institutional Boundary Enforcement Under Banking Privacy Law',
     persona: 'Birch Compliance Officer (Birch Regional Bank)',
     roleDescription: 'Bank risk officer viewing claims and restitution calculations exclusively for Birch Bank',
-    targetTab: 'cases',
+    targetPath: PATHS.cases,
     userEmail: 'viewer@bank-b.test',
     story:
       '5 rival banks share this operations center to reduce costs, but Japanese banking confidentiality laws strictly mandate that Bank B cannot view, search, or infer cases belonging to Bank A, C, D, or E.',
@@ -276,7 +279,7 @@ const SCENARIOS: Scenario[] = [
     subtitle: 'Cryptographically Sealed Immutable Audit Ledger',
     persona: 'Kenzo Mori (Financial Services Agency / FSA Inspector)',
     roleDescription: 'Government auditor inspecting statutory adherence and algorithmic transparency',
-    targetTab: 'audit',
+    targetPath: PATHS.audit,
     userEmail: 'supervisor@opscenter.test',
     story:
       'Inspector Mori conducts a spot inspection of the shared center. Under the Furikomi Fraud Relief Act, every state change, document upload, OCR override, and account freeze must be recorded in an immutable, tamper-evident audit log.',
@@ -313,39 +316,22 @@ const SCENARIOS: Scenario[] = [
   },
 ];
 
-export function DemoWalkthroughModal({
-  isOpen,
-  onClose,
-  onSelectTab,
-}: DemoWalkthroughModalProps) {
+export function DemoWalkthroughModal({ isOpen, onClose }: DemoWalkthroughModalProps) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const { login } = useAuthStore();
-  const { authenticate } = useVictimSessionStore();
+  const navigate = useNavigate();
 
   const currentScenario = SCENARIOS[selectedIndex];
   const Icon = currentScenario.icon;
 
   const handleLaunchScenario = async () => {
-    // 1. Switch simulated user if needed
-    const targetUser = DEMO_USERS.find((u) => u.email === currentScenario.userEmail);
-    if (targetUser) {
-      await login(targetUser.email, 'password');
+    try {
+      await login(currentScenario.userEmail, DEMO_PASSWORD);
+      navigate(currentScenario.targetPath);
+      onClose();
+    } catch (err) {
+      toast(errorMessage(err, 'Could not start this scenario.'), 'error');
     }
-
-    // 2. Pre-authenticate victim session if victim scenario
-    if (currentScenario.id === 'victim') {
-      try {
-        await authenticate('RFR-2026-00042', 'K7QM-4XHP-2RTV');
-      } catch (err) {
-        // ignore if already loaded
-      }
-    }
-
-    // 3. Select target tab
-    onSelectTab(currentScenario.targetTab);
-
-    // 4. Close modal
-    onClose();
   };
 
   return (

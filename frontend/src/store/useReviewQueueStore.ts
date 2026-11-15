@@ -1,6 +1,10 @@
 import { create } from 'zustand';
-import { ReviewQueueItem, Extraction } from '@/types/api';
+import type { ExtractableField, Extraction, ReviewQueueItem } from '@/types/api';
 import { api } from '@/services/api';
+import { apiError, errorMessage, isApiError } from '@/services/http';
+import { toast } from './useToastStore';
+
+type ApprovedFields = Partial<Record<ExtractableField, string | number | null>>;
 
 interface ReviewQueueState {
   queue: ReviewQueueItem[];
@@ -11,12 +15,13 @@ interface ReviewQueueState {
 
   fetchQueue: () => Promise<void>;
   fetchExtraction: (extractionId: string) => Promise<void>;
+  /** Returns true when the review was saved. */
   reviewExtraction: (
     extractionId: string,
-    action: 'accept' | 'reject',
-    approvedFields?: Record<string, string | number | null>,
+    decision: 'accept' | 'reject',
+    fields?: ApprovedFields,
     note?: string
-  ) => Promise<void>;
+  ) => Promise<boolean>;
   clearActive: () => void;
 }
 
@@ -30,35 +35,56 @@ export const useReviewQueueStore = create<ReviewQueueState>((set, get) => ({
   fetchQueue: async () => {
     set({ isLoading: true, error: null });
     try {
-      const response = await api.getReviewQueue();
-      set({ queue: response.data, isLoading: false });
-    } catch (err: any) {
-      set({ isLoading: false, error: err.message || 'Failed to load review queue' });
+      const res = await api.getReviewQueue();
+      set({ queue: res.data.items, isLoading: false });
+    } catch (err) {
+      set({ isLoading: false, error: errorMessage(err, 'Failed to load the review queue.') });
     }
   },
 
-  fetchExtraction: async (extractionId: string) => {
+  fetchExtraction: async (extractionId) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await api.getExtraction(extractionId);
-      set({ activeExtraction: response.data, isLoading: false });
-    } catch (err: any) {
-      set({ isLoading: false, error: err.message || 'Failed to load extraction' });
+      const res = await api.getExtraction(extractionId);
+      set({ activeExtraction: res.data, isLoading: false });
+    } catch (err) {
+      set({ isLoading: false, error: errorMessage(err, 'Failed to load the extraction.') });
     }
   },
 
-  reviewExtraction: async (extractionId, action, approvedFields, note) => {
+  reviewExtraction: async (extractionId, decision, fields, note) => {
     set({ isActionLoading: true, error: null });
     try {
+      // The version belongs to the CASE; extractions don't carry it, so load the case first.
+      const caseId =
+        get().activeExtraction?.case_id ??
+        get().queue.find((q) => q.extraction_id === extractionId)?.case_id;
+      if (!caseId) throw apiError('RESOURCE_NOT_FOUND', 'Extraction not found.');
+      const { data: c } = await api.getCaseById(caseId);
       await api.reviewExtraction(extractionId, {
-        action,
-        approved_fields: approvedFields,
-        review_note: note,
+        decision,
+        expected_version: c.version,
+        ...(decision === 'accept' && fields ? { fields } : {}),
+        ...(note ? { note } : {}),
       });
       set({ isActionLoading: false, activeExtraction: null });
-      get().fetchQueue();
-    } catch (err: any) {
-      set({ isActionLoading: false, error: err.message || 'Failed to submit review' });
+      toast(decision === 'accept' ? 'Values saved to the case.' : 'Extraction rejected.', 'success');
+      void get().fetchQueue();
+      return true;
+    } catch (err) {
+      set({ isActionLoading: false });
+      if (isApiError(err) && (err.code === 'ALREADY_REVIEWED' || err.code === 'STALE_CASE')) {
+        toast(
+          err.code === 'ALREADY_REVIEWED'
+            ? 'Someone else already reviewed this. The queue was refreshed.'
+            : 'The case changed while you were reviewing. Please open it again.',
+          'error'
+        );
+        set({ activeExtraction: null });
+        void get().fetchQueue();
+        return false;
+      }
+      set({ error: errorMessage(err, 'Failed to submit the review.') });
       throw err;
     }
   },

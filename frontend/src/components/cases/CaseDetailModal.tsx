@@ -1,30 +1,37 @@
-import { useState } from 'react';
-import { Case, CaseStatus, ClosureReason } from '@/types/api';
+import { useEffect, useState } from 'react';
+import { Case, CaseStatus, ClosureReason, User } from '@/types/api';
 import { useCaseStore } from '@/store/useCaseStore';
 import { useAuthStore } from '@/store/useAuthStore';
+import { toast } from '@/store/useToastStore';
 import { Modal } from '@/components/ui/Modal';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { GlitchText } from '@/components/ui/GlitchText';
-import { StickerBadge } from '@/components/ui/StickerBadge';
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
-import { DEMO_USERS } from '@/services/mockData';
 import { api } from '@/services/api';
+import { errorMessage } from '@/services/http';
 import { CaseProgressStepper } from './CaseProgressStepper';
+import { CaseDocumentsPanel } from './CaseDocumentsPanel';
+import { CaseHistoryPanel } from './CaseHistoryPanel';
+import { StaffChatPanel } from './StaffChatPanel';
 import {
   ShieldAlert,
   Calendar,
   AlertTriangle,
   FileText,
-  KeyRound,
+  MailPlus,
   CheckCircle2,
   Send,
   Building2,
   Clock,
   Sparkles,
-  Copy,
-  Check,
 } from 'lucide-react';
+import { STAGE_ORDER } from '@/lib/caseStages';
+
+function transitionLabel(from: CaseStatus, to: CaseStatus): string {
+  const label = to.replace('_', ' ');
+  if (to === 'closed') return 'Close case';
+  return STAGE_ORDER.indexOf(to) < STAGE_ORDER.indexOf(from) ? `Send back to ${label}` : `Move to ${label}`;
+}
 
 interface CaseDetailModalProps {
   caseItem: Case | null;
@@ -46,17 +53,41 @@ export function CaseDetailModal({
 
   const [noteText, setNoteText] = useState('');
   const [isSubmittingNote, setIsSubmittingNote] = useState(false);
-  const [issuedCode, setIssuedCode] = useState<string | null>(null);
-  const [isIssuingCode, setIsIssuingCode] = useState(false);
-  const [hasCopiedCode, setHasCopiedCode] = useState(false);
+  const [isInviting, setIsInviting] = useState(false);
+  const [operators, setOperators] = useState<User[]>([]);
 
   // Transition confirmation dialog state
   const [targetStatus, setTargetStatus] = useState<CaseStatus | null>(null);
-  const [closureReason, setClosureReason] = useState<ClosureReason>('withdrawn');
+  const [closureReason, setClosureReason] = useState<ClosureReason | ''>('');
+  const [payoutAmount, setPayoutAmount] = useState('');
   const [transitionNote, setTransitionNote] = useState('');
+  const [transitionError, setTransitionError] = useState<string | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
 
+  const isSupervisor = user?.role === 'supervisor';
+  const canWrite = (user?.role === 'operator' || isSupervisor) && caseItem?.status !== 'closed';
+
+  // Supervisors assign anyone; operators may only take or drop a case themselves (contract §6.3).
+  useEffect(() => {
+    if (!isSupervisor) return;
+    api
+      .getUsers({ role: 'operator' })
+      .then((res) => setOperators(res.data))
+      .catch((err) => toast(errorMessage(err, 'Could not load operators.'), 'error'));
+  }, [isSupervisor]);
+
   if (!caseItem) return null;
+
+  const assignable: User[] = isSupervisor ? operators : user ? [user] : [];
+
+  const handleAssign = async (operatorId: string | null) => {
+    try {
+      await assignCase(caseItem.id, operatorId);
+      onCaseUpdated?.();
+    } catch (err) {
+      toast(errorMessage(err, 'Could not change the assignment.'), 'error');
+    }
+  };
 
   const handleAddNote = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,33 +97,58 @@ export function CaseDetailModal({
       await addNote(caseItem.id, noteText.trim());
       setNoteText('');
       onCaseUpdated?.();
+    } catch (err) {
+      toast(errorMessage(err, 'Could not save the note.'), 'error');
     } finally {
       setIsSubmittingNote(false);
     }
   };
 
-  const handleIssueCode = async () => {
-    setIsIssuingCode(true);
+  const handleInviteVictim = async () => {
+    setIsInviting(true);
     try {
-      const res = await api.issueVictimAccessCode(caseItem.id);
-      setIssuedCode(res.data.access_code);
+      await api.inviteVictim(caseItem.id);
+      toast(`Invitation emailed to ${caseItem.victim.email}. The link works for 7 days.`, 'success');
+    } catch (err) {
+      toast(errorMessage(err, 'Could not send the invitation.'), 'error');
     } finally {
-      setIsIssuingCode(false);
+      setIsInviting(false);
     }
+  };
+
+  const openTransition = (next: CaseStatus) => {
+    setTargetStatus(next);
+    setClosureReason(next === 'closed' ? caseItem.allowed_closure_reasons[0] ?? '' : '');
+    setPayoutAmount('');
+    setTransitionNote('');
+    setTransitionError(null);
   };
 
   const confirmTransition = async () => {
     if (!targetStatus) return;
+    const isPayout = targetStatus === 'closed' && closureReason === 'paid_out';
+    const amount = Number(payoutAmount);
+    if (isPayout && (!payoutAmount || !Number.isFinite(amount) || amount < 0)) {
+      setTransitionError('Enter the amount paid out (0 or more).');
+      return;
+    }
     setIsTransitioning(true);
+    setTransitionError(null);
     try {
-      await transitionCase(caseItem.id, {
-        status: targetStatus,
-        closure_reason: targetStatus === 'closed' ? closureReason : undefined,
-        note: transitionNote.trim() || undefined,
+      const updated = await transitionCase(caseItem.id, {
+        to_status: targetStatus,
+        ...(targetStatus === 'closed' && closureReason ? { closure_reason: closureReason } : {}),
+        ...(isPayout ? { payout_amount: amount } : {}),
+        ...(transitionNote.trim() ? { note: transitionNote.trim() } : {}),
       });
+      // null means the case was stale: the store reloaded it and told the user.
       setTargetStatus(null);
-      setTransitionNote('');
-      onCaseUpdated?.();
+      if (updated) {
+        toast(`Case moved to ${updated.status.replace('_', ' ')}.`, 'success');
+        onCaseUpdated?.();
+      }
+    } catch (err) {
+      setTransitionError(errorMessage(err, 'Could not change the status.'));
     } finally {
       setIsTransitioning(false);
     }
@@ -135,21 +191,35 @@ export function CaseDetailModal({
             </div>
           </div>
 
-          {/* Operator Assignment Dropdown */}
+          {/* Operator Assignment */}
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold uppercase text-[#52525B]">OPERATOR:</span>
-            <select
-              value={caseItem.assigned_operator?.id || ''}
-              onChange={(e) => assignCase(caseItem.id, e.target.value || null)}
-              className="text-xs font-bold bg-[#F8F4E8] border-2 border-[#09090B] rounded-xl px-3 py-1.5 shadow-hard-sm focus:outline-none cursor-pointer text-[#09090B]"
-            >
-              <option value="">Unassigned</option>
-              {DEMO_USERS.filter((u) => u.role !== 'bank_viewer').map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name} ({u.role})
-                </option>
-              ))}
-            </select>
+            <label htmlFor="case-operator" className="text-xs font-bold uppercase text-[#52525B]">
+              OPERATOR:
+            </label>
+            {canWrite ? (
+              <select
+                id="case-operator"
+                value={caseItem.assigned_operator?.id || ''}
+                onChange={(e) => void handleAssign(e.target.value || null)}
+                className="text-xs font-bold bg-[#F8F4E8] border-2 border-[#09090B] rounded-xl px-3 py-1.5 shadow-hard-sm focus:outline-none cursor-pointer text-[#09090B]"
+              >
+                <option value="">Unassigned</option>
+                {caseItem.assigned_operator && !assignable.some((u) => u.id === caseItem.assigned_operator?.id) && (
+                  <option value={caseItem.assigned_operator.id} disabled>
+                    {caseItem.assigned_operator.name}
+                  </option>
+                )}
+                {assignable.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.id === user?.id ? `${u.name} (me)` : u.name}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <span id="case-operator" className="text-xs font-bold text-[#09090B]">
+                {caseItem.assigned_operator?.name ?? 'Unassigned'}
+              </span>
+            )}
           </div>
         </div>
 
@@ -159,14 +229,14 @@ export function CaseDetailModal({
         </div>
 
         {/* Dynamic Action Buttons */}
-        {caseItem.allowed_transitions.length > 0 && (
+        {canWrite && (
           <div className="p-4 rounded-2xl border-2 border-[#09090B] bg-[#D2E823] text-[#09090B] shadow-hard flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-xs font-bold uppercase tracking-wider text-[#09090B]">
                 STATUTORY WORKFLOW ACTIONS
               </p>
               <p className="text-[11px] font-mono text-[#09090B]">
-                Role ({user?.role}) permitted stage advancements per Relief Act regulations
+                Next steps allowed by the Relief Act for this stage
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -175,60 +245,34 @@ export function CaseDetailModal({
                   key={nextStatus}
                   size="sm"
                   variant={nextStatus === 'closed' ? 'destructive' : 'primary'}
-                  onClick={() => setTargetStatus(nextStatus)}
+                  onClick={() => openTransition(nextStatus)}
                   className="shadow-hard-sm"
                 >
-                  Advance to {nextStatus.replace('_', ' ')}
+                  {transitionLabel(caseItem.status, nextStatus)}
                 </Button>
               ))}
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleIssueCode}
-                isLoading={isIssuingCode}
-                className="gap-1.5 shadow-hard-sm"
-              >
-                <KeyRound className="w-3.5 h-3.5 text-[#09090B]" />
-                ISSUE CITIZEN CODE
-              </Button>
+              {caseItem.victim.email && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleInviteVictim}
+                  isLoading={isInviting}
+                  className="gap-1.5 shadow-hard-sm"
+                  title="Email the victim a link to follow this case online"
+                >
+                  <MailPlus className="w-3.5 h-3.5 text-[#09090B]" />
+                  INVITE VICTIM
+                </Button>
+              )}
             </div>
           </div>
         )}
 
-        {/* Access Code Banner when issued */}
-        {issuedCode && (
-          <div className="p-5 rounded-2xl bg-[#09090B] text-[#D2E823] border-2 border-[#09090B] shadow-hard flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <GlitchText as="p" className="text-sm font-['Dela_Gothic_One'] text-[#D2E823]">
-                  VICTIM ACCESS CODE ISSUED
-                </GlitchText>
-                <StickerBadge variant="acid" rotate="rotate-0" className="text-[10px] py-0 px-2">
-                  SECURE PASSKEY
-                </StickerBadge>
-              </div>
-              <p className="text-xs font-mono text-[#A1A1AA] mt-1">
-                Provide this 6-digit access code to the victim for self-service status & AI claims assistance.
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="bg-[#F8F4E8] text-[#09090B] px-4 py-2 rounded-xl border-2 border-[#D2E823] font-mono font-black text-lg tracking-widest shadow-hard-sm">
-                {issuedCode}
-              </div>
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => {
-                  navigator.clipboard.writeText(issuedCode);
-                  setHasCopiedCode(true);
-                  setTimeout(() => setHasCopiedCode(false), 2000);
-                }}
-                className="text-xs h-9 px-3 gap-1 shadow-hard-sm"
-              >
-                {hasCopiedCode ? <Check className="w-3.5 h-3.5 text-[#09090B]" /> : <Copy className="w-3.5 h-3.5" />}
-                {hasCopiedCode ? 'COPIED' : 'COPY'}
-              </Button>
-            </div>
+        {caseItem.status === 'closed' && (
+          <div className="p-4 rounded-2xl border-2 border-[#09090B] bg-[#EDE8D5] text-xs font-bold text-[#09090B]" role="status">
+            This case is closed ({caseItem.closure_reason?.replace('_', ' ') ?? 'no reason'}
+            {caseItem.payout_amount != null ? `, paid out ${formatCurrency(caseItem.payout_amount, caseItem.currency)}` : ''}
+            ). It is read-only.
           </div>
         )}
 
@@ -336,7 +380,7 @@ export function CaseDetailModal({
                     </div>
                   </div>
 
-                  {doc.latest_extraction && (
+                  {doc.latest_extraction && canWrite && (
                     <div className="flex items-center gap-3">
                       <span className="text-xs font-mono font-bold text-[#09090B]">
                         CONF: {((doc.latest_extraction.overall_confidence || 0) * 100).toFixed(0)}%
@@ -364,8 +408,10 @@ export function CaseDetailModal({
             OPERATOR AUDIT NOTES ({caseItem.notes.length})
           </h4>
 
+          {canWrite && (
           <form onSubmit={handleAddNote} className="space-y-2">
             <textarea
+              aria-label="New case note"
               value={noteText}
               onChange={(e) => setNoteText(e.target.value)}
               placeholder="Record statutory verification notes, bank dispatch reference, or victim contact log..."
@@ -378,6 +424,7 @@ export function CaseDetailModal({
               </Button>
             </div>
           </form>
+          )}
 
           <div className="space-y-2.5 max-h-48 overflow-y-auto">
             {caseItem.notes.map((note) => (
@@ -393,6 +440,10 @@ export function CaseDetailModal({
             ))}
           </div>
         </div>
+
+        <CaseDocumentsPanel caseId={caseItem.id} onExtractionReady={onOpenExtraction} />
+        <StaffChatPanel caseId={caseItem.id} canReply={user?.role === 'operator' || isSupervisor} />
+        <CaseHistoryPanel caseId={caseItem.id} />
       </div>
 
       {/* Transition Confirmation Dialog */}
@@ -412,8 +463,11 @@ export function CaseDetailModal({
 
             {targetStatus === 'closed' && (
               <div className="space-y-1.5">
-                <label className="text-xs font-bold uppercase text-[#09090B]">CLOSURE REASON:</label>
+                <label htmlFor="closure-reason" className="text-xs font-bold uppercase text-[#09090B]">
+                  CLOSURE REASON:
+                </label>
                 <select
+                  id="closure-reason"
                   value={closureReason}
                   onChange={(e) => setClosureReason(e.target.value as ClosureReason)}
                   className="w-full text-xs font-bold bg-[#F8F4E8] border-2 border-[#09090B] rounded-xl p-2.5 shadow-hard-sm"
@@ -427,9 +481,35 @@ export function CaseDetailModal({
               </div>
             )}
 
+            {targetStatus === 'closed' && closureReason === 'paid_out' && (
+              <div className="space-y-1.5">
+                <label htmlFor="payout-amount" className="text-xs font-bold uppercase text-[#09090B]">
+                  AMOUNT PAID OUT ({caseItem.currency}):
+                </label>
+                <input
+                  id="payout-amount"
+                  type="number"
+                  min={0}
+                  inputMode="numeric"
+                  value={payoutAmount}
+                  onChange={(e) => setPayoutAmount(e.target.value)}
+                  className="w-full text-xs font-bold bg-[#F8F4E8] border-2 border-[#09090B] rounded-xl p-2.5 shadow-hard-sm"
+                />
+              </div>
+            )}
+
+            {transitionError && (
+              <p role="alert" className="text-xs font-bold text-[#FF334B]">
+                {transitionError}
+              </p>
+            )}
+
             <div className="space-y-1.5">
-              <label className="text-xs font-bold uppercase text-[#09090B]">AUDIT NOTE / MANDATE REF:</label>
+              <label htmlFor="transition-note" className="text-xs font-bold uppercase text-[#09090B]">
+                AUDIT NOTE / MANDATE REF:
+              </label>
               <input
+                id="transition-note"
                 type="text"
                 value={transitionNote}
                 onChange={(e) => setTransitionNote(e.target.value)}

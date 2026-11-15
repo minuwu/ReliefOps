@@ -1,10 +1,12 @@
 import { useEffect, useState, useRef } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useCaseStore } from '@/store/useCaseStore';
-import { useReviewQueueStore } from '@/store/useReviewQueueStore';
 import { useAuthStore } from '@/store/useAuthStore';
+import { toast } from '@/store/useToastStore';
 import { CaseSummary } from '@/types/api';
 import { CaseDetailModal } from '@/components/cases/CaseDetailModal';
-import { ExtractionReviewModal } from '@/components/extraction/ExtractionReviewModal';
+import { CaseIntakeModal } from '@/components/cases/CaseIntakeModal';
+import { PATHS } from '@/routes/paths';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { GlitchText } from '@/components/ui/GlitchText';
@@ -35,17 +37,17 @@ const STATUS_TABS: { label: string; value: string }[] = [
   { label: '6. CLOSED', value: 'closed' },
 ];
 
-interface CasesPageProps {
-  onOpenIntake?: () => void;
-}
-
-export function CasesPage({ onOpenIntake }: CasesPageProps) {
+export function CasesPage() {
   const { user } = useAuthStore();
-  const { cases, filters, setFilters, fetchCases, fetchCaseById, selectedCase, isLoading } =
+  const { cases, filters, setFilters, fetchCases, fetchCaseById, clearSelected, selectedCase, isLoading } =
     useCaseStore();
-  const { activeExtraction, fetchExtraction, clearActive } = useReviewQueueStore();
+  const navigate = useNavigate();
+  // The open case lives in the URL (/cases/:caseId), so it can be linked and survives a reload.
+  const { caseId } = useParams<{ caseId?: string }>();
+  const isDetailOpen = Boolean(caseId);
+  const canCreate = user?.role === 'operator' || user?.role === 'supervisor';
 
-  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [isIntakeOpen, setIsIntakeOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState(filters.search || '');
   const [sortBy, setSortBy] = useState<'deadline' | 'amount_desc' | 'amount_asc' | 'created_desc'>('deadline');
   const [focusedIndex, setFocusedIndex] = useState(0);
@@ -55,13 +57,24 @@ export function CasesPage({ onOpenIntake }: CasesPageProps) {
     fetchCases();
   }, []);
 
-  const handleSelectCase = async (caseSummary: CaseSummary) => {
-    await fetchCaseById(caseSummary.id);
-    setIsDetailOpen(true);
-  };
+  useEffect(() => {
+    if (!caseId) {
+      clearSelected();
+      return;
+    }
+    let cancelled = false;
+    void fetchCaseById(caseId).then((loaded) => {
+      if (cancelled || loaded) return;
+      toast('That case does not exist or you cannot open it.', 'error');
+      navigate(PATHS.cases, { replace: true });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [caseId]);
 
-  const handleOpenExtraction = async (extractionId: string) => {
-    await fetchExtraction(extractionId);
+  const handleSelectCase = (caseSummary: CaseSummary) => {
+    navigate(PATHS.caseDetail(caseSummary.id));
   };
 
   const totalClaimed = cases.reduce((acc, c) => acc + (c.amount || 0), 0);
@@ -89,7 +102,7 @@ export function CasesPage({ onOpenIntake }: CasesPageProps) {
   // High-Velocity Keyboard Navigation: J/K, Enter, Space, Slash
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (isDetailOpen || Boolean(activeExtraction)) return;
+      if (isDetailOpen || isIntakeOpen) return;
       const target = e.target as HTMLElement;
       const isInput =
         target.tagName === 'INPUT' ||
@@ -125,7 +138,7 @@ export function CasesPage({ onOpenIntake }: CasesPageProps) {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [sortedCases, focusedIndex, isDetailOpen, activeExtraction]);
+  }, [sortedCases, focusedIndex, isDetailOpen, isIntakeOpen]);
 
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 sm:space-y-8 font-['Space_Grotesk',sans-serif]">
@@ -149,9 +162,11 @@ export function CasesPage({ onOpenIntake }: CasesPageProps) {
           <Button variant="outline" size="sm" onClick={() => fetchCases()} isLoading={isLoading} className="gap-1.5">
             <RefreshCw className="w-3.5 h-3.5" /> REFRESH
           </Button>
-          <Button variant="primary" size="sm" onClick={onOpenIntake} className="gap-1.5">
-            <PlusCircle className="w-4 h-4" /> NEW CASE INTAKE
-          </Button>
+          {canCreate && (
+            <Button variant="primary" size="sm" onClick={() => setIsIntakeOpen(true)} className="gap-1.5">
+              <PlusCircle className="w-4 h-4" /> NEW CASE INTAKE
+            </Button>
+          )}
         </div>
       </div>
 
@@ -441,30 +456,27 @@ export function CasesPage({ onOpenIntake }: CasesPageProps) {
       </div>
 
       {/* Case Detail Modal */}
-      {isDetailOpen && selectedCase && (
+      {isDetailOpen && selectedCase && selectedCase.id === caseId && (
         <CaseDetailModal
           caseItem={selectedCase}
           isOpen={isDetailOpen}
-          onClose={() => setIsDetailOpen(false)}
+          onClose={() => navigate(PATHS.cases)}
           onCaseUpdated={() => {
             fetchCases();
-            if (selectedCase) fetchCaseById(selectedCase.id);
+            fetchCaseById(selectedCase.id);
           }}
-          onOpenExtraction={(extractionId) => {
-            handleOpenExtraction(extractionId);
-          }}
+          onOpenExtraction={(extractionId) => navigate(PATHS.reviewDetail(extractionId))}
         />
       )}
 
-      {/* Extraction Review Modal */}
-      {activeExtraction && (
-        <ExtractionReviewModal
-          extraction={activeExtraction}
-          isOpen={Boolean(activeExtraction)}
-          onClose={clearActive}
-          onReviewed={() => {
-            clearActive();
+      {isIntakeOpen && (
+        <CaseIntakeModal
+          isOpen={isIntakeOpen}
+          onClose={() => setIsIntakeOpen(false)}
+          onCaseCreated={(created) => {
+            setIsIntakeOpen(false);
             fetchCases();
+            navigate(PATHS.caseDetail(created.id));
           }}
         />
       )}

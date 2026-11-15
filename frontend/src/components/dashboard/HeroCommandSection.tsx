@@ -50,15 +50,17 @@ export function HeroCommandSection({
 
           {/* Action CTAs */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2 w-full sm:w-auto">
-            <Button
-              variant="primary"
-              size="lg"
-              onClick={onOpenIntake}
-              className="shadow-hard-lg hover:shadow-hard text-xs sm:text-sm gap-2 justify-center w-full sm:w-auto"
-            >
-              <span>OPEN NEW CASE INTAKE</span>
-              <ArrowRight className="w-4 h-4" />
-            </Button>
+            {onOpenIntake && (
+              <Button
+                variant="primary"
+                size="lg"
+                onClick={onOpenIntake}
+                className="shadow-hard-lg hover:shadow-hard text-xs sm:text-sm gap-2 justify-center w-full sm:w-auto"
+              >
+                <span>OPEN NEW CASE INTAKE</span>
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+            )}
 
             <Button
               variant="secondary"

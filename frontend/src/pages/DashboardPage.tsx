@@ -1,43 +1,45 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '@/services/api';
+import { errorMessage } from '@/services/http';
 import { DashboardStats, SharedAccountAlert, CaseSummary } from '@/types/api';
 import { useCaseStore } from '@/store/useCaseStore';
+import { useAuthStore } from '@/store/useAuthStore';
 import { HeroCommandSection } from '@/components/dashboard/HeroCommandSection';
 import { BentoMetricsGrid } from '@/components/dashboard/BentoMetricsGrid';
 import { UrgentCasesCarousel } from '@/components/dashboard/UrgentCasesCarousel';
 import { FraudRingVisualizer } from '@/components/dashboard/FraudRingVisualizer';
 import { Marquee } from '@/components/ui/Marquee';
-import { CaseDetailModal } from '@/components/cases/CaseDetailModal';
 import { CaseIntakeModal } from '@/components/cases/CaseIntakeModal';
-import { ExtractionReviewModal } from '@/components/extraction/ExtractionReviewModal';
-import { useReviewQueueStore } from '@/store/useReviewQueueStore';
+import { PATHS } from '@/routes/paths';
 
-interface DashboardPageProps {
-  onNavigateToCases?: (filter?: string) => void;
-  onNavigateToReview?: () => void;
-}
-
-export function DashboardPage({ onNavigateToCases, onNavigateToReview }: DashboardPageProps) {
+export function DashboardPage() {
+  const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [alerts, setAlerts] = useState<SharedAccountAlert[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [isIntakeOpen, setIsIntakeOpen] = useState(false);
-  const [isDetailOpen, setIsDetailOpen] = useState(false);
 
-  const { cases, fetchCases, fetchCaseById, selectedCase } = useCaseStore();
-  const { activeExtraction, fetchExtraction, clearActive } = useReviewQueueStore();
+  const { cases, fetchCases } = useCaseStore();
+  const role = useAuthStore((s) => s.user?.role);
+  // Shared-account alerts are supervisor-only; bank viewers read stats but cannot create cases.
+  const isSupervisor = role === 'supervisor';
 
   useEffect(() => {
     async function loadData() {
       setIsLoading(true);
+      setLoadError(null);
       try {
         const [statsRes, alertsRes] = await Promise.all([
           api.getDashboardStats(),
-          api.getSharedAccountAlerts(),
+          isSupervisor ? api.getSharedAccountAlerts() : Promise.resolve({ data: [] as SharedAccountAlert[] }),
         ]);
         setStats(statsRes.data);
         setAlerts(alertsRes.data);
         await fetchCases();
+      } catch (err) {
+        setLoadError(errorMessage(err, 'Could not load the dashboard.'));
       } finally {
         setIsLoading(false);
       }
@@ -47,15 +49,18 @@ export function DashboardPage({ onNavigateToCases, onNavigateToReview }: Dashboa
 
   const totalClaimedJPY = cases.reduce((acc, c) => acc + (c.amount || 0), 0);
 
-  const handleSelectCase = async (c: CaseSummary) => {
-    await fetchCaseById(c.id);
-    setIsDetailOpen(true);
-  };
+  const openCase = (caseId: string) => navigate(PATHS.caseDetail(caseId));
+  const goToCases = () => navigate(PATHS.cases);
+  const goToReview = () => navigate(PATHS.review);
 
-  const handleInspectCaseById = async (caseId: string) => {
-    await fetchCaseById(caseId);
-    setIsDetailOpen(true);
-  };
+  if (loadError) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 py-24 text-center" role="alert">
+        <p className="font-['Dela_Gothic_One'] text-2xl uppercase text-[#09090B]">DASHBOARD UNAVAILABLE</p>
+        <p className="text-sm font-medium text-[#52525B] mt-2">{loadError}</p>
+      </div>
+    );
+  }
 
   if (isLoading || !stats) {
     return (
@@ -85,8 +90,8 @@ export function DashboardPage({ onNavigateToCases, onNavigateToReview }: Dashboa
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 space-y-8 sm:space-y-12">
         {/* Hero Command Section (12 Columns) */}
         <HeroCommandSection
-          onOpenIntake={() => setIsIntakeOpen(true)}
-          onOpenReview={onNavigateToReview}
+          onOpenIntake={isSupervisor ? () => setIsIntakeOpen(true) : undefined}
+          onOpenReview={goToReview}
           overdueCount={stats.overdue_cases}
         />
 
@@ -100,16 +105,16 @@ export function DashboardPage({ onNavigateToCases, onNavigateToReview }: Dashboa
           <BentoMetricsGrid
             stats={stats}
             totalClaimedJPY={totalClaimedJPY}
-            onNavigateToCases={onNavigateToCases}
-            onNavigateToReview={onNavigateToReview}
+            onNavigateToCases={goToCases}
+            onNavigateToReview={goToReview}
           />
         </div>
 
         {/* Urgent Escalation Horizontal Scrolling Section */}
-        <UrgentCasesCarousel cases={cases} onSelectCase={handleSelectCase} />
+        <UrgentCasesCarousel cases={cases} onSelectCase={(c: CaseSummary) => openCase(c.id)} />
 
         {/* Fraud Ring Visualizer */}
-        <FraudRingVisualizer alerts={alerts} onInspectCase={handleInspectCaseById} />
+        <FraudRingVisualizer alerts={alerts} onInspectCase={openCase} />
       </div>
 
       {/* Case Intake Modal */}
@@ -117,38 +122,9 @@ export function DashboardPage({ onNavigateToCases, onNavigateToReview }: Dashboa
         <CaseIntakeModal
           isOpen={isIntakeOpen}
           onClose={() => setIsIntakeOpen(false)}
-          onCaseCreated={() => {
+          onCaseCreated={(created) => {
             setIsIntakeOpen(false);
-            fetchCases();
-          }}
-        />
-      )}
-
-      {/* Case Detail Inspection Modal */}
-      {isDetailOpen && selectedCase && (
-        <CaseDetailModal
-          caseItem={selectedCase}
-          isOpen={isDetailOpen}
-          onClose={() => setIsDetailOpen(false)}
-          onCaseUpdated={() => {
-            fetchCases();
-            if (selectedCase) fetchCaseById(selectedCase.id);
-          }}
-          onOpenExtraction={(extractionId) => {
-            fetchExtraction(extractionId);
-          }}
-        />
-      )}
-
-      {/* Extraction Review Modal */}
-      {activeExtraction && (
-        <ExtractionReviewModal
-          extraction={activeExtraction}
-          isOpen={Boolean(activeExtraction)}
-          onClose={clearActive}
-          onReviewed={() => {
-            clearActive();
-            fetchCases();
+            openCase(created.id);
           }}
         />
       )}

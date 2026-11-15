@@ -4,55 +4,77 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { DEMO_BANKS } from '@/services/mockData';
 import { api } from '@/services/api';
+import { errorMessage } from '@/services/http';
+import type { BankId, Case, IntakeChannel, ScamType } from '@/types/api';
 import { CheckCircle2 } from 'lucide-react';
 
 interface CaseIntakeModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCaseCreated?: () => void;
+  onCaseCreated?: (created: Case) => void;
 }
 
+const SCAM_OPTIONS: { value: ScamType; label: string }[] = [
+  { value: 'investment', label: 'Investment / High-Yield Scam' },
+  { value: 'impersonation', label: 'Police / Financial Authority Impersonation' },
+  { value: 'phishing', label: 'Phishing (SMS / Email)' },
+  { value: 'romance', label: 'International Romance Solicitation' },
+  { value: 'lottery_prize', label: 'Lottery / Prize Scam' },
+  { value: 'job_offer', label: 'Fake Job Offer' },
+  { value: 'other', label: 'Other' },
+];
+
+/** Staff intake: a phone call or a paper form. Victims report online through the portal. */
+const STAFF_CHANNELS: { value: IntakeChannel; label: string }[] = [
+  { value: 'phone', label: 'Phone call' },
+  { value: 'paper', label: 'Paper form' },
+];
+
 export function CaseIntakeModal({ isOpen, onClose, onCaseCreated }: CaseIntakeModalProps) {
-  const [bankId, setBankId] = useState(DEMO_BANKS[0].id);
+  const [bankId, setBankId] = useState<BankId>(DEMO_BANKS[0].id as BankId);
+  const [channel, setChannel] = useState<IntakeChannel>('phone');
   const [victimName, setVictimName] = useState('');
   const [victimPhone, setVictimPhone] = useState('');
   const [victimEmail, setVictimEmail] = useState('');
   const [amount, setAmount] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
   const [accountName, setAccountName] = useState('');
-  const [scamType, setScamType] = useState('investment');
+  const [scamType, setScamType] = useState<ScamType>('investment');
   const [description, setDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!victimName || !amount || !accountNumber) {
-      setError('Please fill all mandatory fields (Victim Name, Amount, Beneficiary Account).');
+    // Only the victim's name is required: the rest can come later from a scanned form (AI extraction).
+    if (!victimName.trim()) {
+      setError('Enter the victim name. Other details can be added later.');
       return;
     }
 
     setIsSubmitting(true);
     setError(null);
     try {
-      await api.submitIntake({
+      const res = await api.createCase({
         bank_id: bankId,
-        victim_name: victimName,
-        victim_phone: victimPhone,
-        victim_email: victimEmail,
-        preferred_language: 'ja',
-        amount: parseFloat(amount) || 0,
+        channel,
+        victim: {
+          name: victimName.trim(),
+          phone: victimPhone.trim() || null,
+          email: victimEmail.trim() || null,
+          preferred_language: 'ja',
+        },
+        amount: amount ? Number(amount) : null,
         currency: 'JPY',
-        account_number: accountNumber,
-        account_holder_name: accountName,
+        account_number: accountNumber.trim() || null,
+        account_holder_name: accountName.trim() || null,
         scam_type: scamType,
-        description: description,
-        transfer_date: new Date().toISOString(),
+        description: description.trim() || null,
       });
-      onCaseCreated?.();
+      onCaseCreated?.(res.data);
       onClose();
-    } catch (err: any) {
-      setError(err?.message || 'Failed to register statutory claim intake.');
+    } catch (err) {
+      setError(errorMessage(err, 'Failed to create the case.'));
     } finally {
       setIsSubmitting(false);
     }
@@ -75,7 +97,7 @@ export function CaseIntakeModal({ isOpen, onClose, onCaseCreated }: CaseIntakeMo
             </label>
             <select
               value={bankId}
-              onChange={(e) => setBankId(e.target.value)}
+              onChange={(e) => setBankId(e.target.value as BankId)}
               className="w-full text-xs font-bold bg-[#F8F4E8] border-2 border-[#09090B] rounded-xl p-3 shadow-hard-sm focus:outline-none"
             >
               {DEMO_BANKS.map((b) => (
@@ -93,14 +115,33 @@ export function CaseIntakeModal({ isOpen, onClose, onCaseCreated }: CaseIntakeMo
             </label>
             <select
               value={scamType}
-              onChange={(e) => setScamType(e.target.value)}
+              onChange={(e) => setScamType(e.target.value as ScamType)}
               className="w-full text-xs font-bold bg-[#F8F4E8] border-2 border-[#09090B] rounded-xl p-3 shadow-hard-sm focus:outline-none"
             >
-              <option value="investment">Investment / High-Yield Scam</option>
-              <option value="impersonation">Police / Financial Authority Impersonation</option>
-              <option value="romance">International Romance Solicitation</option>
-              <option value="tech_support">Remote Desktop Extortion</option>
-              <option value="loan_advance">Advance Fee / Loan Scam</option>
+              {SCAM_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Intake Channel */}
+          <div className="space-y-1.5 sm:col-span-2">
+            <label htmlFor="intake-channel" className="block text-xs font-bold uppercase tracking-wider text-[#09090B]">
+              HOW THE REPORT ARRIVED
+            </label>
+            <select
+              id="intake-channel"
+              value={channel}
+              onChange={(e) => setChannel(e.target.value as IntakeChannel)}
+              className="w-full text-xs font-bold bg-[#F8F4E8] border-2 border-[#09090B] rounded-xl p-3 shadow-hard-sm focus:outline-none"
+            >
+              {STAFF_CHANNELS.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
+              ))}
             </select>
           </div>
         </div>

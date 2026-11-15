@@ -1,731 +1,528 @@
 /**
- * Singular API Client Layer for ReliefOps
- *
- * ARCHITECTURAL TOGGLE:
- * Set USE_MOCK to false to immediately switch from in-memory contract demo data
- * to the live backend (FastAPI at http://localhost:8000 or Prism mock at :4010).
+ * Staff API client (contract v0.4.2, docs/API_SPEC.md).
+ * Every call has a live branch (request) and a mock branch (in-memory demo store).
+ * Accounts live in authApi.ts, the victim portal in victimApi.ts.
  */
-export const USE_MOCK: boolean = true; // ← CHANGE THIS ONE LINE TO CONNECT TO LIVE BACKEND
-
-export const API_BASE_URL: string =
-  import.meta.env.VITE_API_URL || (USE_MOCK ? '' : 'http://localhost:8000');
-
-import {
+import type {
   ApiResponse,
-  ApiErrorDetail,
-  User,
-  AuthSession,
-  Bank,
-  Case,
-  CaseSummary,
-  CaseStatus,
-  ClosureReason,
-  ReviewQueueItem,
-  Extraction,
   AuditEntry,
-  DashboardStats,
-  SharedAccountAlert,
-  VictimCase,
+  Bank,
+  BankId,
+  Case,
+  CaseStatus,
+  CaseSummary,
   ChatThread,
-  ChatMessage,
+  ClosureReason,
+  DashboardStats,
+  Extraction,
+  Invitation,
+  InvitationCreate,
+  IntakeChannel,
   KbDocument,
   PaginatedResult,
+  ReviewPayload,
+  ReviewQueueItem,
+  ScamType,
+  SharedAccountAlert,
+  TransitionPayload,
+  User,
+  Victim,
 } from '@/types/api';
-
+import { USE_MOCK, apiError, mockEnvelope, request } from './http';
 import {
-  DEMO_BANKS,
-  DEMO_USERS,
-  DEMO_CASES,
-  DEMO_EXTRACTIONS,
-  DEMO_REVIEW_QUEUE,
-  DEMO_AUDIT_LOGS,
-  DEMO_STATS,
-  DEMO_ALERTS,
-  DEMO_CHAT_THREADS,
-  DEMO_KB_DOCUMENTS,
-} from './mockData';
+  actorOf,
+  addAudit,
+  assertWritable,
+  currentUser,
+  db,
+  findVisibleCase,
+  nowIso,
+  saveCase,
+  sendMockMail,
+  toSummary,
+} from './mockStore';
+import { DEMO_ALERTS, DEMO_BANKS, DEMO_STATS } from './mockData';
 
-// --- In-Memory State for Reactive Demo Experience ---
-let memoryCases: Case[] = JSON.parse(JSON.stringify(DEMO_CASES));
-let memoryExtractions: Record<string, Extraction> = JSON.parse(JSON.stringify(DEMO_EXTRACTIONS));
-let memoryReviewQueue: ReviewQueueItem[] = JSON.parse(JSON.stringify(DEMO_REVIEW_QUEUE));
-let memoryAuditLogs: AuditEntry[] = JSON.parse(JSON.stringify(DEMO_AUDIT_LOGS));
-let memoryChatThreads: Record<string, ChatThread> = JSON.parse(JSON.stringify(DEMO_CHAT_THREADS));
-let memoryKbDocuments: KbDocument[] = JSON.parse(JSON.stringify(DEMO_KB_DOCUMENTS));
+export { USE_MOCK, API_BASE_URL, getAuthToken, getStoredUser } from './http';
 
-// Token management helper
-export function getAuthToken(): string | null {
-  return localStorage.getItem('reliefops_auth_token');
+const CONTRACT_VERSION = '0.4.2';
+const STAGES: CaseStatus[] = [
+  'received',
+  'verified',
+  'account_check',
+  'notice_published',
+  'payout_review',
+  'closed',
+];
+const DAY_MS = 86_400_000;
+const STAGE_DEADLINE_DAYS = 5;
+
+export interface CaseQuery {
+  status?: string;
+  bank_id?: string;
+  deadline_state?: string;
+  search?: string;
+  page?: number;
+  page_size?: number;
 }
 
-export function setAuthToken(token: string): void {
-  localStorage.setItem('reliefops_auth_token', token);
+export interface CaseCreate {
+  bank_id: BankId;
+  channel: IntakeChannel;
+  victim: Partial<Victim> & { name: string };
+  amount?: number | null;
+  currency?: string;
+  transfer_date?: string | null;
+  account_number?: string | null;
+  account_holder_name?: string | null;
+  scam_type?: ScamType | null;
+  description?: string | null;
 }
 
-export function clearAuthToken(): void {
-  localStorage.removeItem('reliefops_auth_token');
-  localStorage.removeItem('reliefops_auth_user');
-}
-
-export function getStoredUser(): User | null {
-  const json = localStorage.getItem('reliefops_auth_user');
-  if (!json) return null;
-  try {
-    return JSON.parse(json);
-  } catch {
-    return null;
-  }
-}
-
-export function setStoredUser(user: User): void {
-  localStorage.setItem('reliefops_auth_user', JSON.stringify(user));
-}
-
-// Internal live request dispatcher
-async function request<T>(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<ApiResponse<T>> {
-  const token = getAuthToken();
-  const headers = new Headers(options.headers || {});
-  
-  if (!headers.has('Content-Type') && !(options.body instanceof FormData)) {
-    headers.set('Content-Type', 'application/json');
-  }
-  if (token && !headers.has('Authorization')) {
-    headers.set('Authorization', `Bearer ${token}`);
-  }
-
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
-
-  const json = await response.json();
-
-  if (!response.ok || !json.success) {
-    const error: ApiErrorDetail = json.error || {
-      code: 'HTTP_ERROR_' + response.status,
-      message: json.message || response.statusText || 'An unexpected error occurred',
-    };
-    throw error;
-  }
-
-  return json as ApiResponse<T>;
-}
-
-// Helper to wrap mock results in the official contract envelope
-function mockEnvelope<T>(data: T, message: string = 'ok'): Promise<ApiResponse<T>> {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        success: true,
-        data,
-        message,
-      });
-    }, 120); // Simulates realistic ~120ms network latency
+function send<T>(endpoint: string, method: string, body?: unknown): Promise<ApiResponse<T>> {
+  return request<T>(endpoint, {
+    method,
+    body: body === undefined ? undefined : JSON.stringify(body),
   });
 }
 
-/**
- * ============================================================================
- * UNIFIED API INTERFACE (MOCK OR LIVE)
- * ============================================================================
- */
+function query(params: object): string {
+  const q = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') q.set(key, String(value));
+  });
+  const s = q.toString();
+  return s ? `?${s}` : '';
+}
+
+/** Mock calls throw synchronously; turn that into a rejection like a network call. */
+async function mocked<T>(fn: () => T, message = 'ok'): Promise<ApiResponse<T>> {
+  return mockEnvelope(fn(), message);
+}
+
+/* --- Mock rules --------------------------------------------------------- */
+
+function allowedFrom(status: CaseStatus): CaseStatus[] {
+  const i = STAGES.indexOf(status);
+  if (status === 'closed') return [];
+  const next = STAGES[i + 1];
+  const prev = i > 0 ? STAGES[i - 1] : undefined;
+  return [next, prev, 'closed'].filter(
+    (s, idx, all): s is CaseStatus => !!s && all.indexOf(s) === idx
+  );
+}
+
+function closureReasonsAt(status: CaseStatus): ClosureReason[] {
+  return status === 'payout_review'
+    ? ['paid_out', 'rejected', 'withdrawn']
+    : ['rejected', 'withdrawn'];
+}
+
+function mockTransition(caseId: string, p: TransitionPayload): Case {
+  const c = findVisibleCase(caseId);
+  assertWritable(c, p.expected_version);
+  const allowed = allowedFrom(c.status);
+  if (!allowed.includes(p.to_status)) {
+    throw apiError('INVALID_STATUS_TRANSITION', `Can't move from ${c.status} to ${p.to_status}.`, {
+      from: c.status,
+      to: p.to_status,
+      allowed,
+    });
+  }
+  const closing = p.to_status === 'closed';
+  const fields: { field: string; message: string }[] = [];
+  if (closing && !p.closure_reason) fields.push({ field: 'closure_reason', message: 'Required to close.' });
+  if (p.closure_reason === 'paid_out' && p.payout_amount == null) {
+    fields.push({ field: 'payout_amount', message: 'Required for a paid-out closure.' });
+  }
+  if (fields.length) throw apiError('VALIDATION_ERROR', 'Please fix the highlighted fields.', { fields });
+
+  const user = currentUser();
+  const at = nowIso();
+  const notes = p.note
+    ? [{ id: `note-${Date.now()}`, body: p.note, author: { id: user.id, name: user.name }, created_at: at }, ...c.notes]
+    : c.notes;
+  const next: Case = {
+    ...c,
+    status: p.to_status,
+    version: c.version + 1,
+    updated_at: at,
+    notes,
+    closure_reason: closing ? p.closure_reason ?? null : c.closure_reason,
+    payout_amount: closing ? p.payout_amount ?? null : c.payout_amount,
+    closed_at: closing ? at : null,
+    deadline: closing ? null : new Date(Date.now() + STAGE_DEADLINE_DAYS * DAY_MS).toISOString(),
+    deadline_state: closing ? 'none' : 'on_track',
+    allowed_transitions: allowedFrom(p.to_status),
+    allowed_closure_reasons: closing ? [] : closureReasonsAt(p.to_status),
+  };
+  addAudit({
+    actor: actorOf(user),
+    action: 'case.status_changed',
+    case_id: c.id,
+    case_reference: c.reference,
+    bank_id: c.bank_id,
+    summary: `Status ${c.status} → ${p.to_status}`,
+    changes: { status: { from: c.status, to: p.to_status } },
+    metadata: p.closure_reason ? { closure_reason: p.closure_reason } : null,
+  });
+  return saveCase(next);
+}
+
+function mockReview(extractionId: string, p: ReviewPayload): Extraction {
+  const ext = db.extractions[extractionId];
+  if (!ext) throw apiError('RESOURCE_NOT_FOUND', 'Extraction not found.');
+  if (ext.status !== 'pending_review') {
+    throw apiError('ALREADY_REVIEWED', 'Someone already reviewed this extraction.');
+  }
+  if (p.decision === 'reject' && !p.note) {
+    throw apiError('VALIDATION_ERROR', 'Please fix the highlighted fields.', {
+      fields: [{ field: 'note', message: 'Say why you are rejecting.' }],
+    });
+  }
+  const c = findVisibleCase(ext.case_id);
+  assertWritable(c, p.expected_version);
+
+  const user = currentUser();
+  const accepted = p.decision === 'accept';
+  const f = p.fields ?? {};
+  saveCase({
+    ...c,
+    version: c.version + 1,
+    updated_at: nowIso(),
+    amount: accepted && f.amount !== undefined ? Number(f.amount) : c.amount,
+    account_number: accepted && f.account_number !== undefined ? String(f.account_number) : c.account_number,
+    account_holder_name:
+      accepted && f.account_holder_name !== undefined ? String(f.account_holder_name) : c.account_holder_name,
+    flags: { ...c.flags, ai_review_pending: false },
+  });
+  const reviewed: Extraction = {
+    ...ext,
+    status: accepted ? 'accepted' : 'rejected',
+    reviewed_at: nowIso(),
+    reviewed_by: { id: user.id, name: user.name },
+    review_note: p.note ?? null,
+  };
+  db.extractions = { ...db.extractions, [extractionId]: reviewed };
+  db.reviewQueue = db.reviewQueue.filter((q) => q.extraction_id !== extractionId);
+  addAudit({
+    actor: actorOf(user),
+    action: accepted ? 'ai.review_accepted' : 'ai.review_rejected',
+    case_id: c.id,
+    case_reference: c.reference,
+    bank_id: c.bank_id,
+    summary: `AI extraction ${accepted ? 'accepted' : 'rejected'} by ${user.name}`,
+    changes: null,
+    metadata: null,
+  });
+  return reviewed;
+}
+
+function mockListCases(params: CaseQuery): PaginatedResult<CaseSummary> {
+  const user = currentUser();
+  const term = params.search?.toLowerCase();
+  const items = db.cases
+    .filter((c) => user.role !== 'bank_viewer' || c.bank_id === user.bank_id)
+    .filter((c) => !params.status || c.status === params.status)
+    .filter((c) => !params.bank_id || c.bank_id === params.bank_id)
+    .filter((c) => !params.deadline_state || c.deadline_state === params.deadline_state)
+    .filter(
+      (c) =>
+        !term ||
+        c.reference.toLowerCase().includes(term) ||
+        c.victim.name.toLowerCase().includes(term) ||
+        c.bank_name.toLowerCase().includes(term)
+    )
+    .map(toSummary);
+  return { items, page: params.page ?? 1, page_size: params.page_size ?? 20, total: items.length };
+}
+
+function mockCreateCase(body: CaseCreate): Case {
+  const user = currentUser();
+  const bank = DEMO_BANKS.find((b) => b.id === body.bank_id) ?? DEMO_BANKS[0];
+  const at = nowIso();
+  const created: Case = {
+    id: crypto.randomUUID(),
+    reference: `RFR-2026-${String(100 + db.cases.length).padStart(5, '0')}`,
+    bank_id: bank.id,
+    bank_name: bank.name,
+    victim_name: body.victim.name,
+    amount: body.amount ?? null,
+    currency: body.currency ?? 'JPY',
+    scam_type: body.scam_type ?? null,
+    status: 'received',
+    deadline: new Date(Date.now() + STAGE_DEADLINE_DAYS * DAY_MS).toISOString(),
+    deadline_state: 'on_track',
+    assigned_operator: null,
+    reported_date: at.slice(0, 10),
+    updated_at: at,
+    flags: { missing_fields: ['document'], ai_review_pending: false, shared_account_case_count: 0, victim_question_pending: false },
+    victim: {
+      name: body.victim.name,
+      phone: body.victim.phone ?? null,
+      email: body.victim.email ?? null,
+      address: body.victim.address ?? null,
+      preferred_language: body.victim.preferred_language ?? 'ja',
+    },
+    transfer_date: body.transfer_date ?? null,
+    account_number: body.account_number ?? null,
+    account_holder_name: body.account_holder_name ?? null,
+    description: body.description ?? null,
+    channel: body.channel,
+    closure_reason: null,
+    created_at: at,
+    closed_at: null,
+    allowed_transitions: allowedFrom('received'),
+    allowed_closure_reasons: closureReasonsAt('received'),
+    documents: [],
+    notes: [],
+    version: 1,
+    payout_amount: null,
+  };
+  db.cases = [created, ...db.cases];
+  addAudit({
+    actor: actorOf(user),
+    action: 'case.created',
+    case_id: created.id,
+    case_reference: created.reference,
+    bank_id: created.bank_id,
+    summary: `Case created from ${body.channel}`,
+    changes: null,
+    metadata: null,
+  });
+  return created;
+}
+
+function mockUpdateCase(caseId: string, patch: (c: Case) => Partial<Case>): Case {
+  const c = findVisibleCase(caseId);
+  if (c.status === 'closed') throw apiError('CASE_CLOSED', 'This case is closed.');
+  return saveCase({ ...c, ...patch(c), updated_at: nowIso() });
+}
+
+function mockInvite(body: InvitationCreate): Invitation {
+  const exists =
+    db.staff.some((u) => u.email === body.email) ||
+    db.invitations.some((i) => i.email === body.email && i.status === 'pending');
+  if (exists) throw apiError('BAD_REQUEST', 'That email already has an account or a pending invitation.');
+  const user = currentUser();
+  const invite: Invitation = {
+    id: crypto.randomUUID(),
+    email: body.email,
+    name: body.name,
+    role: body.role,
+    bank_id: body.role === 'bank_viewer' ? body.bank_id ?? null : null,
+    status: 'pending',
+    invited_by: { id: user.id, name: user.name },
+    created_at: nowIso(),
+    expires_at: new Date(Date.now() + 3 * DAY_MS).toISOString(),
+  };
+  db.invitations = [invite, ...db.invitations];
+  sendMockMail(invite.email, 'accept-invitation', invite.id);
+  return invite;
+}
+
+function mockRevoke(invitationId: string): Invitation {
+  const invite = db.invitations.find((i) => i.id === invitationId);
+  if (!invite) throw apiError('RESOURCE_NOT_FOUND', 'Invitation not found.');
+  if (invite.status !== 'pending') {
+    throw apiError('INVALID_STATUS_TRANSITION', 'Only a pending invitation can be revoked.', {
+      from: invite.status,
+      to: 'revoked',
+      allowed: [],
+    });
+  }
+  const revoked: Invitation = { ...invite, status: 'revoked' };
+  db.invitations = db.invitations.map((i) => (i.id === invitationId ? revoked : i));
+  return revoked;
+}
+
+function mockSetActive(userId: string, isActive: boolean): User {
+  if (userId === currentUser().id && !isActive) {
+    throw apiError('VALIDATION_ERROR', "You can't deactivate your own account.");
+  }
+  const found = db.staff.find((u) => u.id === userId);
+  if (!found) throw apiError('RESOURCE_NOT_FOUND', 'User not found.');
+  const next = { ...found, is_active: isActive };
+  db.staff = db.staff.map((u) => (u.id === userId ? next : u));
+  return next;
+}
+
+function mockVictimInvite(caseId: string): null {
+  const c = findVisibleCase(caseId);
+  if (!c.victim.email) {
+    throw apiError('VALIDATION_ERROR', 'This case has no victim email to invite.');
+  }
+  sendMockMail(c.victim.email, 'claim-case', c.reference);
+  return null;
+}
+
+/* --- Public API ----------------------------------------------------------- */
+
 export const api = {
-  /* --------------------------------------------------------------------------
-   * 6.1 AUTH
-   * -------------------------------------------------------------------------- */
-  async login(email: string, password?: string): Promise<ApiResponse<AuthSession>> {
-    if (!USE_MOCK) {
-      return request<AuthSession>('/api/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ email, password: password || 'Demo@1234' }),
-      });
-    }
-
-    const matchedUser = DEMO_USERS.find((u) => u.email.toLowerCase() === email.toLowerCase());
-    if (!matchedUser) {
-      throw {
-        code: 'INVALID_CREDENTIALS',
-        message: 'Invalid email or password. Use demo accounts (e.g., operator1@opscenter.test)',
-      };
-    }
-
-    const session: AuthSession = {
-      token: `demo_jwt_token_${matchedUser.role}_${matchedUser.id}`,
-      expires_at: new Date(Date.now() + 8 * 3600 * 1000).toISOString(),
-      user: matchedUser,
-    };
-
-    setAuthToken(session.token);
-    setStoredUser(session.user);
-    return mockEnvelope(session, 'Login successful');
+  /* 6.2 Reference data */
+  getHealth(): Promise<ApiResponse<{ status: string; ai: string; rag: string; version: string }>> {
+    return USE_MOCK
+      ? mockEnvelope({ status: 'healthy', ai: 'available', rag: 'available', version: CONTRACT_VERSION })
+      : request('/api/health');
   },
 
-  async getMe(): Promise<ApiResponse<User>> {
-    if (!USE_MOCK) {
-      return request<User>('/api/auth/me');
-    }
-    const user = getStoredUser() || DEMO_USERS[0];
-    return mockEnvelope(user);
+  getBanks(): Promise<ApiResponse<Bank[]>> {
+    return USE_MOCK ? mockEnvelope(DEMO_BANKS) : request<Bank[]>('/api/banks');
   },
 
-  async logout(): Promise<void> {
-    clearAuthToken();
+  getUsers(params: { role?: string; include_inactive?: boolean } = {}): Promise<ApiResponse<User[]>> {
+    if (!USE_MOCK) return request<User[]>(`/api/users${query(params)}`);
+    return mocked(() =>
+      db.staff
+        .filter((u) => !params.role || u.role === params.role)
+        .filter((u) => params.include_inactive || u.is_active)
+    );
   },
 
-  /* --------------------------------------------------------------------------
-   * 6.2 METADATA & HEALTH
-   * -------------------------------------------------------------------------- */
-  async getHealth(): Promise<ApiResponse<{ status: string; ai: string; rag: string; version: string }>> {
-    if (!USE_MOCK) {
-      return request<{ status: string; ai: string; rag: string; version: string }>('/api/health');
-    }
-    return mockEnvelope({
-      status: 'healthy',
-      ai: 'available',
-      rag: 'available',
-      version: '0.3.0',
-    });
+  /* 6.1 Staff administration (supervisor) */
+  setUserActive(userId: string, isActive: boolean): Promise<ApiResponse<User>> {
+    return USE_MOCK
+      ? mocked(() => mockSetActive(userId, isActive))
+      : send<User>(`/api/users/${userId}`, 'PATCH', { is_active: isActive });
   },
 
-  async getBanks(): Promise<ApiResponse<Bank[]>> {
-    if (!USE_MOCK) {
-      return request<Bank[]>('/api/banks');
-    }
-    return mockEnvelope(DEMO_BANKS);
+  getInvitations(): Promise<ApiResponse<Invitation[]>> {
+    return USE_MOCK ? mocked(() => db.invitations) : request<Invitation[]>('/api/invitations');
   },
 
-  async getUsers(): Promise<ApiResponse<User[]>> {
-    if (!USE_MOCK) {
-      return request<User[]>('/api/users');
-    }
-    return mockEnvelope(DEMO_USERS);
+  createInvitation(body: InvitationCreate): Promise<ApiResponse<Invitation>> {
+    return USE_MOCK
+      ? mocked(() => mockInvite(body), 'Invitation sent')
+      : send<Invitation>('/api/invitations', 'POST', body);
   },
 
-  /* --------------------------------------------------------------------------
-   * 6.3 CASE MANAGEMENT
-   * -------------------------------------------------------------------------- */
-  async getCases(params?: {
-    status?: string;
-    bank_id?: string;
-    search?: string;
-    page?: number;
-    page_size?: number;
-  }): Promise<ApiResponse<PaginatedResult<CaseSummary>>> {
-    if (!USE_MOCK) {
-      const q = new URLSearchParams();
-      if (params?.status) q.set('status', params.status);
-      if (params?.bank_id) q.set('bank_id', params.bank_id);
-      if (params?.search) q.set('search', params.search);
-      if (params?.page) q.set('page', String(params.page));
-      if (params?.page_size) q.set('page_size', String(params.page_size));
-      return request<PaginatedResult<CaseSummary>>(`/api/cases?${q.toString()}`);
-    }
+  revokeInvitation(invitationId: string): Promise<ApiResponse<Invitation>> {
+    return USE_MOCK
+      ? mocked(() => mockRevoke(invitationId))
+      : send<Invitation>(`/api/invitations/${invitationId}/revoke`, 'POST');
+  },
 
-    let items = memoryCases.map((c) => ({
-      id: c.id,
-      reference: c.reference,
-      bank_id: c.bank_id,
-      bank_name: c.bank_name,
-      victim_name: c.victim.name,
-      amount: c.amount,
-      currency: c.currency,
-      scam_type: c.scam_type,
-      status: c.status,
-      deadline: c.deadline,
-      deadline_state: c.deadline_state,
-      assigned_operator: c.assigned_operator,
-      reported_date: c.reported_date,
-      updated_at: c.updated_at,
-      flags: c.flags,
-    }));
+  /* 6.3 Cases */
+  getCases(params: CaseQuery = {}): Promise<ApiResponse<PaginatedResult<CaseSummary>>> {
+    return USE_MOCK
+      ? mocked(() => mockListCases(params))
+      : request<PaginatedResult<CaseSummary>>(`/api/cases${query(params)}`);
+  },
 
-    if (params?.status) {
-      items = items.filter((c) => c.status === params.status);
-    }
-    if (params?.bank_id) {
-      items = items.filter((c) => c.bank_id === params.bank_id);
-    }
-    if (params?.search) {
-      const term = params.search.toLowerCase();
-      items = items.filter(
-        (c) =>
-          c.reference.toLowerCase().includes(term) ||
-          c.victim_name.toLowerCase().includes(term) ||
-          c.bank_name.toLowerCase().includes(term)
+  getCaseById(caseId: string): Promise<ApiResponse<Case>> {
+    return USE_MOCK ? mocked(() => findVisibleCase(caseId)) : request<Case>(`/api/cases/${caseId}`);
+  },
+
+  createCase(body: CaseCreate): Promise<ApiResponse<Case>> {
+    return USE_MOCK
+      ? mocked(() => mockCreateCase(body), 'Case created')
+      : send<Case>('/api/cases', 'POST', body);
+  },
+
+  transitionCase(caseId: string, payload: TransitionPayload): Promise<ApiResponse<Case>> {
+    return USE_MOCK
+      ? mocked(() => mockTransition(caseId, payload), 'Case moved')
+      : send<Case>(`/api/cases/${caseId}/transition`, 'POST', payload);
+  },
+
+  assignCase(caseId: string, operatorId: string | null): Promise<ApiResponse<Case>> {
+    if (!USE_MOCK) return send<Case>(`/api/cases/${caseId}/assign`, 'POST', { operator_id: operatorId });
+    return mocked(() =>
+      mockUpdateCase(caseId, () => {
+        const op = db.staff.find((u) => u.id === operatorId);
+        return { assigned_operator: op ? { id: op.id, name: op.name } : null };
+      })
+    );
+  },
+
+  addCaseNote(caseId: string, body: string): Promise<ApiResponse<Case>> {
+    if (!USE_MOCK) return send<Case>(`/api/cases/${caseId}/notes`, 'POST', { body });
+    return mocked(() =>
+      mockUpdateCase(caseId, (c) => {
+        const user = currentUser();
+        const note = { id: `note-${Date.now()}`, body, author: { id: user.id, name: user.name }, created_at: nowIso() };
+        return { notes: [note, ...c.notes] };
+      })
+    );
+  },
+
+  /** Emails the victim a link to attach this phone/paper case to their account. */
+  inviteVictim(caseId: string): Promise<ApiResponse<null>> {
+    return USE_MOCK
+      ? mocked(() => mockVictimInvite(caseId), 'Invitation emailed to the victim')
+      : send<null>(`/api/cases/${caseId}/victim-invite`, 'POST');
+  },
+
+  getCaseChat(caseId: string): Promise<ApiResponse<ChatThread>> {
+    if (!USE_MOCK) return request<ChatThread>(`/api/cases/${caseId}/chat`);
+    return mocked(() => {
+      const c = findVisibleCase(caseId);
+      return (
+        db.chatThreads[c.reference] ?? {
+          case_reference: c.reference,
+          messages: [],
+          victim_question_pending: false,
+          assistant_available: true,
+        }
       );
-    }
-
-    return mockEnvelope({
-      items,
-      page: params?.page || 1,
-      page_size: params?.page_size || 20,
-      total: items.length,
     });
   },
 
-  async getCaseById(caseId: string): Promise<ApiResponse<Case>> {
+  /* 6.5 AI extraction review */
+  /** A page of pending items, low_confidence first (contract §6.5). */
+  getReviewQueue(
+    params: { lane?: 'standard' | 'low_confidence'; page?: number; page_size?: number } = {}
+  ): Promise<ApiResponse<PaginatedResult<ReviewQueueItem>>> {
     if (!USE_MOCK) {
-      return request<Case>(`/api/cases/${caseId}`);
+      return request<PaginatedResult<ReviewQueueItem>>(`/api/review-queue${query(params)}`);
     }
-    const found = memoryCases.find((c) => c.id === caseId || c.reference === caseId);
-    if (!found) {
-      throw {
-        code: 'RESOURCE_NOT_FOUND',
-        message: 'Case not found or belongs to another bank.',
-      };
-    }
-    return mockEnvelope(found);
-  },
-
-  async transitionCase(
-    caseId: string,
-    payload: { status: CaseStatus; closure_reason?: ClosureReason; note?: string }
-  ): Promise<ApiResponse<Case>> {
-    if (!USE_MOCK) {
-      return request<Case>(`/api/cases/${caseId}/transition`, {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      });
-    }
-
-    const caseItem = memoryCases.find((c) => c.id === caseId);
-    if (!caseItem) throw { code: 'RESOURCE_NOT_FOUND', message: 'Case not found' };
-
-    const oldStatus = caseItem.status;
-    caseItem.status = payload.status;
-    caseItem.updated_at = new Date().toISOString();
-
-    if (payload.closure_reason) {
-      caseItem.closure_reason = payload.closure_reason;
-    }
-    if (payload.status === 'closed') {
-      caseItem.closed_at = new Date().toISOString();
-      caseItem.deadline_state = 'none';
-      caseItem.deadline = null;
-      caseItem.allowed_transitions = [];
-      caseItem.allowed_closure_reasons = [];
-    }
-
-    if (payload.note) {
-      caseItem.notes.unshift({
-        id: `note-${Date.now()}`,
-        body: `[Transition: ${oldStatus} → ${payload.status}] ${payload.note}`,
-        author: { id: DEMO_USERS[0].id, name: DEMO_USERS[0].name },
-        created_at: new Date().toISOString(),
-      });
-    }
-
-    // Add audit entry
-    memoryAuditLogs.unshift({
-      id: `aud-${Date.now()}`,
-      at: new Date().toISOString(),
-      actor: {
-        type: 'user',
-        id: DEMO_USERS[0].id,
-        name: DEMO_USERS[0].name,
-        role: 'operator',
-      },
-      action: 'case.status_changed',
-      case_id: caseItem.id,
-      case_reference: caseItem.reference,
-      bank_id: caseItem.bank_id,
-      summary: `Status ${oldStatus} → ${payload.status}`,
-      changes: { status: { from: oldStatus, to: payload.status } },
-      metadata: payload.closure_reason ? { closure_reason: payload.closure_reason } : null,
+    return mocked(() => {
+      const items = db.reviewQueue.filter((q) => !params.lane || q.review_lane === params.lane);
+      return { items, total: items.length, page: 1, page_size: Math.max(items.length, 1) };
     });
-
-    return mockEnvelope(caseItem, 'Status transitioned successfully');
   },
 
-  async assignCase(caseId: string, operatorId: string | null): Promise<ApiResponse<Case>> {
-    if (!USE_MOCK) {
-      return request<Case>(`/api/cases/${caseId}/assign`, {
-        method: 'POST',
-        body: JSON.stringify({ operator_id: operatorId }),
-      });
-    }
-
-    const caseItem = memoryCases.find((c) => c.id === caseId);
-    if (!caseItem) throw { code: 'RESOURCE_NOT_FOUND', message: 'Case not found' };
-
-    const operator = DEMO_USERS.find((u) => u.id === operatorId);
-    caseItem.assigned_operator = operator ? { id: operator.id, name: operator.name } : null;
-    caseItem.updated_at = new Date().toISOString();
-
-    return mockEnvelope(caseItem, 'Case assignment updated');
+  getExtraction(extractionId: string): Promise<ApiResponse<Extraction>> {
+    if (!USE_MOCK) return request<Extraction>(`/api/extractions/${extractionId}`);
+    return mocked(() => {
+      const ext = db.extractions[extractionId];
+      if (!ext) throw apiError('RESOURCE_NOT_FOUND', 'Extraction not found.');
+      return ext;
+    });
   },
 
-  async addCaseNote(caseId: string, body: string): Promise<ApiResponse<Case>> {
-    if (!USE_MOCK) {
-      return request<Case>(`/api/cases/${caseId}/notes`, {
-        method: 'POST',
-        body: JSON.stringify({ body }),
-      });
-    }
-
-    const caseItem = memoryCases.find((c) => c.id === caseId);
-    if (!caseItem) throw { code: 'RESOURCE_NOT_FOUND', message: 'Case not found' };
-
-    const newNote = {
-      id: `note-${Date.now()}`,
-      body,
-      author: { id: DEMO_USERS[0].id, name: DEMO_USERS[0].name },
-      created_at: new Date().toISOString(),
-    };
-    caseItem.notes.unshift(newNote);
-    caseItem.updated_at = new Date().toISOString();
-
-    return mockEnvelope(caseItem, 'Note added');
+  reviewExtraction(extractionId: string, payload: ReviewPayload): Promise<ApiResponse<Extraction>> {
+    return USE_MOCK
+      ? mocked(() => mockReview(extractionId, payload), `Extraction ${payload.decision}ed`)
+      : send<Extraction>(`/api/extractions/${extractionId}/review`, 'POST', payload);
   },
 
-  async issueVictimAccessCode(caseId: string): Promise<ApiResponse<{ access_code: string; expires_at: string }>> {
-    if (!USE_MOCK) {
-      return request<{ access_code: string; expires_at: string }>(`/api/cases/${caseId}/victim-access`, {
-        method: 'POST',
-      });
-    }
-    // Generate synthetic 12-char code
-    const access_code = 'K7QM-4XHP-' + Math.random().toString(36).substring(2, 6).toUpperCase();
-    return mockEnvelope(
-      {
-        access_code,
-        expires_at: new Date(Date.now() + 7 * 86400 * 1000).toISOString(),
-      },
-      'Access code issued'
-    );
+  /* 6.6 Dashboard, audit, alerts */
+  getDashboardStats(bankId?: string | null): Promise<ApiResponse<DashboardStats>> {
+    return USE_MOCK
+      ? mockEnvelope(DEMO_STATS)
+      : request<DashboardStats>(`/api/dashboard/stats${query({ bank_id: bankId })}`);
   },
 
-  /* --------------------------------------------------------------------------
-   * 6.4 PUBLIC INTAKE FORM (NO LOGIN)
-   * -------------------------------------------------------------------------- */
-  async submitIntake(data: {
-    bank_id: string;
-    victim_name: string;
-    victim_phone: string;
-    victim_email: string;
-    victim_address?: string;
-    preferred_language?: string;
-    amount: number;
-    currency: string;
-    transfer_date: string;
-    account_number: string;
-    account_holder_name?: string;
-    scam_type: string;
-    description: string;
-  }): Promise<ApiResponse<{ case_id: string; reference: string; access_code: string }>> {
-    if (!USE_MOCK) {
-      return request<{ case_id: string; reference: string; access_code: string }>('/api/intake', {
-        method: 'POST',
-        body: JSON.stringify(data),
-      });
-    }
-
-    const reference = `RFR-2026-000${memoryCases.length + 50}`;
-    const newCaseId = `c0000000-0000-4000-8000-${Date.now()}`;
-    const bank = DEMO_BANKS.find((b) => b.id === data.bank_id) || DEMO_BANKS[0];
-    const access_code = 'M3PX-8KWN-' + Math.random().toString(36).substring(2, 6).toUpperCase();
-
-    const newCase: Case = {
-      id: newCaseId,
-      reference,
-      bank_id: bank.id,
-      bank_name: bank.name,
-      victim_name: data.victim_name,
-      amount: data.amount,
-      currency: data.currency || 'JPY',
-      scam_type: data.scam_type as any,
-      status: 'received',
-      deadline: new Date(Date.now() + 2 * 86400 * 1000).toISOString(),
-      deadline_state: 'on_track',
-      assigned_operator: null,
-      reported_date: new Date().toISOString().split('T')[0],
-      updated_at: new Date().toISOString(),
-      flags: {
-        missing_fields: ['document'],
-        ai_review_pending: false,
-        shared_account_case_count: 0,
-        victim_question_pending: false,
-      },
-      victim: {
-        name: data.victim_name,
-        phone: data.victim_phone || null,
-        email: data.victim_email || null,
-        address: data.victim_address || null,
-        preferred_language: (data.preferred_language as any) || 'en',
-      },
-      transfer_date: data.transfer_date,
-      account_number: data.account_number,
-      account_holder_name: data.account_holder_name || null,
-      description: data.description,
-      channel: 'web_form',
-      closure_reason: null,
-      created_at: new Date().toISOString(),
-      closed_at: null,
-      allowed_transitions: ['verified', 'closed'],
-      allowed_closure_reasons: ['withdrawn'],
-      documents: [],
-      notes: [],
-    };
-
-    memoryCases.unshift(newCase);
-
-    return mockEnvelope(
-      {
-        case_id: newCaseId,
-        reference,
-        access_code,
-      },
-      'Intake report received successfully'
-    );
+  /** A page of audit entries, newest first (contract §6.4). */
+  getAuditLogs(
+    params: { case_id?: string; bank_id?: string; page?: number; page_size?: number } = {}
+  ): Promise<ApiResponse<PaginatedResult<AuditEntry>>> {
+    if (!USE_MOCK) return request<PaginatedResult<AuditEntry>>(`/api/audit-logs${query(params)}`);
+    return mocked(() => {
+      const items = db.auditLogs
+        .filter((l) => !params.case_id || l.case_id === params.case_id)
+        .filter((l) => !params.bank_id || l.bank_id === params.bank_id);
+      return { items, total: items.length, page: 1, page_size: Math.max(items.length, 1) };
+    });
   },
 
-  /* --------------------------------------------------------------------------
-   * 6.5 AI DOCUMENT EXTRACTION & HITL REVIEW
-   * -------------------------------------------------------------------------- */
-  async getReviewQueue(): Promise<ApiResponse<ReviewQueueItem[]>> {
-    if (!USE_MOCK) {
-      return request<ReviewQueueItem[]>('/api/review-queue');
-    }
-    return mockEnvelope(memoryReviewQueue);
+  getSharedAccountAlerts(): Promise<ApiResponse<SharedAccountAlert[]>> {
+    return USE_MOCK ? mockEnvelope(DEMO_ALERTS) : request<SharedAccountAlert[]>('/api/alerts/shared-accounts');
   },
 
-  async getExtraction(extractionId: string): Promise<ApiResponse<Extraction>> {
-    if (!USE_MOCK) {
-      return request<Extraction>(`/api/extractions/${extractionId}`);
-    }
-    const ext = memoryExtractions[extractionId];
-    if (!ext) throw { code: 'RESOURCE_NOT_FOUND', message: 'Extraction not found' };
-    return mockEnvelope(ext);
-  },
-
-  async reviewExtraction(
-    extractionId: string,
-    payload: {
-      action: 'accept' | 'reject';
-      approved_fields?: Record<string, string | number | null>;
-      review_note?: string;
-    }
-  ): Promise<ApiResponse<Extraction>> {
-    if (!USE_MOCK) {
-      return request<Extraction>(`/api/extractions/${extractionId}/review`, {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      });
-    }
-
-    const ext = memoryExtractions[extractionId];
-    if (!ext) throw { code: 'RESOURCE_NOT_FOUND', message: 'Extraction not found' };
-
-    ext.status = payload.action === 'accept' ? 'accepted' : 'rejected';
-    ext.reviewed_at = new Date().toISOString();
-    ext.reviewed_by = { id: DEMO_USERS[0].id, name: DEMO_USERS[0].name };
-    ext.review_note = payload.review_note || null;
-
-    if (payload.action === 'accept' && payload.approved_fields) {
-      const caseItem = memoryCases.find((c) => c.id === ext.case_id);
-      if (caseItem) {
-        if (payload.approved_fields.amount !== undefined) {
-          caseItem.amount = Number(payload.approved_fields.amount);
-        }
-        if (payload.approved_fields.account_number !== undefined) {
-          caseItem.account_number = String(payload.approved_fields.account_number);
-        }
-        if (payload.approved_fields.account_holder_name !== undefined) {
-          caseItem.account_holder_name = String(payload.approved_fields.account_holder_name);
-        }
-        caseItem.flags.ai_review_pending = false;
-        caseItem.updated_at = new Date().toISOString();
-      }
-    }
-
-    // Remove from active review queue
-    memoryReviewQueue = memoryReviewQueue.filter((q) => q.extraction_id !== extractionId);
-
-    return mockEnvelope(ext, `Extraction ${payload.action}ed successfully`);
-  },
-
-  /* --------------------------------------------------------------------------
-   * 6.6 DASHBOARD & AUDIT LOGS
-   * -------------------------------------------------------------------------- */
-  async getDashboardStats(bankId?: string | null): Promise<ApiResponse<DashboardStats>> {
-    if (!USE_MOCK) {
-      const q = bankId ? `?bank_id=${bankId}` : '';
-      return request<DashboardStats>(`/api/dashboard/stats${q}`);
-    }
-    return mockEnvelope(DEMO_STATS);
-  },
-
-  async getAuditLogs(params?: { case_id?: string; bank_id?: string }): Promise<ApiResponse<AuditEntry[]>> {
-    if (!USE_MOCK) {
-      const q = new URLSearchParams();
-      if (params?.case_id) q.set('case_id', params.case_id);
-      if (params?.bank_id) q.set('bank_id', params.bank_id);
-      return request<AuditEntry[]>(`/api/audit-logs?${q.toString()}`);
-    }
-    let logs = [...memoryAuditLogs];
-    if (params?.case_id) logs = logs.filter((l) => l.case_id === params.case_id);
-    if (params?.bank_id) logs = logs.filter((l) => l.bank_id === params.bank_id);
-    return mockEnvelope(logs);
-  },
-
-  async getSharedAccountAlerts(): Promise<ApiResponse<SharedAccountAlert[]>> {
-    if (!USE_MOCK) {
-      return request<SharedAccountAlert[]>('/api/alerts/shared-accounts');
-    }
-    return mockEnvelope(DEMO_ALERTS);
-  },
-
-  /* --------------------------------------------------------------------------
-   * 6.7 VICTIM SELF-SERVICE & CASE ASSISTANT (RAG)
-   * -------------------------------------------------------------------------- */
-  async createVictimSession(
-    reference: string,
-    access_code: string
-  ): Promise<ApiResponse<{ token: string; case: VictimCase }>> {
-    if (!USE_MOCK) {
-      return request<{ token: string; case: VictimCase }>('/api/victim/session', {
-        method: 'POST',
-        body: JSON.stringify({ reference, access_code }),
-      });
-    }
-
-    const matched = memoryCases.find((c) => c.reference.toUpperCase() === reference.toUpperCase());
-    if (!matched) {
-      throw {
-        code: 'INVALID_CREDENTIALS',
-        message: 'Invalid case reference or access code. Try demo: RFR-2026-00042 / K7QM-4XHP-2RTV',
-      };
-    }
-
-    const victimCase: VictimCase = {
-      reference: matched.reference,
-      bank_name: matched.bank_name,
-      status: matched.status,
-      closure_reason: matched.closure_reason,
-      victim: matched.victim,
-      amount: matched.amount,
-      currency: matched.currency,
-      transfer_date: matched.transfer_date,
-      account_number: matched.account_number,
-      account_holder_name: matched.account_holder_name,
-      scam_type: matched.scam_type,
-      description: matched.description,
-      missing_fields: matched.flags.missing_fields,
-      editable_fields:
-        matched.status === 'received'
-          ? [
-              'victim.name',
-              'victim.phone',
-              'victim.email',
-              'victim.address',
-              'amount',
-              'currency',
-              'transfer_date',
-              'account_number',
-              'account_holder_name',
-              'scam_type',
-              'description',
-            ]
-          : ['victim.phone', 'victim.email', 'victim.address', 'victim.preferred_language'],
-      submitted_at: matched.created_at,
-      updated_at: matched.updated_at,
-    };
-
-    return mockEnvelope(
-      {
-        token: `victim_session_token_${matched.reference}`,
-        case: victimCase,
-      },
-      'Victim session authenticated'
-    );
-  },
-
-  async getVictimChat(caseReference: string): Promise<ApiResponse<ChatThread>> {
-    if (!USE_MOCK) {
-      return request<ChatThread>('/api/victim/chat');
-    }
-    const thread = memoryChatThreads[caseReference] || {
-      case_reference: caseReference,
-      messages: [],
-      victim_question_pending: false,
-      assistant_available: true,
-    };
-    return mockEnvelope(thread);
-  },
-
-  async sendVictimMessage(caseReference: string, question: string): Promise<ApiResponse<ChatMessage>> {
-    if (!USE_MOCK) {
-      return request<ChatMessage>('/api/victim/chat/messages', {
-        method: 'POST',
-        body: JSON.stringify({ question }),
-      });
-    }
-
-    if (!memoryChatThreads[caseReference]) {
-      memoryChatThreads[caseReference] = {
-        case_reference: caseReference,
-        messages: [],
-        victim_question_pending: false,
-        assistant_available: true,
-      };
-    }
-
-    const thread = memoryChatThreads[caseReference];
-
-    // User message
-    const userMsg: ChatMessage = {
-      id: `msg-${Date.now()}-u`,
-      role: 'victim',
-      body: question,
-      language: 'en',
-      created_at: new Date().toISOString(),
-      author: null,
-      answer_type: null,
-      citations: [],
-      confidence: null,
-      needs_staff: false,
-      feedback: null,
-    };
-    thread.messages.push(userMsg);
-
-    // Simulated RAG Grounded Answer from bank bluebook
-    const assistantMsg: ChatMessage = {
-      id: `msg-${Date.now()}-a`,
-      role: 'assistant',
-      body: `According to Birch Regional Bank's Fraud Relief Protocol, all transactions verified through the Operations Center are catalogued under the statutory restitution schedule. Operators review claims in the order received, and you will receive a formal notification once account verification completes.`,
-      language: 'en',
-      created_at: new Date().toISOString(),
-      author: null,
-      answer_type: 'grounded',
-      citations: [
-        {
-          document_id: 'kb-birch-01',
-          document_title: 'Birch Regional Bank — Fraud Relief Bluebook',
-          version: '2026.1',
-          section: '3.2 Restitution Notice Timeline',
-          page: 6,
-          quote: 'Restitution claims shall be processed sequentially by the Central Operations Bureau under standardized verification protocols.',
-        },
-      ],
-      confidence: 0.93,
-      needs_staff: false,
-      feedback: null,
-    };
-
-    thread.messages.push(assistantMsg);
-    return mockEnvelope(assistantMsg);
-  },
-
-  /* --------------------------------------------------------------------------
-   * 6.8 KNOWLEDGE BASE (BLUEBOOKS)
-   * -------------------------------------------------------------------------- */
-  async getKbDocuments(): Promise<ApiResponse<KbDocument[]>> {
-    if (!USE_MOCK) {
-      return request<KbDocument[]>('/api/kb/documents');
-    }
-    return mockEnvelope(memoryKbDocuments);
+  /* 6.8 Bluebooks */
+  getKbDocuments(): Promise<ApiResponse<KbDocument[]>> {
+    return USE_MOCK ? mocked(() => db.kbDocuments) : request<KbDocument[]>('/api/kb/documents');
   },
 };
