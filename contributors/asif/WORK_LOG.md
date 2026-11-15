@@ -4,6 +4,41 @@ Owner: Asif (`MdAsif-Hossain`) — Role: Backend / Services / Database — Branc
 
 Use this log to share progress, planned work, and dependencies with the team. Update it after each work session, keep the newest entry first, and use Bangladesh time (UTC+6). Link to relevant issues, commits, or pull requests when available.
 
+## 2026-11-15 (session 10) — backend Phase 1 done
+
+### Completed (each part tested, then pushed to `main`)
+- **Local database:** portable PostgreSQL 16.16 at `E:\pgsql16` (outside the repo), plus [bootstrap_db.sql](../../backend/scripts/bootstrap_db.sql) to create `migrator`, `app_user`, `fraud_relief` and `fraud_relief_test`.
+- **A1** `73d8ac6`, migration 001: the 11 core tables.
+  - Enums are text + CHECK.
+  - Composite `(case_id, bank_id)` foreign keys keep every child row on its case's bank.
+- **A2 + A5** `b663ad2`, migration 002: RLS forced on every table, and `app_user` has no `DELETE` grant anywhere.
+  - The append-only audit trigger is statement-level, so it also blocks superusers. Tested live: `ERROR: audit_log is append-only`.
+  - `next_case_reference()` starts at 100, so it never collides with the seeded references.
+  - Also: XREQ-001 set to `[IN_PROGRESS]`, and `.gitignore` now covers coverage output and database dumps.
+- **A3** `22e7536`, [app/db.py](../../backend/app/db.py): every transaction gets its scope (`after_begin` hook).
+  - Tested: scope is re-applied after commit and rollback, a pooled connection doesn't leak it, and scope values can't inject SQL.
+- **A4** `5efc472`, [app/services/audit.py](../../backend/app/services/audit.py): `record()`, `record_case_view()` (10-minute dedupe) and `diff()`.
+  - No `RETURNING`, so victims and bank viewers can write audit entries.
+  - Refuses passwords and tokens in metadata.
+- **A9 engine** `05df5aa`, [extraction_engine.py](../../backend/app/services/extraction_engine.py): the API_SPEC §6.5 outcome table, timeout, concurrency limit, circuit breaker (`ai_status()` for health), validation of the AI's answer, and the rule-based fallback.
+- **A8 checks** `576cc41`, [document_files.py](../../backend/app/services/document_files.py): file type from its first bytes, the 10 MB cap, safe filenames, and download headers (attachment, nosniff).
+- **Tests:** 158 pass (`tests/rls` 104, `tests/ai` 29, `tests/unit` 25). Recipe in [backend/migrations/README.md](../../backend/migrations/README.md).
+
+### Next (blocked on Anim's framework)
+- A6–A15 endpoints need Anim's N1/N2:
+  - `create_app`, `ApiError`/`ok()`;
+  - `Principal` (with `.scope()` → `db.Scope` and `.actor()` → `audit.Actor`) and the `CurrentPrincipal`/`StaffUser`/`VictimUser` dependencies;
+  - `pyproject.toml`, which until then means using `uv run --no-project --with ...`.
+- Shared table models for `cases`, `documents` and `ai_extractions`: agree with Anim who writes `app/models/cases.py`.
+- Migration 003 (Phase 4) needs pgvector, which the portable Windows build doesn't include. Use Docker or a hosted Postgres for it.
+
+### Blockers / handoff
+- **Anim:** call `db.init_engine(settings.database_url)` in `create_app`.
+  - Build `SessionDep` from `db.session_for(who.scope())` (example in the `db.py` docstring).
+  - Use `audit.Actor` in `Principal.actor()`.
+  - The seed must run with `app.role = 'system'`, because FORCE RLS applies to the table owner too.
+- **Galib:** raise `app.services.ai_errors.AIUnavailableError` from `extract_fields()`. The backend handles timeouts.
+
 ## 2026-11-15 (session 9)
 
 ### Completed
