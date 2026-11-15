@@ -28,6 +28,7 @@ import {
   LogIn,
   Users,
   FilePlus2,
+  BookOpen,
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -47,6 +48,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: PATHS.cases, label: 'CASE WORKSTATION', icon: Inbox, roles: ['operator', 'supervisor', 'bank_viewer'] },
   { to: PATHS.review, label: 'HITL AI OCR', icon: BrainCircuit, roles: ['operator', 'supervisor'], badge: 'review' },
   { to: PATHS.audit, label: 'AUDIT LEDGER', icon: History, roles: ['supervisor', 'bank_viewer'] },
+  { to: PATHS.knowledge, label: 'BLUEBOOKS', icon: BookOpen, roles: ['operator', 'supervisor', 'bank_viewer'] },
   { to: PATHS.adminUsers, label: 'TEAM', icon: Users, roles: ['supervisor'] },
   { to: PATHS.portal, label: 'MY CASES', icon: LifeBuoy, roles: ['victim'] },
   { to: PATHS.portalReport, label: 'REPORT A SCAM', icon: FilePlus2, roles: ['victim'] },

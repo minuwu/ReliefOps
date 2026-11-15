@@ -9,6 +9,7 @@ export const PATHS = {
   reviewDetail: (extractionId: string) => `/review/${extractionId}`,
   audit: '/audit',
   adminUsers: '/admin/users',
+  knowledge: '/knowledge',
 
   login: '/login',
   signup: '/signup',

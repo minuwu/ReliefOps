@@ -68,6 +68,16 @@ const routes: RouteObject[] = [
         ],
       },
       {
+        // Every staff role reads the bluebooks; only supervisors upload, publish and archive (contract §6.8).
+        element: <RequireAuth roles={['operator', 'supervisor', 'bank_viewer']} />,
+        children: [
+          {
+            path: PATHS.knowledge,
+            ...page(() => import('@/pages/KnowledgeBasePage').then((m) => ({ Component: m.KnowledgeBasePage }))),
+          },
+        ],
+      },
+      {
         element: <RequireAuth roles={CASE_WORKERS} />,
         children: [
           {
