@@ -16,7 +16,17 @@ Update after each work session. Newest entry first. Bangladesh time (UTC+6). Lin
 - Pick the vision provider and model; first prompt in `backend/app/prompts/extract-v1`; real extraction on 3–4 synthetic slips.
 
 ### Related issues / commits / PRs
-- Branch `galib/extract-fields-stub`; PR #8 (XREQ-002 naming fixes)
+- Branch `galib/extract-fields-stub`; PR #9. PR #8 (XREQ-002 naming fixes) merged.
+
+---
+
+## 2026-11-15 — XREQ-002 naming fixes
+
+### Completed
+- Corrected XREQ-002 in AGENTS.md: field names now match `ExtractableField` (API_SPEC §3.4), and it names the extraction files. `ai_extraction.py` is Galib's; `extraction.py` is Asif's wrapper (backend-development-guide §ownership). Minhaz's log entry pointing Galib at `services/extraction.py` is superseded.
+
+### Related issues / commits / PRs
+- Branch `galib/fix-xreq-002-fields`
 
 ---
 
