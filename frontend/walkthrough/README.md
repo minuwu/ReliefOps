@@ -2,7 +2,7 @@
 ### End-to-End Scenario Walkthrough & Interactive Demo Guide
 > **Japanese Furikomi Fraud Relief Act (Law No. 133 / 振り込め詐欺救済法)**  
 > *A unified, multi-tenant operations center shared across 5 regional banks, featuring Human-In-The-Loop AI vision OCR, real-time syndicate graph detection, and strict zero-leakage bank privacy.*  
-> 🚀 **Live Production App**: **[https://reliefops.web.app](https://reliefops.web.app)** *(Mirror: [https://reliefops.firebaseapp.com](https://reliefops.firebaseapp.com))*
+> 🚀 **Live Production App**: **[https://reliefops.web.app](https://reliefops.web.app)**
 
 ---
 
