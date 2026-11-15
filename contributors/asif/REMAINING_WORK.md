@@ -32,6 +32,15 @@ Each completed part gets its own tested commit and push, after pulling both the 
 - Commit message: `feat(db): add bank-isolated knowledge and case chat storage`.
 - Limitation: tables exist and are verified; HTTP routes are still pending.
 
+### Part 2 ? complete: bank-scoped retrieval
+
+- `app/services/retrieval.py` derives the bank from an owned case, applies RLS, filters published victim-facing documents before ranking and returns at most five passages.
+- Exact 768-dimensional cosine search combined with PostgreSQL keyword search; missing/invalid embeddings use keywords. Model mismatch never compares incompatible vectors. The 0.35 semantic cutoff is a starting heuristic, not a measured quality guarantee; Japanese keyword segmentation remains limited without embeddings.
+- Allow-listed case context excludes names, accounts, staff notes and deadlines. Known case identifiers and email/phone-like text are redacted from external-model input. Unknown names/addresses typed in free text cannot be guaranteed absent.
+- Verification: **17 migration/retrieval tests passed**; Ruff passed. Includes keyword-only behavior, vector filtering, foreign case 404, invalid vectors and redaction.
+- Commit message: `feat(chat): retrieve only the case bank's published guidance`.
+- User confirmed: finish agreed tasks and document XREQ-004 for team clarification; do not implement fraud-ring/freeze now.
+
 ## Integration dependencies
 
 - Anim: FastAPI app, authenticated `Principal`/dependencies, error envelope, rate-limit headers, seed and staff/bluebook services.

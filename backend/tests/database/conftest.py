@@ -212,3 +212,35 @@ def world(owner_engine: Engine) -> dict[str, str]:
             (ids["operator"],),
         )
     return ids
+
+
+@pytest.fixture(scope="session")
+def knowledge(owner_engine, world):
+    result = {}
+    with owner_engine.begin() as c:
+        set_scope(c, "system")
+        for key, bank, status, audience in (
+            ("public_b", "bank_b", "published", "victim_facing"),
+            ("private_b", "bank_b", "published", "staff_only"),
+            ("draft_b", "bank_b", "ready", "victim_facing"),
+            ("public_a", "bank_a", "published", "victim_facing"),
+        ):
+            doc = c.exec_driver_sql(
+                "insert into kb_documents (bank_id,title,version,language,audience,status,content,sha256,uploaded_by) "
+                "values (%s,%s,'1','en',%s,%s,'x'::bytea,repeat('a',64),%s) returning id",
+                (bank, key, audience, status, world["supervisor"]),
+            ).scalar_one()
+            passage = c.exec_driver_sql(
+                "insert into kb_passages (document_id,bank_id,text,embedding,embedding_model) "
+                "values (%s,%s,'report documents help',%s::vector,'gemini-embedding-001') returning id",
+                (doc, bank, '[' + ','.join(['1'] + ['0'] * 767) + ']'),
+            ).scalar_one()
+            result[key] = (doc, passage)
+        for key, bank in (("case_a2", "bank_a"), ("case_b1", "bank_b")):
+            c.exec_driver_sql(
+                "insert into chat_messages (case_id,bank_id,role,body,language,answer_type) "
+                "values (%s,%s,'assistant','Test answer','en','no_answer')", (world[key], bank),
+            )
+    return result
+
+

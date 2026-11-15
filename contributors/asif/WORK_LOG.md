@@ -4,6 +4,12 @@ Owner: Asif (`MdAsif-Hossain`) — Role: Backend / Services / Database — Branc
 
 Use this log to share progress, planned work, and dependencies with the team. Update it after each work session, keep the newest entry first, and use Bangladesh time (UTC+6). Link to relevant issues, commits, or pull requests when available.
 
+## 2026-11-15 (session 12) ? remaining tasks, part 2
+
+- Added bank-scoped hybrid retrieval with keyword fallback and minimized/redacted model input.
+- **17 targeted migration/retrieval tests passed**; Ruff passed.
+- [Evidence and limitations](REMAINING_WORK.md). Next: persisted victim chat, feedback, timeout and escalation.
+
 ## 2026-11-15 (session 12) ? remaining tasks, part 1
 
 - Claimed XREQ-003's victim chat portion; documented the current account-based contract and XREQ-004's unresolved identity/permissions decision.
