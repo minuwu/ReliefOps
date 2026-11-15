@@ -60,16 +60,16 @@ const SCENARIOS: Scenario[] = [
     persona: 'Haruto Tanaka (67, Scam Victim, Shibuya Tokyo)',
     roleDescription: 'Defrauded citizen seeking recovery of illicitly transferred savings',
     targetPath: PATHS.portal,
-    userEmail: 'victim1@mail.test',
+    userEmail: 'victim2@mail.test',
     story:
-      'Haruto received a fraudulent phone call from an imposter claiming his national pension was locked, directing him to transfer ¥1,450,000 into an "escrow safety account" at Birch Regional Bank. Realizing he was defrauded, Haruto urgently accesses the ReliefOps Citizen Portal.',
+      'Haruto received a fraudulent phone call from an imposter claiming his national pension was locked, directing him to transfer ¥1,450,000 into an "escrow safety account" at Cobalt Regional Bank. Realizing he was defrauded, Haruto urgently accesses the ReliefOps Citizen Portal.',
     goal: 'Submit an emergency relief claim, upload the ATM Furikomi receipt, track the 6-stage statutory recovery lifecycle, and communicate with center triage operators.',
     steps: [
       {
         number: '01',
         action: 'Log In to the Victim Portal',
         outcome:
-          'Log in as victim1@mail.test. Case RFR-2026-00042 is already linked to that account. New victims sign up, confirm the email from the Demo inbox, then report online.',
+          'Log in as victim2@mail.test. Case RFR-2026-00051 is already linked to that account. New victims sign up, confirm the email from the Demo inbox, then report online.',
       },
       {
         number: '02',
@@ -101,12 +101,12 @@ const SCENARIOS: Scenario[] = [
     icon: Inbox,
     title: 'Center Intake Specialist & Case Triage',
     subtitle: 'Workstation Prioritization, SLA Timers & Inter-Bank Freezes',
-    persona: 'Aoi Sato (Operator One, Tokyo Shared Operations Center)',
+    persona: 'Operator One (Tokyo Shared Operations Center)',
     roleDescription: 'Frontline triage specialist managing high-velocity cross-bank queues',
     targetPath: PATHS.cases,
     userEmail: 'operator1@opscenter.test',
     story:
-      'Aoi oversees the shared intake workstation. With 38 cases incoming from 5 regional banks, she must prioritize claims facing strict 48-hour statutory deadlines and issue swift freeze orders to recipient financial institutions.',
+      'Operator One oversees the shared intake workstation. With 38 cases incoming from 5 regional banks, they must prioritize claims facing strict 48-hour statutory deadlines and issue swift freeze orders to recipient financial institutions.',
     goal: 'Filter and prioritize urgent cases, inspect victim documentation, review suspect destination accounts, and progress cases from Received to Verified and Account Check.',
     steps: [
       {
@@ -119,7 +119,7 @@ const SCENARIOS: Scenario[] = [
         number: '02',
         action: 'Open Case Detail Drawer for RFR-2026-00042',
         outcome:
-          'Inspect victim narrative, scam category (Impersonation), and suspect destination account 9876543210.',
+          'Inspect victim narrative, scam category (Impersonation), and suspect destination account 0012345.',
       },
       {
         number: '03',
@@ -189,12 +189,12 @@ const SCENARIOS: Scenario[] = [
     icon: BarChart3,
     title: 'Control Tower & Cross-Bank Syndicate Hunting',
     subtitle: '5-Bank Ecosystem Oversight & Fraud Ring Topology',
-    persona: 'Supervisor Sarah (Chief Operations Officer, Tokyo Ops Hub)',
+    persona: 'Supervisor Sato (Chief Operations Officer, Tokyo Ops Hub)',
     roleDescription: 'Executive supervisor directing inter-bank intelligence and regulatory compliance',
     targetPath: PATHS.dashboard,
     userEmail: 'supervisor@opscenter.test',
     story:
-      'Sarah manages the shared operations command center for Aster, Birch, Cobalt, Dune, and Ember Regional Banks. She tracks high-altitude KPIs, monitors SLA breaches, and investigates organized crime rings laundering stolen funds across multiple banks simultaneously.',
+      'Supervisor Sato manages the shared operations command center for Aster, Birch, Cobalt, Dune, and Ember Regional Banks. He tracks high-altitude KPIs, monitors SLA breaches, and investigates organized crime rings laundering stolen funds across multiple banks simultaneously.',
     goal: 'Monitor center-wide metrics, review urgent SLA countdowns, explore the multi-bank fraud syndicate graph, and execute a coordinated multi-bank account freeze.',
     steps: [
       {
@@ -233,7 +233,7 @@ const SCENARIOS: Scenario[] = [
     icon: Building2,
     title: 'Member Bank Risk Officer & Zero-Knowledge Privacy',
     subtitle: 'Strict Institutional Boundary Enforcement Under Banking Privacy Law',
-    persona: 'Birch Compliance Officer (Birch Regional Bank)',
+    persona: 'Birch Viewer (Birch Regional Bank)',
     roleDescription: 'Bank risk officer viewing claims and restitution calculations exclusively for Birch Bank',
     targetPath: PATHS.cases,
     userEmail: 'viewer@bank-b.test',
@@ -243,7 +243,7 @@ const SCENARIOS: Scenario[] = [
     steps: [
       {
         number: '01',
-        action: 'Switch Role to Birch Compliance Officer',
+        action: 'Switch Role to Birch Viewer',
         outcome:
           'Observe the navbar tenant indicator locking the session to "TENANT: BANK_B".',
       },
