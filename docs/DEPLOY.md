@@ -83,7 +83,7 @@ curl -s $API/api/health                         # db: ok, ai: available, rag: av
 bash backend/scripts/smoke.sh $API              # 39/39; its last check locks your IP out of login for 15 min
 ```
 
-Post `$API` in XREQ-006. The frontend builds with `VITE_API_BASE_URL=$API` and `VITE_USE_MOCK=false`.
+Post `$API` in XREQ-006. The frontend builds with `VITE_API_URL=$API` and `VITE_USE_MOCK=false` (frontend/.env.example).
 
 ## Email (team decision)
 

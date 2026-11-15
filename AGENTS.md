@@ -61,11 +61,11 @@ This file is:
 | Request ID | Priority | From | To | Target / Title | Status | Updated (UTC+6) |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | `XREQ-001` | `P0 (Blocker)` | Frontend (Minhaz) | Backend (Asif / Anim) | Core Cases & Bank Tenant Isolation API (`GET/POST /api/cases`, `POST /api/cases/{case_id}/transition`) | `[RESOLVED]` | 2026-11-15 22:30 (path agreed: `/transition`) |
-| `XREQ-002` | `P0 (Blocker)` | Frontend (Minhaz) | AI (Galib) / Backend (Asif) | Rule D3 Vision OCR Extraction & HITL Queue (`POST /api/documents/{id}/extract`, `POST /api/extractions/{id}/review`) | `[IN_PROGRESS]` | 2026-11-15 20:10 (accept/reject is one review call) |
-| `XREQ-003` | `P1 (High)` | Frontend (Minhaz) | Backend (Anim / Asif) | Victim accounts, case reports & 6-Stage Status Tracker (`POST /api/victim/cases`) | `[IN_PROGRESS]` | 2026-11-15 20:10 (intake replaced by victim accounts) |
+| `XREQ-002` | `P0 (Blocker)` | Frontend (Minhaz) | AI (Galib) / Backend (Asif) | Rule D3 Vision OCR Extraction & HITL Queue (`POST /api/documents/{id}/extract`, `POST /api/extractions/{id}/review`) | `[RESOLVED]` | 2026-11-15 22:15 (all routes live) |
+| `XREQ-003` | `P1 (High)` | Frontend (Minhaz) | Backend (Anim / Asif) | Victim accounts, case reports & 6-Stage Status Tracker (`POST /api/victim/cases`) | `[RESOLVED]` | 2026-11-15 22:15 (victim accounts + routes live) |
 | `XREQ-004` | `P1 (High)` | Frontend (Minhaz) | Backend (Asif / Anim) / AI (Galib) | Cross-Bank Shared Accounts (`GET /api/alerts/shared-accounts`); freeze needs a team decision | `[IN_PROGRESS]` | 2026-11-15 20:10 (detection done, freeze not agreed) |
-| `XREQ-005` | `P1 (High)` | Frontend (Minhaz) | Backend (Anim / Asif) | All routes mounted. 1 contract deviation still open: `409` on assign (see card) | `[PENDING]` | 2026-11-15 14:49 |
-| `XREQ-006` | `P0 (Blocker)` | Frontend (Minhaz) | Backend (Asif / Anim) / AI (Galib) | Deploy backend + database + AI to the cloud, post the public HTTPS API URL, allow the frontend origin (CORS) | `[PENDING]` | 2026-11-15 15:05 |
+| `XREQ-005` | `P1 (High)` | Frontend (Minhaz) | Backend (Anim / Asif) | All 48 v0.4.2 routes mounted; the 3 contract deviations closed (contract v0.4.3) | `[RESOLVED]` | 2026-11-15 22:15 (48/48 routes, v0.4.3) |
+| `XREQ-006` | `P0 (Blocker)` | Frontend (Minhaz) | Backend (Asif / Anim) / AI (Galib) | Deploy backend + database + AI to the cloud, post the public HTTPS API URL, allow the frontend origin (CORS) | `[IN_PROGRESS]` | 2026-11-15 22:15 (image + runbook ready, cloud steps left) |
 
 *(When adding a request: append a row above AND add a detailed card in 2.2. Never insert in the middle.)*
 
@@ -128,7 +128,7 @@ Frontend workstation and case details are fully built, responsive, and running o
 - **Priority**: `P0 (Blocker)`
 - **From**: Frontend & Architecture (Minhaz)
 - **To**: AI (Galib) / Backend (Asif)
-- **Status**: `[IN_PROGRESS]`
+- **Status**: `[RESOLVED]`
 - **Created**: 2026-11-15 11:30 (UTC+6)
 - **Target Interface / Endpoints**: `POST /api/documents/{id}/extract`, `GET /api/review-queue`, `POST /api/extractions/{id}/review`
 
@@ -163,9 +163,11 @@ Statutory Rule D3 dictates that AI is strictly an assistive advisor: **AI model 
 ```
 
 **Fulfillment & Proof:**
-- **Branch / Commit**: `[branch-name or commit-hash]`
-- **Status / Notes**: `[Implemented route / schema / component]`
-- **Verification Proof**: `[curl command, Swagger link, or test output]`
+- **Branch / Commit**: `main`. Asif `3c506a3` (routes on his services), Galib (AI extraction + rules fallback), Anim `869b477` (contract tests, v0.4.3).
+- **Status / Notes**: **`[RESOLVED]`. Live:** `POST /api/cases/{id}/documents` (PDF, PNG, JPEG or TXT, checked from the bytes, at most 10 MB), `GET /api/documents/{id}/file`, `POST /api/documents/{id}/extract`, `GET /api/extractions/{id}`, `POST /api/extractions/{id}/review` (accept and reject in one call, with `decision` and `expected_version`), and `GET /api/review-queue` (low confidence first).
+  - The AI only suggests (D3): an extraction is `pending_review`, and nothing reaches the case until a person accepts it.
+  - With the AI off or down, extraction still answers `201`, with `source: "rules_fallback"` and the `low_confidence` lane. The threshold is the contract's 0.75, not the 0.85 in this card.
+- **Verification Proof**: `uv run pytest tests/api/test_contract_routes.py` checks every response against `openapi.yaml`. `bash scripts/smoke.sh` runs paper case → upload → extraction → review → **Verified**: 39/39 directly and 39/39 through the Prism proxy with no violations.
 
 **Status request (Minhaz, 2026-11-15 14:49):** None of the document, extraction or review-queue routes are mounted yet. The frontend upload, extract and review screens are built against the contract. Galib / Asif: please post progress and an ETA here. If the demo uses only the rules fallback, say so.
 
@@ -175,7 +177,7 @@ Statutory Rule D3 dictates that AI is strictly an assistive advisor: **AI model 
 - **Priority**: `P1 (High)`
 - **From**: Frontend (Minhaz)
 - **To**: Backend (Anim / Asif)
-- **Status**: `[IN_PROGRESS]` (Asif: victim services and chat; Anim: authentication and HTTP integration)
+- **Status**: `[RESOLVED]` (Asif: victim services and chat; Anim: authentication and HTTP integration)
 - **Created**: 2026-11-15 11:30 (UTC+6)
 - **Target Interface / Endpoints**: `POST /api/victim/cases`, `GET /api/victim/cases/{case_id}`, `/api/victim/cases/{case_id}/chat` (was `POST /api/intake`, `POST /api/victim/auth`, `GET /api/victim/cases/{reference}`, `POST /api/victim/chat`)
 
@@ -222,10 +224,10 @@ Allows scam victims to report losses via the public web form without prior regis
 
 **Fulfillment & Proof:**
 - **Branch / Commit**: `main`. Anim: accounts and auth (N2, N3, N7, `09c1493` … `bdf8a05`), staff side of the chat (N17, `bd1f68d`). Asif: victim-case and victim-chat services.
-- **Status / Notes** (partial, still `[IN_PROGRESS]`):
+- **Status / Notes** (**`[RESOLVED]`**):
   - **Live (Anim):** the victim account flow that replaced the access codes. `POST /api/auth/signup` (always `202`, no `role` field), `verify-email`, `resend-verification`, `login` (unverified victim → `403 EMAIL_NOT_VERIFIED`), `me`, `logout`, `forgot-password` and `reset-password`. Email links go to `FRONTEND_BASE_URL` + `/verify-email`, `/reset-password` or `/accept-invitation` with `?token=…`, which matches the frontend's routes.
   - **Live (Asif's router, mounted by Anim):** `GET /api/victim/cases/{id}/chat`, `POST …/chat/messages`, `POST …/messages/{id}/feedback`. Staff answer escalations with `POST /api/cases/{id}/chat/reply`.
-  - **Still to route (Asif):** `POST/GET /api/victim/cases`, `GET/PATCH /api/victim/cases/{id}` and `POST /api/victim/claims`. The services and tests exist (`app/services/victim_cases.py`, `claims.py`); they need thin routers on `VictimUser` + `SessionDep`.
+  - **Now live too (Asif, `3c506a3`):** `POST/GET /api/victim/cases`, `GET/PATCH /api/victim/cases/{id}` and `POST /api/victim/claims`, plus the staff `POST /api/cases/{id}/victim-invite`. Sign-up's `preferred_language` is stored since migration 005.
 - **Verification Proof**: `cd backend && uv run pytest tests/api/test_accounts.py tests/api/test_smoke.py tests/api/test_staff_chat.py` passes, including sign-up → verify → login, reset ending every session, one-time tokens under concurrency, and escalation → staff reply. `bash scripts/smoke.sh` gives 29/29 against a live server.
 
 **Status request (Minhaz, 2026-11-15 14:49):** Victim auth and victim chat are live. The victim case routes (`GET/POST /api/victim/cases`, `GET/PATCH /api/victim/cases/{id}`) are still not mounted, so the portal falls back to mock mode. Anim / Asif: please post an ETA. Also, signup drops `preferred_language` (see XREQ-005).
@@ -283,7 +285,7 @@ Provides the showstopper feature for hackathon judging: uncovering organized cri
 - **Priority**: `P1 (High)`
 - **From**: Frontend (Minhaz)
 - **To**: Backend (Anim / Asif)
-- **Status**: `[PENDING]`
+- **Status**: `[RESOLVED]`
 - **Created**: 2026-11-15 14:49 (UTC+6)
 - **Target Interface / Endpoints**: every route below, exactly as in `docs/openapi.yaml` v0.4.2
 
@@ -310,17 +312,20 @@ The frontend calls every route in the contract. Against the live backend (`VITE_
 The frontend is now checking the history and victim case routes against the contract. Any drift will be posted here.
 
 **Fulfillment & Proof (filled by recipient on completion):**
-- **Branch / Commit**: `[branch-name or commit-hash]`
-- **Status / Notes**: `[which routes are mounted, which are out of scope]`
-- **Verification Proof**: `[pytest output with contract validation]`
-
+- **Branch / Commit**: `main`. Asif `3c506a3` (routes), Anim `6d55546` (migration 005), `869b477` (contract v0.4.3).
+- **Status / Notes**: **`[RESOLVED]`. All 48 contract operations are mounted**: every path and method in `openapi.yaml` is served, with none missing and none extra. Nothing is out of scope.
+  - The staff chat reply is `POST /api/cases/{id}/chat/reply` (this card says `/chat`).
+  - **Deviation 1 (`preferred_language` dropped):** fixed. Migration 005 adds `users.preferred_language`, and sign-up stores it.
+  - **Deviation 2 (victim chat errors not the envelope):** doesn't reproduce in the real app. A bad question → `422` and another victim's case → `404`, both a valid `ErrorEnvelope`. The standalone test app inside Asif's chat tests uses its own handlers.
+  - **Deviation 3 (`409` on assign):** the behaviour is right (a closed case can't be reassigned), so the contract was fixed. v0.4.3 declares that `409` (shared `CaseClosed`), plus 20 more operations' `403`/`422`/`409` that the server could already send.
+- **Verification Proof**: `uv run pytest tests/api/test_contract_routes.py tests/api/test_contract.py tests/api/test_permissions.py` passes (each response validated against the schema the contract declares for that exact path, method and status); full suite 761 passed. The smoke run through the Prism proxy (`--errors`) gives 39/39 with 0 violations. `redocly lint`: valid.
 ---
 
 #### `[XREQ-006]` Deploy backend, database and AI to the cloud; give the frontend a public API URL
 - **Priority**: `P0 (Blocker)`
 - **From**: Frontend (Minhaz)
 - **To**: Backend (Asif / Anim) / AI (Galib)
-- **Status**: `[PENDING]`
+- **Status**: `[IN_PROGRESS]`
 - **Created**: 2026-11-15 15:05 (UTC+6)
 - **Target Interface / Endpoint**: a public `https://` base URL serving `/api/*` (contract v0.4.2)
 
@@ -367,10 +372,13 @@ EMAIL_MODE: console | smtp
 3. Test every flow against the live API, and report drift in XREQ-005.
 
 **Fulfillment & Proof (filled by recipient on completion):**
-- **Branch / Commit**: `[commit with deploy config]`
-- **Status / Notes**: `[API URL, host, DB provider, email mode]`
-- **Verification Proof**: `curl -i -H "Origin: https://reliefops.web.app" <API_URL>/api/health` showing `200` and `access-control-allow-origin: https://reliefops.web.app`
-
+- **Branch / Commit**: `9dc1936`: `backend/Dockerfile`, `backend/.dockerignore`, [docs/DEPLOY.md](docs/DEPLOY.md).
+- **Status / Notes** (Anim, backend lead, `[IN_PROGRESS]`): **the backend is ready to deploy but not deployed yet.** The remaining steps need the team's Google Cloud project and a database account.
+  - **Plan:** Cloud Run (HTTPS, same project as Firebase) plus a managed Postgres 16 with pgvector (Cloud SQL, Neon or Supabase). It's one instance (`--max-instances=1`, because the rate limits are in memory) and `--min-instances=1`, so there's no cold start.
+  - **CORS:** `CORS_ORIGINS=https://reliefops.web.app,https://reliefops.firebaseapp.com,http://localhost:5173`, with `FRONTEND_BASE_URL=https://reliefops.web.app`.
+  - **Rehearsed locally with the same image on an empty database:** boot without a database URL refuses to start (prod guard); the migrate+seed job applies 001→005 and seeds the demo data; prod-mode health is `ok`; CORS allows `reliefops.web.app` and rejects other origins; the per-client login lockout works behind a proxy (`X-Forwarded-For`); smoke 39/39 against the container.
+  - **Left:** (1) **Galib rotates the three AI keys** (the old ones are in git history; removed from `.env.example` in `9018383`); (2) create the database and roles (DEPLOY.md §1); (3) build, push and deploy (§2–5); (4) **email decision:** `console` (demo with the pre-verified seed accounts) or `smtp` (needs SMTP secrets); (5) post the URL here.
+- **Verification Proof**: after deploying, `curl -i -H "Origin: https://reliefops.web.app" <API_URL>/api/health` should give `200` and `access-control-allow-origin: https://reliefops.web.app`, and `bash backend/scripts/smoke.sh <API_URL>` should give 39/39.
 ---
 
 ### 2.3 Blank XREQ Template (copy & paste)
