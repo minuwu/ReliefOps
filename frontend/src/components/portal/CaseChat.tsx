@@ -5,9 +5,24 @@ import { victimApi } from '@/services/victimApi';
 import { errorMessage, isApiError } from '@/services/http';
 import { FormNotice } from '@/components/auth/AuthCard';
 import { Button } from '@/components/ui/Button';
+import { formatDateTime } from '@/lib/utils';
 
 const MAX_QUESTION = 1000;
 const DEFAULT_WAIT_SECONDS = 30;
+
+function scrollContainerToBottom(el: HTMLElement, smooth = true) {
+  const prefersReduced =
+    typeof window !== 'undefined' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!smooth || prefersReduced) {
+    el.scrollTop = el.scrollHeight;
+  } else {
+    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    setTimeout(() => {
+      el.scrollTop = el.scrollHeight;
+    }, 300);
+  }
+}
 
 /** Plain-language label for each kind of assistant answer (contract AnswerType). */
 const ANSWER_NOTE: Record<NonNullable<ChatMessage['answer_type']>, string | null> = {
@@ -54,7 +69,7 @@ function Bubble({ message, onRate }: BubbleProps) {
         }`}
       >
         <p className="mb-1 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider opacity-80">
-          <Icon className="w-3.5 h-3.5" aria-hidden="true" /> {who} · {new Date(message.created_at).toLocaleString()}
+          <Icon className="w-3.5 h-3.5" aria-hidden="true" /> {who} · {formatDateTime(message.created_at)}
         </p>
         {note && <p className="mb-1 text-xs font-bold">{note}</p>}
         <p className="whitespace-pre-wrap">{message.body}</p>
@@ -99,7 +114,25 @@ export function CaseChat({ caseId }: { caseId: string }) {
   const [sendError, setSendError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
   const [waitSeconds, setWaitSeconds] = useState(0);
+
   const listRef = useRef<HTMLUListElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const isNearBottomRef = useRef(true);
+  const isInitialLoadRef = useRef(true);
+  const userJustSentRef = useRef(false);
+  const prevCountRef = useRef(0);
+
+  const handleScroll = () => {
+    const el = listRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    isNearBottomRef.current = distanceFromBottom <= 80;
+  };
+
+  useEffect(() => {
+    isInitialLoadRef.current = true;
+    prevCountRef.current = 0;
+  }, [caseId]);
 
   useEffect(() => {
     let isActive = true;
@@ -119,7 +152,28 @@ export function CaseChat({ caseId }: { caseId: string }) {
   }, [waitSeconds]);
 
   useEffect(() => {
-    listRef.current?.lastElementChild?.scrollIntoView({ block: 'nearest' });
+    const el = listRef.current;
+    const messagesCount = thread?.messages.length ?? 0;
+    if (!el || messagesCount === 0) return;
+
+    const frameId = requestAnimationFrame(() => {
+      const container = listRef.current;
+      if (!container) return;
+      if (isInitialLoadRef.current) {
+        isInitialLoadRef.current = false;
+        scrollContainerToBottom(container, false);
+        isNearBottomRef.current = true;
+      } else if (userJustSentRef.current) {
+        userJustSentRef.current = false;
+        scrollContainerToBottom(container, true);
+        isNearBottomRef.current = true;
+      } else if (messagesCount > prevCountRef.current && isNearBottomRef.current) {
+        scrollContainerToBottom(container, true);
+      }
+      prevCountRef.current = messagesCount;
+    });
+
+    return () => cancelAnimationFrame(frameId);
   }, [thread?.messages.length]);
 
   const appendMessages = (messages: ChatMessage[]) =>
@@ -131,14 +185,18 @@ export function CaseChat({ caseId }: { caseId: string }) {
   const handleSend = async (e: FormEvent) => {
     e.preventDefault();
     const text = question.trim();
-    if (!text || waitSeconds > 0) return;
+    if (!text || waitSeconds > 0 || isSending) return;
     setIsSending(true);
     setSendError(null);
+    let success = false;
     try {
+      userJustSentRef.current = true;
       const res = await victimApi.askAssistant(caseId, text);
       appendMessages([res.data.question, res.data.answer]);
       setQuestion('');
+      success = true;
     } catch (err) {
+      userJustSentRef.current = false;
       if (isApiError(err) && err.code === 'RATE_LIMITED') {
         const retry = (err as { retry_after?: number }).retry_after;
         setWaitSeconds(retry ?? DEFAULT_WAIT_SECONDS);
@@ -146,6 +204,11 @@ export function CaseChat({ caseId }: { caseId: string }) {
       setSendError(errorMessage(err, 'Could not send your question. Try again.'));
     } finally {
       setIsSending(false);
+      if (success) {
+        setTimeout(() => {
+          inputRef.current?.focus({ preventScroll: true });
+        }, 50);
+      }
     }
   };
 
@@ -171,7 +234,12 @@ export function CaseChat({ caseId }: { caseId: string }) {
           Ask anything about your case or the relief process. For example: “What happens after verification?”
         </p>
       ) : (
-        <ul ref={listRef} className="max-h-[28rem] space-y-2 overflow-y-auto pr-1" aria-live="polite">
+        <ul
+          ref={listRef}
+          onScroll={handleScroll}
+          className="max-h-[min(12.5rem,calc(100vh-18rem))] space-y-2 overflow-y-auto pr-1"
+          aria-live="polite"
+        >
           {thread.messages.map((m) => (
             <Bubble key={m.id} message={m} onRate={handleRate} />
           ))}
@@ -184,10 +252,12 @@ export function CaseChat({ caseId }: { caseId: string }) {
         </label>
         <textarea
           id="chat-question"
+          ref={inputRef}
           rows={3}
           maxLength={MAX_QUESTION}
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
+          placeholder="Ask a question about your case"
           className="w-full rounded-xl border-2 border-[#09090B] bg-[#F8F4E8] px-3 py-2 text-sm font-medium shadow-[2px_2px_0px_0px_#09090B] focus:outline-none focus:shadow-hard"
         />
         <div className="flex items-center justify-between gap-2">

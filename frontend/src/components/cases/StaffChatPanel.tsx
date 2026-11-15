@@ -20,6 +20,20 @@ import { cn, formatDateTime } from '@/lib/utils';
 
 const MAX_REPLY_CHARS = 4000;
 
+function scrollContainerToBottom(el: HTMLElement, smooth = true) {
+  const prefersReduced =
+    typeof window !== 'undefined' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!smooth || prefersReduced) {
+    el.scrollTop = el.scrollHeight;
+  } else {
+    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    setTimeout(() => {
+      el.scrollTop = el.scrollHeight;
+    }, 300);
+  }
+}
+
 function CitationsList({ citations }: { citations: Citation[] }) {
   if (!citations || citations.length === 0) return null;
   return (
@@ -133,6 +147,7 @@ interface ReplyFormProps {
   replyText: string;
   isSending: boolean;
   sendError: string | null;
+  textareaRef: React.RefObject<HTMLTextAreaElement>;
   onTextChange: (text: string) => void;
   onSubmit: (e: FormEvent) => void;
 }
@@ -141,6 +156,7 @@ function StaffReplyForm({
   replyText,
   isSending,
   sendError,
+  textareaRef,
   onTextChange,
   onSubmit,
 }: ReplyFormProps) {
@@ -167,6 +183,7 @@ function StaffReplyForm({
       </div>
 
       <textarea
+        ref={textareaRef}
         id="staff-chat-reply-textarea"
         rows={3}
         maxLength={MAX_REPLY_CHARS}
@@ -213,7 +230,25 @@ export function StaffChatPanel({
   const [replyText, setReplyText] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
-  const messagesEndRef = useRef<HTMLUListElement>(null);
+
+  const listRef = useRef<HTMLUListElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const isNearBottomRef = useRef(true);
+  const isInitialLoadRef = useRef(true);
+  const userJustSentRef = useRef(false);
+  const prevCountRef = useRef(0);
+
+  const handleScroll = () => {
+    const el = listRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    isNearBottomRef.current = distanceFromBottom <= 80;
+  };
+
+  useEffect(() => {
+    isInitialLoadRef.current = true;
+    prevCountRef.current = 0;
+  }, [caseId]);
 
   const loadThread = useCallback(
     async (isRefresh = false) => {
@@ -241,8 +276,29 @@ export function StaffChatPanel({
   }, [loadThread]);
 
   useEffect(() => {
-    messagesEndRef.current?.lastElementChild?.scrollIntoView({ block: 'nearest' });
-  }, [thread?.messages.length]);
+    const el = listRef.current;
+    const messagesCount = thread?.messages.length ?? 0;
+    if (!el || isLoading || messagesCount === 0) return;
+
+    const frameId = requestAnimationFrame(() => {
+      const container = listRef.current;
+      if (!container) return;
+      if (isInitialLoadRef.current) {
+        isInitialLoadRef.current = false;
+        scrollContainerToBottom(container, false);
+        isNearBottomRef.current = true;
+      } else if (userJustSentRef.current) {
+        userJustSentRef.current = false;
+        scrollContainerToBottom(container, true);
+        isNearBottomRef.current = true;
+      } else if (messagesCount > prevCountRef.current && isNearBottomRef.current) {
+        scrollContainerToBottom(container, true);
+      }
+      prevCountRef.current = messagesCount;
+    });
+
+    return () => cancelAnimationFrame(frameId);
+  }, [thread?.messages.length, isLoading]);
 
   const handleSendReply = async (e: FormEvent) => {
     e.preventDefault();
@@ -251,15 +307,25 @@ export function StaffChatPanel({
 
     setIsSending(true);
     setSendError(null);
+    let success = false;
     try {
+      userJustSentRef.current = true;
       await staffChatApi.reply(caseId, text);
-      pushToast('Staff reply sent successfully.', 'success');
       setReplyText('');
       await loadThread(true);
+      success = true;
     } catch (err) {
-      setSendError(errorMessage(err, 'Failed to send staff reply.'));
+      userJustSentRef.current = false;
+      const msg = errorMessage(err, 'Failed to send staff reply.');
+      setSendError(msg);
+      pushToast(msg, 'error');
     } finally {
       setIsSending(false);
+      if (success) {
+        setTimeout(() => {
+          textareaRef.current?.focus({ preventScroll: true });
+        }, 50);
+      }
     }
   };
 
@@ -315,8 +381,9 @@ export function StaffChatPanel({
 
       {!isLoading && !loadError && thread && thread.messages.length > 0 && (
         <ul
-          ref={messagesEndRef}
-          className="max-h-[24rem] space-y-2.5 overflow-y-auto pr-1"
+          ref={listRef}
+          onScroll={handleScroll}
+          className="h-[min(22rem,45vh)] space-y-2.5 overflow-y-auto pr-1"
           aria-label="Chat messages"
         >
           {thread.messages.map((m) => (
@@ -330,6 +397,7 @@ export function StaffChatPanel({
           replyText={replyText}
           isSending={isSending}
           sendError={sendError}
+          textareaRef={textareaRef}
           onTextChange={setReplyText}
           onSubmit={handleSendReply}
         />

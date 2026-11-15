@@ -131,7 +131,7 @@ export function PortalCasePage() {
           <LockedDetails caseItem={caseItem} />
         </section>
 
-        <section className={panelClass} aria-labelledby="chat-heading">
+        <section className={`${panelClass} lg:sticky lg:top-4 lg:self-start`} aria-labelledby="chat-heading">
           <h2 id="chat-heading" className="text-sm font-bold uppercase tracking-wide text-[#09090B]">
             Questions about your case
           </h2>

@@ -8,21 +8,22 @@ const TONE_CLASS: Record<ToastTone, string> = {
   error: 'bg-[#FF334B] text-[#09090B]',
 };
 
-/** Global toast stack. Screen readers hear new toasts through the live region. */
+/** Global toast stack positioned bottom-center to avoid covering modal controls and corner buttons. */
 export function Toaster() {
   const { toasts, dismiss } = useToastStore();
+  const visibleToasts = toasts.slice(-3);
 
   return (
     <div
       aria-live="polite"
       role="status"
-      className="fixed top-20 sm:top-24 right-2 sm:right-6 z-[60] flex flex-col gap-2 w-[calc(100%-1rem)] max-w-sm pointer-events-none"
+      className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-2 w-[calc(100%-2rem)] max-w-md pointer-events-none"
     >
-      {toasts.map((t) => (
+      {visibleToasts.map((t) => (
         <div
           key={t.id}
           className={cn(
-            'pointer-events-auto flex items-start gap-3 rounded-xl border-2 border-[#09090B] shadow-hard px-4 py-3 text-sm font-bold animate-in',
+            'pointer-events-auto flex items-start gap-3 rounded-xl border-2 border-[#09090B] shadow-hard px-4 py-3 text-sm font-bold animate-in w-full',
             TONE_CLASS[t.tone]
           )}
         >
