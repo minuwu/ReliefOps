@@ -59,6 +59,15 @@ const routes: RouteObject[] = [
         ],
       },
       {
+        element: <RequireAuth roles={['supervisor']} />,
+        children: [
+          {
+            path: PATHS.adminUsers,
+            ...page(() => import('@/pages/AdminUsersPage').then((m) => ({ Component: m.AdminUsersPage }))),
+          },
+        ],
+      },
+      {
         element: <RequireAuth roles={CASE_WORKERS} />,
         children: [
           {
