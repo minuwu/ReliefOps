@@ -10,6 +10,9 @@ import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
 import { api } from '@/services/api';
 import { errorMessage } from '@/services/http';
 import { CaseProgressStepper } from './CaseProgressStepper';
+import { CaseDocumentsPanel } from './CaseDocumentsPanel';
+import { CaseHistoryPanel } from './CaseHistoryPanel';
+import { StaffChatPanel } from './StaffChatPanel';
 import {
   ShieldAlert,
   Calendar,
@@ -437,6 +440,10 @@ export function CaseDetailModal({
             ))}
           </div>
         </div>
+
+        <CaseDocumentsPanel caseId={caseItem.id} onExtractionReady={onOpenExtraction} />
+        <StaffChatPanel caseId={caseItem.id} canReply={user?.role === 'operator' || isSupervisor} />
+        <CaseHistoryPanel caseId={caseItem.id} />
       </div>
 
       {/* Transition Confirmation Dialog */}
