@@ -43,8 +43,7 @@ uv run alembic upgrade head      # or: alembic downgrade -1
 uv run alembic current
 ```
 
-Until `pyproject.toml` exists, prefix commands with
-`uv run --no-project --with alembic --with sqlalchemy --with "psycopg[binary]" --with pytest`.
+Run `uv sync` once first; it installs everything in `backend/pyproject.toml` (dev tools included) into `backend/.venv`.
 
 ## Database-rule tests
 
