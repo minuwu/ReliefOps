@@ -19,9 +19,9 @@ type Outcome = { tone: 'success' | 'error'; message: string } | null;
 
 const linkClass = 'block text-center text-sm font-bold underline underline-offset-4';
 
-function MissingToken({ badge, title, retry }: { badge: string; title: string; retry: ReactNode }) {
+function MissingToken({ title, retry }: { title: string; retry: ReactNode }) {
   return (
-    <AuthCard badge={badge} title={title}>
+    <AuthCard title={title}>
       <FormNotice tone="error">This link is incomplete. Open it again from the email.</FormNotice>
       {retry}
     </AuthCard>
@@ -59,7 +59,6 @@ export function VerifyEmailPage() {
   if (!token) {
     return (
       <MissingToken
-        badge="EMAIL CHECK"
         title="Verify your email"
         retry={<Link to={PATHS.login} className={linkClass}>Log in to get a new link</Link>}
       />
@@ -67,7 +66,7 @@ export function VerifyEmailPage() {
   }
 
   return (
-    <AuthCard badge="EMAIL CHECK" title="Verify your email">
+    <AuthCard title="Verify your email">
       {!outcome && <FormNotice tone="info">Checking your link…</FormNotice>}
       {outcome && <FormNotice tone={outcome.tone}>{outcome.message}</FormNotice>}
       {outcome?.tone === 'error' && (
@@ -107,9 +106,8 @@ export function ForgotPasswordPage() {
 
   return (
     <AuthCard
-      badge="PASSWORD HELP"
       title="Forgot your password?"
-      subtitle="Enter your email. If an account uses it, we send a link to choose a new password."
+      subtitle="Enter your email to receive a password reset link."
       footer={<Link to={PATHS.login} className="font-bold text-[#09090B] underline underline-offset-4">Back to log in</Link>}
     >
       <form onSubmit={handleSubmit} className="space-y-4" noValidate>
@@ -134,7 +132,6 @@ export function ForgotPasswordPage() {
 /* --- Shared: set a password from an emailed token ------------------------ */
 
 interface SetPasswordPageProps {
-  badge: string;
   title: string;
   subtitle: string;
   submitLabel: string;
@@ -144,7 +141,7 @@ interface SetPasswordPageProps {
   passwordField: string;
 }
 
-function SetPasswordPage({ badge, title, subtitle, submitLabel, retry, submit, passwordField }: SetPasswordPageProps) {
+function SetPasswordPage({ title, subtitle, submitLabel, retry, submit, passwordField }: SetPasswordPageProps) {
   const token = useUrlToken();
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -152,11 +149,11 @@ function SetPasswordPage({ badge, title, subtitle, submitLabel, retry, submit, p
   const [outcome, setOutcome] = useState<Outcome>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  if (!token) return <MissingToken badge={badge} title={title} retry={retry} />;
+  if (!token) return <MissingToken title={title} retry={retry} />;
 
   if (outcome?.tone === 'success') {
     return (
-      <AuthCard badge={badge} title={title}>
+      <AuthCard title={title}>
         <FormNotice tone="success">{outcome.message}</FormNotice>
         <Link to={PATHS.login} className={linkClass}>Go to log in</Link>
       </AuthCard>
@@ -184,7 +181,7 @@ function SetPasswordPage({ badge, title, subtitle, submitLabel, retry, submit, p
   };
 
   return (
-    <AuthCard badge={badge} title={title} subtitle={subtitle}>
+    <AuthCard title={title} subtitle={subtitle}>
       <form onSubmit={handleSubmit} className="space-y-4" noValidate>
         <NewPasswordFields
           password={password}
@@ -208,7 +205,6 @@ function SetPasswordPage({ badge, title, subtitle, submitLabel, retry, submit, p
 export function ResetPasswordPage() {
   return (
     <SetPasswordPage
-      badge="PASSWORD HELP"
       title="Choose a new password"
       subtitle="After this, every device that was logged in must log in again."
       submitLabel="SAVE NEW PASSWORD"
@@ -224,7 +220,6 @@ export function ResetPasswordPage() {
 export function AcceptInvitationPage() {
   return (
     <SetPasswordPage
-      badge="STAFF INVITATION"
       title="Set up your staff account"
       subtitle="A supervisor invited you. Choose a password to finish creating your account."
       submitLabel="CREATE MY ACCOUNT"
@@ -259,10 +254,10 @@ export function ClaimCasePage() {
   });
 
   const toPortal = <Link to={PATHS.portal} className={linkClass}>Go to my cases</Link>;
-  if (!token) return <MissingToken badge="LINK YOUR CASE" title="Track your case online" retry={toPortal} />;
+  if (!token) return <MissingToken title="Track your case online" retry={toPortal} />;
 
   return (
-    <AuthCard badge="LINK YOUR CASE" title="Track your case online">
+    <AuthCard title="Track your case online">
       {error ? (
         <>
           <FormNotice tone="error">{error}</FormNotice>

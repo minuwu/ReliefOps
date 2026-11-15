@@ -49,9 +49,8 @@ export function LoginPage() {
 
   return (
     <AuthCard
-      badge="SECURE SIGN-IN"
       title="Log in to ReliefOps"
-      subtitle="Staff and scam victims use the same sign-in. You will land on the right workspace."
+      subtitle="Sign in to access your claims or bank operations workspace."
       footer={
         <>
           <p>
@@ -102,9 +101,9 @@ export function LoginPage() {
       </form>
 
       {USE_MOCK && (
-        <div className="border-t-2 border-[#09090B] pt-4 space-y-2">
-          <p className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#52525B]">
-            DEMO ACCOUNTS · PASSWORD {DEMO_PASSWORD}
+        <div className="border-t border-[#09090B]/15 pt-4 space-y-2">
+          <p className="text-xs font-mono font-medium uppercase tracking-wider text-[#52525B]">
+            Demo accounts · Password {DEMO_PASSWORD}
           </p>
           <div className="grid grid-cols-2 gap-1.5">
             {DEMO_LOGINS.map((demo) => (
@@ -115,10 +114,10 @@ export function LoginPage() {
                   setEmail(demo.email);
                   setPassword(DEMO_PASSWORD);
                 }}
-                className="p-2 rounded-lg text-left text-xs font-bold border-2 border-[#09090B] bg-[#F8F4E8] hover:bg-[#D2E823] cursor-pointer"
+                className="p-2 rounded-lg text-left text-xs font-bold border border-[#09090B]/20 bg-[#F8F4E8] hover:bg-[#D2E823] cursor-pointer"
               >
                 <span className="block truncate uppercase">{demo.name}</span>
-                <span className="block text-[10px] font-mono text-[#52525B] truncate">
+                <span className="block text-xs font-mono text-[#52525B] truncate">
                   {demo.role}
                   {demo.email_verified ? '' : ' · unverified'}
                 </span>

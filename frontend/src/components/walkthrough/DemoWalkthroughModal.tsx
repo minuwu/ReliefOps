@@ -1,10 +1,8 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
-import { StickerBadge } from '@/components/ui/StickerBadge';
-import { GlitchText } from '@/components/ui/GlitchText';
 import { useAuthStore } from '@/store/useAuthStore';
-import { useNavigate } from 'react-router-dom';
 import { DEMO_PASSWORD } from '@/services/mockData';
 import { errorMessage } from '@/services/http';
 import { toast } from '@/store/useToastStore';
@@ -33,13 +31,11 @@ export interface DemoWalkthroughModalProps {
 interface Scenario {
   id: string;
   badge: string;
-  badgeVariant: 'acid' | 'coral' | 'neutral' | 'inverted';
   icon: typeof LifeBuoy;
   title: string;
   subtitle: string;
   persona: string;
   roleDescription: string;
-  /** URL the scenario opens after switching account. */
   targetPath: string;
   userEmail: string;
   story: string;
@@ -52,8 +48,7 @@ interface Scenario {
 const SCENARIOS: Scenario[] = [
   {
     id: 'victim',
-    badge: 'CITIZEN JOURNEY',
-    badgeVariant: 'acid',
+    badge: 'Citizen Journey',
     icon: LifeBuoy,
     title: 'Victim Enactment & Restitution Tracking',
     subtitle: 'Citizen Self-Service Under Furikomi Relief Act (Law No. 133)',
@@ -62,14 +57,14 @@ const SCENARIOS: Scenario[] = [
     targetPath: PATHS.portal,
     userEmail: 'victim2@mail.test',
     story:
-      'Haruto received a fraudulent phone call from an imposter claiming his national pension was locked, directing him to transfer ¥1,450,000 into an "escrow safety account" at Cobalt Regional Bank. Realizing he was defrauded, Haruto urgently accesses the ReliefOps Citizen Portal.',
-    goal: 'Submit an emergency relief claim, upload the ATM Furikomi receipt, track the 6-stage statutory recovery lifecycle, and communicate with center triage operators.',
+      'Haruto received a fraudulent phone call from an imposter claiming his national pension was locked, directing him to transfer ¥1,450,000 into an escrow account at Cobalt Regional Bank. Realizing he was defrauded, Haruto accesses the ReliefOps Citizen Portal.',
+    goal: 'Submit an emergency relief claim, upload the ATM Furikomi receipt, track the 6-stage statutory recovery lifecycle, and communicate with triage staff.',
     steps: [
       {
         number: '01',
         action: 'Log In to the Victim Portal',
         outcome:
-          'Log in as victim2@mail.test. Case RFR-2026-00051 is already linked to that account. New victims sign up, confirm the email from the Demo inbox, then report online.',
+          'Log in as victim2@mail.test. Case RFR-2026-00051 is linked to that account. New victims sign up, confirm their email, and report online.',
       },
       {
         number: '02',
@@ -87,7 +82,7 @@ const SCENARIOS: Scenario[] = [
         number: '04',
         action: 'Ask the Assistant About the Case',
         outcome:
-          'Answers cite the bank bluebook. If the assistant cannot answer, staff are told and reply in the same thread.',
+          'Answers cite bank rules. If the assistant cannot answer, staff are notified and reply in the same thread.',
       },
     ],
     actionLabel: 'Launch Citizen Journey (Victim Portal)',
@@ -96,8 +91,7 @@ const SCENARIOS: Scenario[] = [
   },
   {
     id: 'operator',
-    badge: 'OPERATOR TRIAGE',
-    badgeVariant: 'neutral',
+    badge: 'Operator Triage',
     icon: Inbox,
     title: 'Center Intake Specialist & Case Triage',
     subtitle: 'Workstation Prioritization, SLA Timers & Inter-Bank Freezes',
@@ -106,32 +100,32 @@ const SCENARIOS: Scenario[] = [
     targetPath: PATHS.cases,
     userEmail: 'operator1@opscenter.test',
     story:
-      'Operator One oversees the shared intake workstation. With 38 cases incoming from 5 regional banks, they must prioritize claims facing strict 48-hour statutory deadlines and issue swift freeze orders to recipient financial institutions.',
+      'Operator One oversees the shared intake workstation. With incoming claims from 5 regional banks, they prioritize cases facing 48-hour statutory deadlines and issue freeze orders to recipient financial institutions.',
     goal: 'Filter and prioritize urgent cases, inspect victim documentation, review suspect destination accounts, and progress cases from Received to Verified and Account Check.',
     steps: [
       {
         number: '01',
         action: 'Filter Workstation by SLA Urgency & Bank',
         outcome:
-          'Sort by Overdue / Approaching SLA to target cases needing immediate regulatory escalation.',
+          'Sort by Overdue or Approaching SLA to target cases needing immediate regulatory escalation.',
       },
       {
         number: '02',
         action: 'Open Case Detail Drawer for RFR-2026-00042',
         outcome:
-          'Inspect victim narrative, scam category (Impersonation), and suspect destination account 0012345.',
+          'Inspect victim narrative, scam category (Impersonation), and suspect destination account.',
       },
       {
         number: '03',
         action: 'Review Attached Documents & OCR Badges',
         outcome:
-          'Verify uploaded ATM Furikomi vouchers and check Human-in-the-Loop optical confidence indicators.',
+          'Verify uploaded ATM Furikomi vouchers and check optical confidence indicators.',
       },
       {
         number: '04',
         action: 'Execute Lifecycle Status Transition',
         outcome:
-          'Advance case status to "Account Check" and simulate destination account freeze dispatch.',
+          'Advance case status to Account Check and dispatch destination account freeze notice.',
       },
     ],
     actionLabel: 'Launch Operator Workstation (Cases)',
@@ -140,8 +134,7 @@ const SCENARIOS: Scenario[] = [
   },
   {
     id: 'hitl',
-    badge: 'HUMAN-IN-THE-LOOP AI',
-    badgeVariant: 'coral',
+    badge: 'Human-in-the-Loop AI',
     icon: BrainCircuit,
     title: 'Document Optical Workbench & HITL Verification',
     subtitle: 'Rule D3: Mandatory Human Certification for All AI Extractions',
@@ -150,7 +143,7 @@ const SCENARIOS: Scenario[] = [
     targetPath: PATHS.review,
     userEmail: 'operator2@opscenter.test',
     story:
-      'A victim submitted an ATM receipt with a fold line and faint thermal printer text. The Vision OCR engine processed the voucher but scored only 68% confidence on the recipient account number. Under statutory rules, AI can never commit data to banking records without certified operator sign-off.',
+      'A victim submitted an ATM receipt with faint thermal print. The Vision OCR engine processed the voucher but scored 68% confidence on the recipient account number. Under statutory rules, AI can never commit data to banking records without human sign-off.',
     goal: 'Inspect low-confidence extractions, compare raw optical voucher facsimiles with extracted text, override ambiguities, and certify verified data.',
     steps: [
       {
@@ -163,7 +156,7 @@ const SCENARIOS: Scenario[] = [
         number: '02',
         action: 'Open Optical Review Workbench for Case DOC-2026-0089',
         outcome:
-          'Launch side-by-side view with High-Res Optical Voucher Facsimile on left and Form on right.',
+          'Launch side-by-side view with optical voucher facsimile on the left and form on the right.',
       },
       {
         number: '03',
@@ -175,7 +168,7 @@ const SCENARIOS: Scenario[] = [
         number: '04',
         action: 'Approve & Certify HITL Extraction',
         outcome:
-          'Commit certified values to the legal record, automatically updating case facts and logging audit trail.',
+          'Commit certified values to the legal record, updating case facts and logging audit trail.',
       },
     ],
     actionLabel: 'Launch HITL Review Queue (AI OCR)',
@@ -184,8 +177,7 @@ const SCENARIOS: Scenario[] = [
   },
   {
     id: 'supervisor',
-    badge: 'SUPERVISOR COMMAND',
-    badgeVariant: 'acid',
+    badge: 'Supervisor Command',
     icon: BarChart3,
     title: 'Control Tower & Cross-Bank Syndicate Hunting',
     subtitle: '5-Bank Ecosystem Oversight & Fraud Ring Topology',
@@ -194,18 +186,18 @@ const SCENARIOS: Scenario[] = [
     targetPath: PATHS.dashboard,
     userEmail: 'supervisor@opscenter.test',
     story:
-      'Supervisor Sato manages the shared operations command center for Aster, Birch, Cobalt, Dune, and Ember Regional Banks. He tracks high-altitude KPIs, monitors SLA breaches, and investigates organized crime rings laundering stolen funds across multiple banks simultaneously.',
-    goal: 'Monitor center-wide metrics, review urgent SLA countdowns, explore the multi-bank fraud syndicate graph, and execute a coordinated multi-bank account freeze.',
+      'Supervisor Sato manages the shared operations command center for member banks. He tracks center-wide KPIs, monitors SLA breaches, and investigates organized crime rings laundering stolen funds across multiple banks.',
+    goal: 'Monitor center-wide metrics, review urgent SLA countdowns, explore the multi-bank fraud syndicate graph, and execute a coordinated account freeze.',
     steps: [
       {
         number: '01',
-        action: 'Inspect Executive Bento Metrics Grid',
+        action: 'Inspect Executive Metrics Grid',
         outcome:
-          'Review 38 Active Cases, ¥84,250,000 Protected Funds, 3 Overdue Cases, and 94.8% SLA Adherence.',
+          'Review Active Cases, Protected Funds, Overdue Cases, and SLA Adherence metrics.',
       },
       {
         number: '02',
-        action: 'Examine Urgent Cases SLA Carousel',
+        action: 'Examine Urgent Cases SLA List',
         outcome:
           'Track live countdown timers for cases approaching regulatory 48-hour reporting windows.',
       },
@@ -213,57 +205,56 @@ const SCENARIOS: Scenario[] = [
         number: '03',
         action: 'Explore Cross-Bank Fraud Syndicate Topology',
         outcome:
-          'Visualize shared mule destination account 9876543210 linked across Birch Bank and Aster Bank.',
+          'Visualize shared mule destination account linked across member banks.',
       },
       {
         number: '04',
         action: 'Execute Multi-Bank Emergency Freeze Simulation',
         outcome:
-          'Click "FREEZE ACROSS ALL BANKS" to coordinate immediate simultaneous freeze across member institutions.',
+          'Coordinate immediate simultaneous freeze across member institutions.',
       },
     ],
     actionLabel: 'Launch Supervisor Command (Control Tower)',
     systemGuarantee:
-      'Sybil and shared-entity detection algorithms identify organized rings across tenant walls without leaking non-syndicate data.',
+      'Shared-entity detection identifies organized rings across tenant walls without leaking non-syndicate data.',
   },
   {
     id: 'bank_viewer',
-    badge: 'MULTI-TENANT ISOLATION',
-    badgeVariant: 'neutral',
+    badge: 'Multi-Tenant Isolation',
     icon: Building2,
     title: 'Member Bank Risk Officer & Zero-Knowledge Privacy',
     subtitle: 'Strict Institutional Boundary Enforcement Under Banking Privacy Law',
     persona: 'Birch Viewer (Birch Regional Bank)',
-    roleDescription: 'Bank risk officer viewing claims and restitution calculations exclusively for Birch Bank',
+    roleDescription: 'Bank risk officer viewing claims and calculations exclusively for Birch Bank',
     targetPath: PATHS.cases,
     userEmail: 'viewer@bank-b.test',
     story:
-      '5 rival banks share this operations center to reduce costs, but Japanese banking confidentiality laws strictly mandate that Bank B cannot view, search, or infer cases belonging to Bank A, C, D, or E.',
+      '5 rival banks share this operations center, but banking confidentiality laws mandate that Bank B cannot view, search, or infer cases belonging to other banks.',
     goal: 'Demonstrate strict multi-tenant access control: the user sees exclusively Birch Regional Bank cases, while other institutions remain completely shielded.',
     steps: [
       {
         number: '01',
         action: 'Switch Role to Birch Viewer',
         outcome:
-          'Observe the navbar tenant indicator locking the session to "TENANT: BANK_B".',
+          'Observe the session locked to Birch Bank tenant scope.',
       },
       {
         number: '02',
         action: 'Inspect Workstation Case List',
         outcome:
-          'All displayed cases belong strictly to Birch Regional Bank; Aster, Cobalt, Dune, Ember cases are invisible.',
+          'All displayed cases belong strictly to Birch Regional Bank; other cases are invisible.',
       },
       {
         number: '03',
         action: 'Verify Restitution Fund Distribution Pool',
         outcome:
-          'Review balance in frozen destination account (¥520,000) and verify pro-rata recovery share.',
+          'Review balance in frozen destination account and verify recovery calculation.',
       },
       {
         number: '04',
         action: 'Attempt Cross-Tenant Query',
         outcome:
-          'System mathematically excludes non-tenant records at the data boundary layer.',
+          'System strictly excludes non-tenant records at the data boundary layer.',
       },
     ],
     actionLabel: 'Launch Bank Viewer (Birch Tenant)',
@@ -272,18 +263,17 @@ const SCENARIOS: Scenario[] = [
   },
   {
     id: 'auditor',
-    badge: 'REGULATORY AUDIT',
-    badgeVariant: 'inverted',
+    badge: 'Regulatory Audit',
     icon: History,
     title: 'Regulatory Auditor & Compliance Inspector',
-    subtitle: 'Cryptographically Sealed Immutable Audit Ledger',
+    subtitle: 'Tamper-Evident Immutable Audit Ledger',
     persona: 'Kenzo Mori (Financial Services Agency / FSA Inspector)',
     roleDescription: 'Government auditor inspecting statutory adherence and algorithmic transparency',
     targetPath: PATHS.audit,
     userEmail: 'supervisor@opscenter.test',
     story:
-      'Inspector Mori conducts a spot inspection of the shared center. Under the Furikomi Fraud Relief Act, every state change, document upload, OCR override, and account freeze must be recorded in an immutable, tamper-evident audit log.',
-    goal: 'Audit the chronological event log, confirm human oversight over every AI action, and verify that no funds are moved without human authorization.',
+      'Inspector Mori conducts a compliance inspection. Under the Furikomi Fraud Relief Act, every state change, document upload, OCR override, and account freeze must be recorded in an immutable audit log.',
+    goal: 'Audit the chronological event log, confirm human oversight over AI actions, and verify that no funds are moved without human authorization.',
     steps: [
       {
         number: '01',
@@ -295,19 +285,19 @@ const SCENARIOS: Scenario[] = [
         number: '02',
         action: 'Filter by Actor Types (User, AI, Victim, System)',
         outcome:
-          'Verify distinct actor identities, cryptographic timestamp ordering, and IP tracing metadata.',
+          'Verify distinct actor identities, chronological ordering, and metadata.',
       },
       {
         number: '03',
         action: 'Confirm Human Verification of AI Extraction',
         outcome:
-          'Verify that every extraction event is paired with a corresponding certified human verification entry.',
+          'Verify that every extraction event is paired with a certified human verification entry.',
       },
       {
         number: '04',
         action: 'Export Regulatory Verification Proof',
         outcome:
-          'Confirm audit trail satisfies FSA statutory reporting guidelines for the 5-bank consortium.',
+          'Confirm audit trail satisfies statutory reporting guidelines for the consortium.',
       },
     ],
     actionLabel: 'Launch Audit Ledger (Compliance Trail)',
@@ -336,32 +326,25 @@ export function DemoWalkthroughModal({ isOpen, onClose }: DemoWalkthroughModalPr
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} maxWidth="4xl">
-      <div className="space-y-6 font-['Space_Grotesk',sans-serif]">
+      <div className="space-y-5 font-['Space_Grotesk',sans-serif]">
         {/* Header */}
-        <div className="border-b-2 border-[#09090B] pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="border-b border-[#09090B]/15 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="space-y-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <StickerBadge variant="acid" rotate="-rotate-1" className="text-xs">
-                INTERACTIVE DEMO WALKTHROUGH
-              </StickerBadge>
-              <span className="text-xs font-mono text-[#52525B] font-bold uppercase">
-                SCENARIOS & PERSONAS ({selectedIndex + 1} OF {SCENARIOS.length})
-              </span>
-            </div>
-            <GlitchText as="h2" className="text-xl sm:text-2xl font-['Dela_Gothic_One'] text-[#09090B] uppercase">
-              END-TO-END SCENARIO WALKTHROUGHS
-            </GlitchText>
+            <h2 className="text-lg sm:text-xl font-['Dela_Gothic_One'] text-[#09090B] uppercase">
+              Scenario walkthroughs
+            </h2>
             <p className="text-xs text-[#52525B] font-medium max-w-2xl">
-              Explore how victims, triage operators, AI models, bank compliance officers, and supervisors interact within this multi-bank Furikomi Relief platform.
+              Select a persona below to explore each role in the fraud relief platform.
             </p>
           </div>
 
           <div className="flex items-center gap-1.5 self-end sm:self-auto shrink-0">
             <button
+              type="button"
               onClick={() => setSelectedIndex((prev) => (prev > 0 ? prev - 1 : SCENARIOS.length - 1))}
-              className="p-2 rounded-xl border-2 border-[#09090B] bg-[#F8F4E8] hover:bg-[#D2E823] transition-colors cursor-pointer shadow-hard-sm"
-              title="Previous Scenario"
-              aria-label="Previous Scenario"
+              className="p-1.5 rounded-lg border border-[#09090B] bg-[#F8F4E8] hover:bg-[#D2E823] transition-colors cursor-pointer"
+              title="Previous scenario"
+              aria-label="Previous scenario"
             >
               <ChevronLeft className="w-4 h-4 text-[#09090B]" />
             </button>
@@ -369,29 +352,31 @@ export function DemoWalkthroughModal({ isOpen, onClose }: DemoWalkthroughModalPr
               {selectedIndex + 1}/{SCENARIOS.length}
             </span>
             <button
+              type="button"
               onClick={() => setSelectedIndex((prev) => (prev < SCENARIOS.length - 1 ? prev + 1 : 0))}
-              className="p-2 rounded-xl border-2 border-[#09090B] bg-[#F8F4E8] hover:bg-[#D2E823] transition-colors cursor-pointer shadow-hard-sm"
-              title="Next Scenario"
-              aria-label="Next Scenario"
+              className="p-1.5 rounded-lg border border-[#09090B] bg-[#F8F4E8] hover:bg-[#D2E823] transition-colors cursor-pointer"
+              title="Next scenario"
+              aria-label="Next scenario"
             >
               <ChevronRight className="w-4 h-4 text-[#09090B]" />
             </button>
           </div>
         </div>
 
-        {/* Scenario Selector Pills */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
+        {/* Persona Selector Rows */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
           {SCENARIOS.map((sc, idx) => {
             const ScIcon = sc.icon;
             const isSelected = idx === selectedIndex;
             return (
               <button
                 key={sc.id}
+                type="button"
                 onClick={() => setSelectedIndex(idx)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap border-2 border-[#09090B] ${
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer whitespace-nowrap border ${
                   isSelected
-                    ? 'bg-[#09090B] text-[#D2E823] shadow-hard-sm translate-x-[1px] translate-y-[1px]'
-                    : 'bg-[#F8F4E8] text-[#09090B] hover:bg-[#D2E823]'
+                    ? 'bg-[#09090B] text-[#D2E823] border-[#09090B]'
+                    : 'bg-[#F8F4E8] text-[#09090B] border-[#09090B]/20 hover:bg-[#D2E823]/30'
                 }`}
               >
                 <ScIcon className="w-3.5 h-3.5" />
@@ -401,95 +386,90 @@ export function DemoWalkthroughModal({ isOpen, onClose }: DemoWalkthroughModalPr
           })}
         </div>
 
-        {/* Active Scenario Card */}
-        <div className="p-5 sm:p-6 rounded-2xl border-2 border-[#09090B] bg-[#EDE8D5] shadow-hard space-y-5">
-          {/* Top Info */}
-          <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 border-b-2 border-[#09090B] pb-4">
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-2">
-                <span className="p-2 rounded-xl bg-[#09090B] text-[#D2E823] border border-[#09090B]">
-                  <Icon className="w-5 h-5" />
-                </span>
-                <div>
-                  <h3 className="text-base sm:text-lg font-['Dela_Gothic_One'] text-[#09090B] uppercase">
-                    {currentScenario.title}
-                  </h3>
-                  <p className="text-xs font-mono font-bold text-[#52525B]">
-                    {currentScenario.subtitle}
-                  </p>
-                </div>
+        {/* Active Scenario Content */}
+        <div className="space-y-4">
+          {/* Top Title & Persona */}
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 border-b border-[#09090B]/15 pb-3">
+            <div className="flex items-start gap-2.5">
+              <span className="p-2 rounded-lg bg-[#09090B] text-[#D2E823] shrink-0 mt-0.5">
+                <Icon className="w-4 h-4" />
+              </span>
+              <div>
+                <h3 className="text-sm font-bold uppercase tracking-wide text-[#09090B]">
+                  {currentScenario.title}
+                </h3>
+                <p className="text-xs text-[#52525B]">
+                  {currentScenario.subtitle}
+                </p>
               </div>
             </div>
 
-            <div className="p-2.5 rounded-xl border-2 border-[#09090B] bg-[#F8F4E8] text-xs space-y-0.5 shrink-0">
-              <div className="font-bold uppercase text-[10px] text-[#52525B]">PERSONA FOCUS:</div>
+            <div className="rounded-lg border border-[#09090B]/15 bg-[#F8F4E8] p-2.5 text-xs space-y-0.5 shrink-0">
+              <div className="font-bold uppercase text-xs text-[#52525B]">Persona:</div>
               <div className="font-bold text-[#09090B]">{currentScenario.persona}</div>
-              <div className="text-[11px] text-[#52525B] max-w-xs">{currentScenario.roleDescription}</div>
+              <div className="text-xs text-[#52525B] max-w-xs">{currentScenario.roleDescription}</div>
             </div>
           </div>
 
-          {/* Story & Goal */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-4 rounded-xl border-2 border-[#09090B] bg-[#F8F4E8] shadow-hard-sm space-y-1.5">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#FF334B] flex items-center gap-1">
-                <AlertTriangle className="w-3 h-3" /> SCENARIO BACKSTORY & CONTEXT
+          {/* Context & Goal */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+            <div className="p-3.5 rounded-xl border border-[#09090B]/15 bg-[#F8F4E8] space-y-1">
+              <span className="font-bold uppercase tracking-wide text-[#09090B] flex items-center gap-1.5">
+                <AlertTriangle className="w-3.5 h-3.5 text-[#FF334B]" /> Context
               </span>
-              <p className="text-xs text-[#09090B] leading-relaxed font-medium">
+              <p className="text-xs text-[#09090B] leading-relaxed">
                 {currentScenario.story}
               </p>
             </div>
 
-            <div className="p-4 rounded-xl border-2 border-[#09090B] bg-[#F8F4E8] shadow-hard-sm space-y-1.5">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#16A34A] flex items-center gap-1">
-                <Sparkles className="w-3 h-3" /> USER GOAL & SYSTEM OBJECTIVE
+            <div className="p-3.5 rounded-xl border border-[#09090B]/15 bg-[#F8F4E8] space-y-1">
+              <span className="font-bold uppercase tracking-wide text-[#09090B] flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-[#09090B]" /> Goal
               </span>
-              <p className="text-xs text-[#09090B] leading-relaxed font-medium">
+              <p className="text-xs text-[#09090B] leading-relaxed">
                 {currentScenario.goal}
               </p>
             </div>
           </div>
 
-          {/* End-to-End Steps */}
-          <div className="space-y-2.5">
-            <h4 className="text-xs font-['Dela_Gothic_One'] uppercase text-[#09090B]">
-              END-TO-END INTERACTION STEPS (WHAT YOU WILL EXPERIENCE):
+          {/* End-to-End Steps (Plain Numbered List) */}
+          <div className="space-y-2">
+            <h4 className="text-xs font-bold uppercase tracking-wide text-[#52525B]">
+              Walkthrough steps
             </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <ol className="divide-y divide-[#09090B]/10 rounded-xl border border-[#09090B]/15 bg-[#F8F4E8]">
               {currentScenario.steps.map((step) => (
-                <div
-                  key={step.number}
-                  className="p-3 rounded-xl border-2 border-[#09090B] bg-[#F8F4E8] shadow-hard-sm flex items-start gap-2.5"
-                >
-                  <span className="font-mono text-xs font-black px-2 py-0.5 rounded bg-[#09090B] text-[#D2E823] shrink-0">
+                <li key={step.number} className="p-3 flex items-start gap-3 text-xs">
+                  <span className="font-mono text-xs font-bold px-1.5 py-0.5 rounded bg-[#09090B] text-[#D2E823] shrink-0">
                     {step.number}
                   </span>
-                  <div className="text-xs space-y-0.5">
+                  <div className="space-y-0.5">
                     <p className="font-bold text-[#09090B]">{step.action}</p>
-                    <p className="text-[#52525B] text-[11px] leading-tight">{step.outcome}</p>
+                    <p className="text-[#52525B] text-xs leading-normal">{step.outcome}</p>
                   </div>
-                </div>
+                </li>
               ))}
-            </div>
+            </ol>
           </div>
 
-          {/* Statutory Guarantee Box */}
-          <div className="p-3 rounded-xl border border-[#09090B] bg-[#09090B] text-[#F8F4E8] text-xs flex items-center justify-between gap-3">
+          {/* Guarantee Note */}
+          <div className="p-2.5 rounded-xl border border-[#09090B]/15 bg-[#F8F4E8] text-xs flex items-center justify-between gap-3 text-[#52525B]">
             <div className="flex items-center gap-2">
-              <Lock className="w-4 h-4 text-[#D2E823] shrink-0" />
-              <span className="text-[11px] text-[#D4D4D8]">
-                <strong>STATUTORY SAFETY GUARANTEE:</strong> {currentScenario.systemGuarantee}
+              <Lock className="w-4 h-4 text-[#09090B] shrink-0" />
+              <span>
+                <strong className="text-[#09090B]">Safety rule:</strong> {currentScenario.systemGuarantee}
               </span>
             </div>
-            <span className="hidden sm:inline-block font-mono text-[10px] text-[#D2E823] uppercase">
-              LAW NO. 133
+            <span className="hidden sm:inline-block font-mono text-xs text-[#52525B]">
+              Law No. 133
             </span>
           </div>
         </div>
 
         {/* Footer Actions */}
-        <div className="pt-2 border-t-2 border-[#09090B] flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="text-xs text-[#52525B] font-mono">
-            Clicking Launch will automatically configure the target persona, role, and tab.
+        <div className="pt-3 border-t border-[#09090B]/15 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="text-xs text-[#52525B]">
+            Launching configures the persona account and opens the target workspace.
           </div>
 
           <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -500,7 +480,7 @@ export function DemoWalkthroughModal({ isOpen, onClose }: DemoWalkthroughModalPr
               variant="primary"
               size="md"
               onClick={handleLaunchScenario}
-              className="w-2/3 sm:w-auto gap-2 shadow-hard hover:shadow-hard-sm"
+              className="w-2/3 sm:w-auto gap-2"
             >
               <PlayCircle className="w-4 h-4" />
               <span>{currentScenario.actionLabel}</span>

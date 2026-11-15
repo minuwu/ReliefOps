@@ -8,25 +8,29 @@ interface StageTrackerProps {
   isCompact?: boolean;
 }
 
-/** The six statutory stages, with the current one marked for screen readers too. */
+/** The six claim progress stages, with the current one marked for screen readers too. */
 export function StageTracker({ status, isCompact = false }: StageTrackerProps) {
   const current = stageIndex(status);
   return (
-    <div className="space-y-2">
-      <ol className="grid grid-cols-6 gap-1" aria-label="Case progress">
+    <div className="space-y-2.5">
+      <ol className="grid grid-cols-6 gap-1.5" aria-label="Claim progress">
         {STAGE_ORDER.map((stage, i) => {
           const isDone = i < current || status === 'closed';
           const isCurrent = i === current;
-          const tone = isCurrent ? 'bg-[#D2E823]' : isDone ? 'bg-[#09090B] text-[#D2E823]' : 'bg-[#F8F4E8] text-[#52525B]';
+          const tone = isCurrent
+            ? 'bg-[#D2E823] text-[#09090B] border-2 border-[#09090B]'
+            : isDone
+              ? 'bg-[#09090B] text-[#F8F4E8] border-2 border-[#09090B]'
+              : 'bg-transparent text-[#52525B] border border-[#09090B]/20';
           return (
             <li key={stage} aria-current={isCurrent ? 'step' : undefined} className="space-y-1">
               <span
-                className={`flex h-7 items-center justify-center rounded-md border-2 border-[#09090B] text-[10px] font-bold ${tone}`}
+                className={`flex h-7 items-center justify-center rounded-lg text-xs font-bold ${tone}`}
               >
                 {isDone && !isCurrent ? <Check className="w-3.5 h-3.5" aria-hidden="true" /> : i + 1}
               </span>
               {!isCompact && (
-                <span className="block text-center text-[9px] sm:text-[10px] font-bold uppercase leading-tight text-[#09090B]">
+                <span className="block text-center text-xs font-bold uppercase leading-tight text-[#09090B] truncate sm:whitespace-normal">
                   {STAGE_LABEL[stage]}
                 </span>
               )}

@@ -34,14 +34,17 @@ function LockedDetails({ caseItem }: { caseItem: VictimCase }) {
   const locked = [...REPORT_FIELDS, ...CONTACT_FIELDS].filter((f) => !caseItem.editable_fields.includes(f));
   if (locked.length === 0) return null;
   return (
-    <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2 text-sm">
-      {locked.map((key) => (
-        <div key={key} className={key === 'description' ? 'sm:col-span-2' : undefined}>
-          <dt className="text-[10px] font-bold uppercase tracking-wider text-[#52525B]">{FIELD_META[key].label}</dt>
-          <dd className="font-medium text-[#09090B] whitespace-pre-wrap">{displayValue(caseItem, key)}</dd>
-        </div>
-      ))}
-    </dl>
+    <div className="border-t border-[#09090B]/10 pt-4">
+      <h3 className="text-xs font-bold uppercase tracking-wider text-[#52525B] mb-3">Locked claim details</h3>
+      <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2 text-sm">
+        {locked.map((key) => (
+          <div key={key} className={key === 'description' ? 'sm:col-span-2' : undefined}>
+            <dt className="text-xs font-bold uppercase tracking-wider text-[#52525B]">{FIELD_META[key].label}</dt>
+            <dd className="font-medium text-[#09090B] whitespace-pre-wrap">{displayValue(caseItem, key)}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
   );
 }
 
@@ -66,7 +69,7 @@ export function PortalCasePage() {
 
   if (error) {
     return (
-      <div className="max-w-xl mx-auto px-3 py-16 space-y-4 text-center">
+      <div className="max-w-xl mx-auto px-4 py-16 space-y-4 text-center">
         <FormNotice tone="error">{error}</FormNotice>
         <Link to={PATHS.portal} className="text-sm font-bold underline underline-offset-4">
           Back to my cases
@@ -74,21 +77,28 @@ export function PortalCasePage() {
       </div>
     );
   }
-  if (!caseItem) return <p className="max-w-5xl mx-auto px-3 py-16 text-sm font-medium">Loading your case…</p>;
+  if (!caseItem) return <p className="max-w-5xl mx-auto px-4 py-16 text-sm font-medium">Loading your case…</p>;
 
   const isClosed = caseItem.status === 'closed';
   const openMissing = isClosed ? [] : caseItem.missing_fields;
 
   return (
-    <div className="max-w-6xl mx-auto px-3 sm:px-6 py-8 sm:py-12 space-y-6">
-      <header className="space-y-2">
-        <Link to={PATHS.portal} className="text-xs font-bold uppercase underline underline-offset-4">
-          ← My cases
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
+      <header className="space-y-1.5 border-b border-[#09090B]/15 pb-4">
+        <Link to={PATHS.portal} className="text-xs font-bold uppercase underline underline-offset-4 text-[#09090B]">
+          ← Back to my cases
         </Link>
-        <p className="text-xs font-mono font-bold uppercase text-[#52525B]">
-          {caseItem.bank_name} · reported {new Date(caseItem.submitted_at).toLocaleDateString()}
+        <div className="flex flex-wrap items-baseline justify-between gap-2 pt-1">
+          <h1 className="text-2xl sm:text-3xl font-['Dela_Gothic_One'] uppercase text-[#09090B] font-mono">
+            {caseItem.reference}
+          </h1>
+          <p className="text-xs font-mono font-bold uppercase text-[#52525B]">
+            {caseItem.bank_name} · Reported {new Date(caseItem.submitted_at).toLocaleDateString()}
+          </p>
+        </div>
+        <p className="text-sm text-[#52525B] font-medium">
+          Follow your claim progress, update information, and chat with staff.
         </p>
-        <h1 className="text-2xl sm:text-4xl font-['Dela_Gothic_One'] uppercase text-[#09090B]">{caseItem.reference}</h1>
       </header>
 
       <section className={panelClass} aria-label="Progress">
@@ -107,22 +117,22 @@ export function PortalCasePage() {
 
       <div className="grid gap-6 lg:grid-cols-[3fr_2fr]">
         <section className={panelClass} aria-labelledby="details-heading">
-          <h2 id="details-heading" className="text-base font-bold uppercase">
+          <h2 id="details-heading" className="text-sm font-bold uppercase tracking-wide text-[#09090B]">
             Your details
           </h2>
           {caseItem.editable_fields.length > 0 ? (
             <>
-              <p className="text-sm text-[#52525B]">You can change the fields below. Other details are locked at this stage.</p>
+              <p className="text-xs text-[#52525B]">You can change the fields below. Other details are locked at this stage.</p>
               <CaseEditForm key={caseItem.version} caseItem={caseItem} onSaved={setCaseItem} onReload={load} />
             </>
           ) : (
-            <p className="text-sm text-[#52525B]">This case is closed, so details can no longer be changed online.</p>
+            <p className="text-xs text-[#52525B]">This case is closed, so details can no longer be changed online.</p>
           )}
           <LockedDetails caseItem={caseItem} />
         </section>
 
         <section className={panelClass} aria-labelledby="chat-heading">
-          <h2 id="chat-heading" className="text-base font-bold uppercase">
+          <h2 id="chat-heading" className="text-sm font-bold uppercase tracking-wide text-[#09090B]">
             Questions about your case
           </h2>
           <CaseChat caseId={caseItem.id} />

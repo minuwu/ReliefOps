@@ -207,8 +207,10 @@ function FieldControl({ id, name, value, error, onChange }: FieldControlProps) {
   }
 
   const hintId = `${id}-hint`;
+  const errorBorder = error ? 'border-[#FF334B] shadow-[2px_2px_0px_0px_#FF334B]' : '';
+
   return (
-    <div className={`space-y-1.5 ${isWide ? 'sm:col-span-2' : ''}`}>
+    <div className={`space-y-1.5 font-['Space_Grotesk',sans-serif] ${isWide ? 'sm:col-span-2' : ''}`}>
       <label htmlFor={id} className="block text-xs font-bold uppercase tracking-wider text-[#09090B]">
         {meta.label}
       </label>
@@ -219,7 +221,7 @@ function FieldControl({ id, name, value, error, onChange }: FieldControlProps) {
           maxLength={4000}
           aria-describedby={hintId}
           aria-invalid={error ? true : undefined}
-          className={`${controlClass} py-2`}
+          className={`${controlClass} py-2 ${errorBorder}`}
           value={value}
           onChange={(e) => onChange(e.target.value)}
         />
@@ -228,7 +230,7 @@ function FieldControl({ id, name, value, error, onChange }: FieldControlProps) {
           id={id}
           aria-describedby={hintId}
           aria-invalid={error ? true : undefined}
-          className={`${controlClass} h-11`}
+          className={`${controlClass} h-11 ${errorBorder}`}
           value={value}
           onChange={(e) => onChange(e.target.value)}
         >

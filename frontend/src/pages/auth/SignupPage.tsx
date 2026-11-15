@@ -59,7 +59,7 @@ export function SignupPage() {
 
   if (sentMessage) {
     return (
-      <AuthCard badge="CHECK YOUR EMAIL" title="One more step" subtitle={sentMessage}>
+      <AuthCard title="One more step" subtitle={sentMessage}>
         <FormNotice tone="success">
           Open the link in the email to confirm your address, then log in.
           {USE_MOCK && ' In this demo, the email is in the Demo inbox at the bottom left.'}
@@ -73,9 +73,8 @@ export function SignupPage() {
 
   return (
     <AuthCard
-      badge="VICTIM ACCOUNT"
-      title="Report a scam and track it"
-      subtitle="Create an account to report a bank-transfer scam, follow your case, and ask questions."
+      title="Create a victim account"
+      subtitle="Report a bank-transfer scam and follow your claim progress online."
       footer={
         <p>
           Already have an account?{' '}
@@ -116,7 +115,7 @@ export function SignupPage() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
-        <div className="space-y-1.5">
+        <div className="space-y-1.5 font-['Space_Grotesk',sans-serif]">
           <label htmlFor="signup-language" className="block text-xs font-bold uppercase tracking-wider text-[#09090B]">
             Preferred language
           </label>
@@ -124,7 +123,7 @@ export function SignupPage() {
             id="signup-language"
             value={language}
             onChange={(e) => setLanguage(e.target.value as Language)}
-            className="h-11 w-full rounded-xl border-2 border-[#09090B] bg-[#F8F4E8] px-3 text-sm font-medium shadow-[2px_2px_0px_0px_#09090B]"
+            className="h-11 w-full rounded-xl border-2 border-[#09090B] bg-[#F8F4E8] px-3 text-sm font-medium shadow-[2px_2px_0px_0px_#09090B] focus:outline-none focus:shadow-hard"
           >
             {LANGUAGES.map((lang) => (
               <option key={lang} value={lang}>

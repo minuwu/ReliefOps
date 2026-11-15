@@ -40,7 +40,7 @@ export function DemoInbox() {
       >
         <Mail className="w-4 h-4" aria-hidden="true" /> Demo inbox
         {unread > 0 && (
-          <span className="rounded-full bg-[#FF334B] border-2 border-[#09090B] px-1.5 text-[10px]">{unread}</span>
+          <span className="rounded-full bg-[#FF334B] border border-[#09090B] px-1.5 text-xs font-bold">{unread}</span>
         )}
       </button>
     );
@@ -49,10 +49,10 @@ export function DemoInbox() {
   return (
     <aside
       aria-label="Demo email inbox"
-      className="fixed bottom-4 left-4 z-40 w-[calc(100vw-2rem)] max-w-sm max-h-[70vh] overflow-y-auto rounded-2xl border-2 border-[#09090B] bg-[#F8F4E8] shadow-hard-lg"
+      className="fixed bottom-4 left-4 z-40 w-[calc(100vw-2rem)] max-w-sm max-h-[70vh] overflow-y-auto rounded-2xl border-2 border-[#09090B] bg-[#F8F4E8] shadow-hard"
     >
-      <header className="sticky top-0 flex items-center justify-between gap-2 border-b-2 border-[#09090B] bg-[#09090B] px-4 py-2.5 text-[#D2E823]">
-        <span className="text-xs font-bold uppercase tracking-wider">Demo inbox · emails the backend would send</span>
+      <header className="sticky top-0 flex items-center justify-between gap-2 border-b border-[#09090B]/15 bg-[#09090B] px-3.5 py-2 text-[#D2E823]">
+        <span className="text-xs font-bold uppercase tracking-wider">Demo inbox</span>
         <span className="flex gap-1">
           <button type="button" onClick={refresh} aria-label="Refresh inbox" className="p-1 hover:text-[#F8F4E8] cursor-pointer">
             <RefreshCw className="w-4 h-4" />
@@ -64,24 +64,24 @@ export function DemoInbox() {
       </header>
 
       {mails.length === 0 ? (
-        <p className="p-4 text-sm font-medium text-[#52525B]">
+        <p className="p-4 text-xs font-medium text-[#52525B]">
           No emails yet. Sign up, ask for a password reset, or invite someone to see them here.
         </p>
       ) : (
-        <ul className="divide-y-2 divide-[#09090B]">
+        <ul className="divide-y divide-[#09090B]/15">
           {mails.map((mail) => (
-            <li key={mail.token} className={`p-4 space-y-1.5 ${mail.used ? 'opacity-50' : ''}`}>
-              <p className="text-[10px] font-mono text-[#52525B]">
+            <li key={mail.token} className={`p-3.5 space-y-1.5 ${mail.used ? 'opacity-50' : ''}`}>
+              <p className="text-xs font-mono text-[#52525B]">
                 To {mail.to} · {new Date(mail.sent_at).toLocaleTimeString()}
               </p>
-              <p className="text-sm font-bold text-[#09090B]">{MAIL_INFO[mail.kind].subject}</p>
+              <p className="text-xs font-bold text-[#09090B]">{MAIL_INFO[mail.kind].subject}</p>
               {mail.used ? (
                 <p className="text-xs font-bold uppercase text-[#52525B]">Link already used</p>
               ) : (
                 <Link
                   to={linkFor(mail)}
                   onClick={() => setIsOpen(false)}
-                  className="inline-block rounded-lg border-2 border-[#09090B] bg-[#D2E823] px-2.5 py-1 text-xs font-bold uppercase hover:bg-[#e4fc28]"
+                  className="inline-block rounded-lg border border-[#09090B] bg-[#D2E823] px-2.5 py-1 text-xs font-bold uppercase hover:bg-[#e4fc28]"
                 >
                   {MAIL_INFO[mail.kind].cta}
                 </Link>

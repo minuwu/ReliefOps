@@ -48,8 +48,8 @@ function Section({ title, hint, children }: { title: string; hint: string; child
   return (
     <section className="rounded-2xl border-2 border-[#09090B] bg-[#F8F4E8] p-5 sm:p-6 shadow-hard space-y-4">
       <div>
-        <h2 className="text-base font-bold uppercase text-[#09090B]">{title}</h2>
-        <p className="text-sm text-[#52525B]">{hint}</p>
+        <h2 className="text-sm font-bold uppercase tracking-wide text-[#09090B]">{title}</h2>
+        <p className="text-xs text-[#52525B]">{hint}</p>
       </div>
       {children}
     </section>
@@ -107,21 +107,23 @@ export function ReportCasePage() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto px-3 sm:px-6 py-8 sm:py-12 space-y-6">
-      <header className="space-y-2">
-        <Link to={PATHS.portal} className="text-xs font-bold uppercase underline underline-offset-4">
-          ← My cases
+    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
+      <header className="space-y-1.5 border-b border-[#09090B]/15 pb-4">
+        <Link to={PATHS.portal} className="text-xs font-bold uppercase underline underline-offset-4 text-[#09090B]">
+          ← Back to my cases
         </Link>
-        <h1 className="text-2xl sm:text-4xl font-['Dela_Gothic_One'] uppercase text-[#09090B]">Report a scam</h1>
+        <h1 className="text-2xl sm:text-3xl font-['Dela_Gothic_One'] uppercase text-[#09090B]">
+          Report a scam
+        </h1>
         <p className="text-sm font-medium text-[#52525B]">
-          Tell us about the bank transfer. You can correct any detail online until staff verify the report.
+          Tell us about the transfer. You can correct details online until staff verify the report.
         </p>
       </header>
 
       <form onSubmit={handleSubmit} className="space-y-6" noValidate>
         <Section title="Your bank" hint="The bank account you sent the money from.">
-          <div className="space-y-1.5">
-            <label htmlFor="report-bank" className="block text-xs font-bold uppercase tracking-wider">
+          <div className="space-y-1.5 font-['Space_Grotesk',sans-serif]">
+            <label htmlFor="report-bank" className="block text-xs font-bold uppercase tracking-wider text-[#09090B]">
               Bank
             </label>
             <select
@@ -129,9 +131,11 @@ export function ReportCasePage() {
               value={bankId}
               aria-invalid={errors.bank_id ? true : undefined}
               onChange={(e) => setBankId(e.target.value as BankId)}
-              className="h-11 w-full rounded-xl border-2 border-[#09090B] bg-[#F8F4E8] px-3 text-sm font-medium shadow-[2px_2px_0px_0px_#09090B]"
+              className={`h-11 w-full rounded-xl border-2 border-[#09090B] bg-[#F8F4E8] px-3 text-sm font-medium shadow-[2px_2px_0px_0px_#09090B] focus:outline-none focus:shadow-hard ${
+                errors.bank_id ? 'border-[#FF334B] shadow-[2px_2px_0px_0px_#FF334B]' : ''
+              }`}
             >
-              <option value="">Choose…</option>
+              <option value="">Choose your bank…</option>
               {banks.map((b) => (
                 <option key={b.id} value={b.id}>
                   {b.name}
@@ -150,18 +154,18 @@ export function ReportCasePage() {
           <CaseFieldInputs idPrefix="report" fields={CONTACT_FIELDS} values={values} errors={errors} onChange={handleChange} />
         </Section>
 
-        <label className="flex items-start gap-3 rounded-2xl border-2 border-[#09090B] bg-[#EDE8D5] p-4 text-sm font-medium cursor-pointer">
+        <label className="flex items-start gap-3 rounded-xl border border-[#09090B]/20 bg-[#F8F4E8] p-4 text-xs font-medium cursor-pointer">
           <input
             type="checkbox"
             checked={hasConsent}
             onChange={(e) => setHasConsent(e.target.checked)}
-            className="mt-1 h-4 w-4 accent-[#09090B]"
+            className="mt-0.5 h-4 w-4 accent-[#09090B]"
             aria-invalid={errors.consent ? true : undefined}
           />
-          <span>
+          <span className="text-[#09090B] leading-relaxed">
             I agree that the operations center and my bank may use these details to process my relief claim under the
-            Furikome Fraud Relief Act.
-            {errors.consent && <span role="alert" className="block text-xs font-bold text-[#FF334B]">{errors.consent}</span>}
+            Furikomi Fraud Relief Act.
+            {errors.consent && <span role="alert" className="block text-xs font-bold text-[#FF334B] mt-1">{errors.consent}</span>}
           </span>
         </label>
 
