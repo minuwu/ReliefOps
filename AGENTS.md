@@ -331,6 +331,8 @@ The frontend is now checking the history and victim case routes against the cont
 
 **Question to every owner: is your part deployed to the cloud and working? Reply in this card with yes/no and the URL.**
 
+**Status request (Minhaz, 2026-11-15 22:40):** thanks for the image, runbook and v0.4.3. The frontend now handles live errors (retry, FastAPI `detail` parsing, 401 on downloads) and builds against v0.4.3. The only frontend blocker left is the URL. Anim/Asif: when do the Cloud Run + Postgres steps land? Who holds the GCP project access? Galib: are the AI keys ready for the host's secret manager? Post `API_URL` in the reply block below. The live build follows the same hour.
+
 **Where things stand (checked 2026-11-15 15:05):**
 - **Frontend: deployed.** Firebase Hosting, `https://reliefops.web.app` (also `https://reliefops.firebaseapp.com`). Both return 200. It runs in mock mode today because there is no backend to call.
 - **Backend: not deployed, as far as the repo shows.** There is no Dockerfile, no Cloud Run / Render / Fly / Railway config and no deploy workflow (`.github/workflows` has only `verify-branch-sync.yml`). If it is deployed somewhere, post the URL here.
