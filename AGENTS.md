@@ -391,7 +391,7 @@ EMAIL_MODE: console | smtp
 - **From**: Frontend (Minhaz)
 - **To**: Backend (Asif / Anim) / AI (Galib)
 - **Status**: `[PENDING]`
-- **Created**: 2026-11-15 23:30 (UTC+6), **revised** 2026-11-16 00:10
+- **Created**: 2026-11-15 23:30 (UTC+6), **revised** 2026-11-16 00:40 (plan re-verified: budget, DB access, job source fixed)
 - **Target Interface / Endpoint**: a public `https://` base URL serving `/api/*` (contract v0.4.3), free and awake during judging
 
 **Why:** XREQ-006 is stuck on Cloud Run. `--min-instances=1` and Cloud SQL need a paid billing account. The team's constraints are: free, no card, does not sleep, fast, simple. **Revised path:** Firebase Hosting (frontend, already live) + **Northflank Developer Sandbox** for everything else: one service built from the existing `backend/Dockerfile` (backend + AI), plus a Postgres addon with `pgvector` built in. One platform, always on, no card. Full runbook: [docs/DEPLOY-FREE.md](docs/DEPLOY-FREE.md).
@@ -400,10 +400,10 @@ EMAIL_MODE: console | smtp
 
 **Order (do not skip ahead):**
 1. **Verify first (Phase A in the runbook, about 20 min).** Each owner ticks their checks in the reply block below.
-   - Backend (Asif / Anim): A1 Sandbox is no-card and always on; A2 the Postgres addon allows `CREATE EXTENSION vector` and `CREATE ROLE ... NOBYPASSRLS`; A3 the service can get at least 0.5 vCPU / 1 GB; A4 email choice.
+   - Backend (Asif / Anim): A1 Sandbox is no-card and always on, note the allowed region; A2 the **full** DEPLOY.md §1 role SQL runs on the Postgres addon (via the CLI tunnel, there is no browser SQL console); A3 the service gets `nf-compute-50` (0.5 vCPU / 1 GB) with the addon on `nf-compute-20`, which keeps the total about $18–19 under the $20 Sandbox cap; A4 email choice.
    - AI (Galib): A5 rotate the three AI keys; A6 free quotas cover a judging day; A7 OCR + extraction + RAG work in the built image with `AI_MODE=live`.
    - If a check fails, the runbook names the fallback next to it (A2 fails: database on Neon; A1 fails: Cloud Run + Neon, needs a card). Write which one you used here.
-2. **Then implement (Phase B, all in the Northflank UI):** project, Postgres addon and roles, secret group, `api` service (Dockerfile, context `/backend`, port 8080, 1 instance, health check `/api/health`), `migrate` job (`alembic upgrade head && python -m app.seed`), live checks.
+2. **Then implement (Phase B, all in the Northflank UI):** project, Postgres addon and roles, secret group, `api` service (Dockerfile, context `/backend`, port 8080, 1 instance, health check `/api/health`), `migrate` job built from the repo (a job cannot reuse a combined service's build) with custom command `alembic upgrade head && python -m app.seed`, live checks.
 3. **Then post the reply block.** Minhaz rebuilds the frontend against the URL and redeploys Firebase the same hour.
 
 **Rules:**
