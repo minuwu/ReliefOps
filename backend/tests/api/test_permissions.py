@@ -20,6 +20,7 @@ Login = Callable[[str], dict[str, str]]
 CASE = str(CASE_42_ID)
 SOMEONE = str(user_id("operator2@opscenter.test"))
 INVITATION = "00000000-0000-4000-8000-000000000001"
+MISSING = "00000000-0000-4000-8000-0000000000ee"
 ROLES = ("operator", "supervisor", "viewer_b", "victim1")
 
 # (method, path, roles allowed); everyone else logged in gets 403, nobody logged in gets 401.
@@ -46,6 +47,21 @@ TABLE: list[tuple[str, str, set[str]]] = [
     ("POST", "/api/kb/documents", {"supervisor"}),
     ("POST", f"/api/kb/documents/{INVITATION}/publish", {"supervisor"}),
     ("POST", f"/api/kb/documents/{INVITATION}/archive", {"supervisor"}),
+    # Asif's routes. MISSING never exists: allowed roles get 404, so extract/invite/download write nothing.
+    ("POST", "/api/victim/cases", {"victim1"}),
+    ("GET", "/api/victim/cases", {"victim1"}),
+    ("GET", f"/api/victim/cases/{CASE}", {"victim1"}),
+    ("PATCH", f"/api/victim/cases/{CASE}", {"victim1"}),
+    ("POST", "/api/victim/claims", {"victim1"}),
+    ("POST", f"/api/cases/{MISSING}/victim-invite", {"operator", "supervisor"}),
+    ("GET", f"/api/cases/{CASE}/history", {"operator", "supervisor", "viewer_b"}),
+    ("GET", "/api/audit-logs", {"supervisor", "viewer_b"}),
+    ("POST", f"/api/cases/{CASE}/documents", {"operator", "supervisor"}),
+    ("GET", f"/api/documents/{MISSING}/file", {"operator", "supervisor", "viewer_b"}),
+    ("POST", f"/api/documents/{MISSING}/extract", {"operator", "supervisor"}),
+    ("GET", f"/api/extractions/{MISSING}", {"operator", "supervisor"}),
+    ("POST", f"/api/extractions/{MISSING}/review", {"operator", "supervisor"}),
+    ("GET", "/api/review-queue", {"operator", "supervisor"}),
 ]
 PUBLIC: list[tuple[str, str]] = [
     ("GET", "/api/health"),
@@ -103,6 +119,9 @@ def test_every_mounted_api_route_is_in_the_table(client: TestClient) -> None:
         .replace(SOMEONE, "{user_id}")
         .replace(INVITATION, "{invitation_id}")
         .replace("/kb/documents/{invitation_id}", "/kb/documents/{kb_document_id}")
+        .replace(f"/documents/{MISSING}", "/documents/{document_id}")
+        .replace(f"/extractions/{MISSING}", "/extractions/{extraction_id}")
+        .replace(MISSING, "{case_id}")
         for p in listed_paths
     }
     known_extra = {
