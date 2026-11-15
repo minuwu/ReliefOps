@@ -69,7 +69,7 @@ const SCENARIOS: Scenario[] = [
         number: '01',
         action: 'Log In to the Victim Portal',
         outcome:
-          'Log in as victim1@mail.test (Haruto Tanaka). Case RFR-2026-00042 is already linked to his account. New victims sign up, confirm the email from the Demo inbox, then report online.',
+          'Log in as victim1@mail.test. Case RFR-2026-00042 is already linked to that account. New victims sign up, confirm the email from the Demo inbox, then report online.',
       },
       {
         number: '02',
