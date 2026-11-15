@@ -46,6 +46,11 @@ Decision (Asif): build all my business logic as **service functions with databas
   - **Reject:** needs a note; the case is unchanged.
   - **Audit:** `ai.review_accepted` stores `ai_value` next to `final_value` per field, for measuring AI accuracy.
   - 18 tests.
+- **A11, review queue** ([review_queue.py](../../backend/app/services/review_queue.py)): `GET /api/review-queue`, staff only, `pending_review` only.
+  - Ordered `low_confidence` first, then oldest first; a missing lane counts as low confidence (the safe side).
+  - Filters by `lane` and `bank_id` (`422` if unknown), paginated, with the case reference, bank name, filename and assigned operator.
+  - (The CSV export part of A11 shipped with A7.)
+  - 8 tests.
 
 ## 2026-11-15 (session 10) — backend Phase 1 done
 
