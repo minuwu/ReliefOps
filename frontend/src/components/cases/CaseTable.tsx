@@ -44,7 +44,7 @@ export function CaseTable({ cases, focusedIndex, onSelectCase }: CaseTableProps)
                     key={caseItem.id}
                     onClick={() => onSelectCase(caseItem, idx)}
                     className={`hover:bg-[#EDE8D5]/80 transition-colors cursor-pointer group ${
-                      isFocused ? 'bg-[#EDE8D5] border-l-4 border-l-[#D2E823]' : ''
+                      isFocused ? 'bg-[#D2E823]/25' : ''
                     }`}
                   >
                     {/* Case Number */}
