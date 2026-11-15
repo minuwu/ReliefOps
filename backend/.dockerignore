@@ -1,0 +1,16 @@
+# Never put secrets or local state in the image.
+.env
+.env.*
+.venv
+**/__pycache__
+**/*.pyc
+.pytest_cache
+.ruff_cache
+.coverage
+htmlcov
+# Not needed to run the API, migrate or seed.
+tests
+eval/extraction/results
+eval/assistant
+eval/extraction/*.py
+scripts/smoke.sh
