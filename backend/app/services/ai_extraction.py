@@ -381,6 +381,13 @@ CACHE_DIR: Final = Path(__file__).resolve().parents[2] / "seed_data" / "ai_cache
 
 
 def file_key(file_bytes: bytes) -> str:
+    """SHA-256 of the file. Text files are hashed with LF line endings, so the same document matches on
+    Windows (CRLF checkout) and on the Linux server (git stores LF); binary files are hashed as they are."""
+    if b"\0" not in file_bytes:
+        try:
+            file_bytes = file_bytes.decode("utf-8").replace("\r\n", "\n").encode("utf-8")
+        except UnicodeDecodeError:
+            pass  # binary (images, most PDFs)
     return hashlib.sha256(file_bytes).hexdigest()
 
 
