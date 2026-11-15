@@ -13,7 +13,7 @@ import threading
 import time
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from datetime import timedelta
 from typing import Any
 from uuid import UUID, uuid4
@@ -233,7 +233,9 @@ def ask(caller: Caller, case_id: UUID, data: ChatQuestion,
         if use_ai and not decided:
             breaker.release()  # a trial that never reached the AI must not jam the breaker
 
-    with db.scoped_session(replace(caller.scope(), bank_id=case["bank_id"])) as s:
+    # The server writes the answer (system scope); a victim's own session may only insert
+    # questions (migration 004). _check_case still enforces that the caller owns the case.
+    with db.system_session() as s:
         current = _check_case(s, caller, case_id)
         # A supervisor may archive guidance while the model is answering. Never newly cite it afterward.
         published = set(s.exec(text("SELECT id::text FROM kb_documents WHERE bank_id=:bank "

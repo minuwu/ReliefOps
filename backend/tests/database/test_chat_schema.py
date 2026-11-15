@@ -31,6 +31,18 @@ def test_victim_cannot_read_other_thread_or_rewrite_answer(app_conn, world, know
     nested.rollback()
 
 
+def test_victims_can_ask_but_never_write_an_answer(app_conn, world, knowledge):
+    set_scope(app_conn, "victim", world["victim1"], "bank_b")
+    app_conn.exec_driver_sql("insert into chat_messages (case_id,bank_id,role,body,language) "
+                             "values (%s,'bank_b','victim','When will I hear back?','en')", (world["case_b1"],))
+    nested = app_conn.begin_nested()
+    with pytest.raises(DBAPIError, match="row-level security"):
+        app_conn.exec_driver_sql(
+            "insert into chat_messages (case_id,bank_id,role,body,language,answer_type,confidence) "
+            "values (%s,'bank_b','assistant','Your payout is approved.','en','grounded',0.99)", (world["case_b1"],))
+    nested.rollback()
+
+
 def test_case_bank_foreign_key_and_vector_dimension(owner_tx, world, knowledge):
     for statement, params in (
         ("insert into chat_messages (case_id,bank_id,role,body,language) values (%s,'bank_a','victim','Hi','en')",
