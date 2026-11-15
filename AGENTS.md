@@ -111,9 +111,13 @@ Frontend workstation and case details are fully built, responsive, and running o
 ```
 
 **Fulfillment & Proof (filled by recipient on completion):**
-- **Branch / Commit**: `[branch-name or commit-hash]`
-- **Status / Notes**: `[Implemented route / schema / component]`
-- **Verification Proof**: `[curl command, Swagger link, or test output]`
+- **Branch / Commit**: `main`. Anim: N1–N9 (`cb35243` … `0d335fc`). Asif: migrations 001–002 (bank isolation in the database).
+- **Status / Notes** (partial, still `[IN_PROGRESS]`): **`GET /api/cases` and `GET /api/cases/{id}` are live on the real backend.** Use the contract's paths and payloads (v0.4.2), not this card's older ones:
+  - The transition route is **`POST /api/cases/{id}/transition`** (singular) with `expected_version`; it arrives in N11 together with PATCH, create and assign.
+  - List filters: `status` (comma-separated), `bank_id` (ignored for bank viewers), `assigned_to` (`me`, `unassigned` or a user ID), `deadline_state`, `scam_type`, `q`, `sort`, `order`, `page` and `page_size`.
+  - The detail returns `allowed_transitions` and `allowed_closure_reasons` for the logged-in user; render the buttons from them.
+  - **Bank isolation:** `viewer@bank-b.test` sees only bank_b, and another bank's case returns `404 RESOURCE_NOT_FOUND` (never 403), enforced by Postgres RLS. Victims get `403`.
+- **Verification Proof**: `cd backend && uv run pytest tests/api/test_cases_read.py tests/api/test_contract.py`: 17 passed. Every response is validated against `docs/openapi.yaml`, and the viewer-b-only and cross-bank-404 checks are included. Run locally with `uv run python -m app.seed` and `uv run fastapi dev`, then log in as `operator1@opscenter.test` / `Demo@1234`.
 
 ---
 
