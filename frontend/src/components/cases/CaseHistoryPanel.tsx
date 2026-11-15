@@ -118,7 +118,7 @@ export function CaseHistoryPanel({ caseId }: CaseHistoryPanelProps) {
     <div className="space-y-4 font-['Space_Grotesk',sans-serif]">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#09090B]/15 pb-2.5">
         <div>
-          <h3 className="text-sm font-bold uppercase tracking-wide text-[#09090B]">
+          <h3 className="text-sm font-bold text-[#09090B]">
             Audit history
           </h3>
           <p className="mt-0.5 text-xs text-[#52525B]">
@@ -141,8 +141,8 @@ export function CaseHistoryPanel({ caseId }: CaseHistoryPanelProps) {
       {isLoading && history.length === 0 && (
         <div className="py-8 text-center space-y-2">
           <RotateCw className="w-5 h-5 animate-spin mx-auto text-[#09090B]" />
-          <p className="text-xs font-bold uppercase tracking-wider text-[#09090B]">
-            Loading case history...
+          <p className="text-xs font-semibold text-[#09090B]">
+            Loading case history…
           </p>
         </div>
       )}
@@ -151,7 +151,7 @@ export function CaseHistoryPanel({ caseId }: CaseHistoryPanelProps) {
         <div className="rounded-xl border border-[#FF334B]/30 bg-[#FFF1F2] p-3.5 text-[#991B1B] space-y-2">
           <div className="flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 shrink-0" />
-            <span className="text-xs font-bold uppercase tracking-wider">Error</span>
+            <span className="text-xs font-bold">Could not load the history</span>
           </div>
           <p className="text-xs font-medium">{error}</p>
           <Button
@@ -167,7 +167,7 @@ export function CaseHistoryPanel({ caseId }: CaseHistoryPanelProps) {
       {!isLoading && !error && history.length === 0 && (
         <div className="py-8 text-center space-y-2 rounded-xl border border-dashed border-[#09090B]/20 bg-[#EDE8D5]/30">
           <History className="w-6 h-6 mx-auto text-[#52525B]" />
-          <p className="text-xs font-bold uppercase tracking-wider text-[#09090B]">
+          <p className="text-xs font-semibold text-[#09090B]">
             No audit records
           </p>
           <p className="text-xs text-[#52525B]">
@@ -177,12 +177,22 @@ export function CaseHistoryPanel({ caseId }: CaseHistoryPanelProps) {
       )}
 
       {history.length > 0 && (
-        <div className="relative pl-5 space-y-3.5 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-[#09090B]/20">
-          {history.map((entry) => (
-            <div key={entry.id} className="relative group">
-              <div className="absolute -left-5 top-1.5 w-4 h-4 rounded-full bg-[#D2E823] border border-[#09090B] flex items-center justify-center">
-                <div className="w-1.5 h-1.5 rounded-full bg-[#09090B]" />
-              </div>
+        <ol className="space-y-3.5" aria-label="Case history entries">
+          {history.map((entry, idx) => (
+            <li key={entry.id} className="relative pl-6">
+              {/* Connector: from this dot's centre to the next dot's centre (top-5 = 20px; gap 14px + 20px). */}
+              {idx < history.length - 1 && (
+                <span
+                  aria-hidden="true"
+                  className="absolute left-[7px] top-5 -bottom-[34px] w-0.5 bg-[#09090B]/20"
+                />
+              )}
+              <span
+                aria-hidden="true"
+                className="absolute left-0 top-3 w-4 h-4 rounded-full bg-[#D2E823] border border-[#09090B] flex items-center justify-center"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-[#09090B]" />
+              </span>
 
               <div className="rounded-xl border border-[#09090B]/15 bg-[#EDE8D5]/30 p-3 space-y-1.5">
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#09090B]/10 pb-1.5">
@@ -212,9 +222,9 @@ export function CaseHistoryPanel({ caseId }: CaseHistoryPanelProps) {
                   </p>
                 </div>
               </div>
-            </div>
+            </li>
           ))}
-        </div>
+        </ol>
       )}
 
       {total > 0 && (
