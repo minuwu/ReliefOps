@@ -40,6 +40,12 @@ TABLE: list[tuple[str, str, set[str]]] = [
     ("GET", "/api/dashboard/stats", {"supervisor", "viewer_b"}),
     ("GET", "/api/alerts/shared-accounts", {"supervisor"}),
     ("GET", f"/api/victim/cases/{CASE}/chat", {"victim1"}),
+    ("GET", f"/api/cases/{CASE}/chat", {"operator", "supervisor", "viewer_b"}),
+    ("POST", f"/api/cases/{CASE}/chat/reply", {"operator", "supervisor"}),
+    ("GET", "/api/kb/documents", {"operator", "supervisor", "viewer_b"}),
+    ("POST", "/api/kb/documents", {"supervisor"}),
+    ("POST", f"/api/kb/documents/{INVITATION}/publish", {"supervisor"}),
+    ("POST", f"/api/kb/documents/{INVITATION}/archive", {"supervisor"}),
 ]
 PUBLIC: list[tuple[str, str]] = [
     ("GET", "/api/health"),
@@ -93,7 +99,10 @@ def test_every_mounted_api_route_is_in_the_table(client: TestClient) -> None:
     mounted = {(m.upper(), p) for p, ops in paths.items() for m in ops if p.startswith("/api/")}
     listed_paths = {p for _m, p, _a in TABLE} | {p for _m, p in PUBLIC}
     templated = {
-        p.replace(CASE, "{case_id}").replace(SOMEONE, "{user_id}").replace(INVITATION, "{invitation_id}")
+        p.replace(CASE, "{case_id}")
+        .replace(SOMEONE, "{user_id}")
+        .replace(INVITATION, "{invitation_id}")
+        .replace("/kb/documents/{invitation_id}", "/kb/documents/{kb_document_id}")
         for p in listed_paths
     }
     known_extra = {

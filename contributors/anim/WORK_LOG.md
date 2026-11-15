@@ -20,7 +20,7 @@ I read Asif's whole work log, [REMAINING_WORK.md](../asif/REMAINING_WORK.md), mi
 | :--- | :--- | :--- | :--- |
 | 🔴 Critical | The three `*_API_KEY` entries in the committed `backend/.env.example` (commit `fe22150`) have real-key lengths (59–81 characters), not placeholders. The repo is on GitHub. I didn't open or copy the values. | Galib | Rotate all three keys now, replace them with empty values in `.env.example`, and keep real keys only in the untracked `backend/.env`. Deleting them from the file doesn't undo the exposure; rotating does. |
 | 🟠 High | On Windows, connecting to a Postgres that's down doesn't fail fast. With no connect timeout, every request (even `/api/health`) could hang during an outage. | Anim (fixed in my area) | `Settings.app_database_url` adds `connect_timeout` (`DB_CONNECT_TIMEOUT_SECONDS`, default 5). Asif may also want a default in `db.init_engine`. |
-| 🟡 Medium | My use-case diagram ([use-cases.excalidraw](../../docs/diagrams/use-cases.excalidraw)) is still at contract v0.3.0. It shows "Issue victim access code", which v0.4 removed (victims now have accounts). | Anim | Update it to v0.4.2. |
+| 🟡 Medium | My use-case diagram ([use-cases.excalidraw](../../docs/diagrams/use-cases.excalidraw)) is behind the contract. *Correction:* Asif had already moved it to v0.4.0 with victim accounts (`6446b61`), but the stage deadlines (2/5/10/60/10 days), the review route and the `due_soon` rule were still old. | Anim | ✅ Done: updated to v0.4.2 (7/14/45/90/45 days, `/extractions/{id}/review`, due_soon = last 20%, ≥1 day). |
 | 🟡 Medium | The XREQ-003 card in AGENTS.md still asks for `/api/intake` and access codes, which the contract replaced with victim accounts. The row is still `[PENDING]`. | Anim + Asif | Answer the card with the v0.4.2 routes and split it: auth is mine, victim cases and chat are Asif's. |
 | 🟡 Medium | Review item H4 asked for `token_version`. With opaque sessions that are checked in the database on every request (guide §5.2), logout and deactivation already take effect at once, so `token_version` isn't needed. | Anim | Close H4 with the per-request session lookup in N2, no migration. |
 | 🟢 Low | Newer Ruff versions widen the default rule set. Someone pinned `select = ["E4", "E7", "E9", "F"]` in `pyproject.toml`, so the whole team gets the same result. | — | Done. |
@@ -152,12 +152,28 @@ I read Asif's whole work log, [REMAINING_WORK.md](../asif/REMAINING_WORK.md), mi
   - **Ran it against a real `fastapi run` server (uvicorn) on the seeded Docker database: 29/29 PASS.** The upload → AI extraction → review → Verified step is printed as `SKIP` until Asif's document routes are mounted.
 
 ### Handoff: what's live now (all on `main`)
-- **Phase 1–3 of my list is done (N1–N16).** Live routes: health, banks, all of `/api/auth/*`, invitations, users, cases (list, get, create, edit, transition, assign, notes), dashboard and alerts, plus Asif's victim chat (mounted with real auth).
+- **My whole list is done (N1–N18).** Live routes: health, banks, all of `/api/auth/*`, invitations, users, cases (list, get, create, edit, transition, assign, notes), dashboard, alerts, staff chat (read and reply), bluebooks (list, upload, publish, archive), plus Asif's victim chat (mounted with real auth).
 - **Asif: your services can get routers now.** Use `from app.security import StaffUser, AnyStaffUser, VictimUser, SessionDep` and raise `ApiError`/`ServiceError` as you do (a `429` with `details.retry_after` gets `Retry-After` automatically). Add each router to `ROUTERS` in `main.py` **and a row to `tests/api/test_permissions.py`** (its guard test fails on an unlisted route).
   - Still unrouted: documents upload/download, extract, get extraction, review, review queue, case history + CSV, audit logs, victim cases (report, list, get, patch), victim invite + claim.
   - `tests/api/conftest.py` gives you `client`, `login_as(...)` and the seeded data; `tests/api/contract.py` `validate(body, "SchemaName")` checks a response against `openapi.yaml`.
 - **Open questions for Asif:** (1) `users.preferred_language` column, or drop the field from `SignupRequest`? (2) add a `user.reactivated` audit action? (3) a default `connect_timeout` in `db.init_engine`?
 - **Galib:** rotate the three AI keys in `backend/.env.example` (critical finding at the top).
+
+- **N17, staff side of the case chat** ([services/staff_chat.py](../../backend/app/services/staff_chat.py), [routers/staff_chat.py](../../backend/app/routers/staff_chat.py)):
+  - `GET /api/cases/{id}/chat` (operator, supervisor, bank_viewer for their own bank; another bank → 404; victims → 403): **the same `ChatThread` the victim sees**, through Asif's `victim_chat.get_thread`.
+  - `POST /api/cases/{id}/chat/reply` (operator, supervisor) → `201` `ChatMessage` with `role: "staff"`, the author's name, and the case's language. In one transaction it writes the message, **clears `victim_question_pending`** and audits `chat.staff_replied`. RLS only lets staff insert `staff` rows under their own `author_id`, so a reply can't pose as the assistant. Allowed on closed cases, like notes.
+  - [test_staff_chat.py](../../backend/tests/api/test_staff_chat.py): 3 tests, including **victim asks for a person → escalated → staff reply → flag cleared → the victim sees the reply**. Both new routes were added to the permission table. **658 tests pass.**
+
+- **N18, bluebooks** ([services/kb.py](../../backend/app/services/kb.py), [routers/kb.py](../../backend/app/routers/kb.py)):
+  - `GET /api/kb/documents` (`bank_id`, `status`): staff see all banks, bank viewers only their own (RLS; `bank_id` ignored), victims → 403.
+  - `POST /api/kb/documents` (supervisor, multipart: `file`, `bank_id`, `title`, `version`, `language`, optional `audience`, default `victim_facing`) → `201` with status `processing`. The type is checked from the file's bytes (PDF or UTF-8 TXT, else `400`); over 20 MB → `413 FILE_TOO_LARGE`. Audited as `kb.document_uploaded`.
+  - **Indexing runs as a background task** in the system scope: Galib's `rag.split_bluebook`, then `rag.embed` with **no transaction open during the call**. If embedding is unavailable, passages are stored without vectors and retrieval falls back to keywords. No numbered sections or an unreadable file → `failed` with a reason.
+  - `publish` works only from `ready` (else `409 INVALID_STATUS_TRANSITION`) and **archives the older published version with the same title**. `archive` works from any status and is idempotent. Audited as `kb.document_published` / `kb.document_archived`.
+  - [test_kb.py](../../backend/tests/api/test_kb.py): 6 tests, including upload → ready (3 passages) → publish replaces the seeded bank_e version → archive, a failed file, type and size checks, and **Galib's real `bank_a_bluebook.pdf` indexing into exactly as many passages as his `kb_passages.json`**. The 4 routes were added to the permission table. **684 tests pass.**
+
+- **Diagram → v0.4.2** ([use-cases.excalidraw](../../docs/diagrams/use-cases.excalidraw)): stage deadlines now 7/14/45/90/45 days (API_SPEC §3.1), the review label is `POST /extractions/{id}/review`, the lifecycle note gives the `due_soon` rule, and the subtitle says v0.4.2. Only those 8 labels changed; the file keeps its own format.
+- **XREQ-003 answered** in AGENTS.md: the auth and account part is live (mine), victim chat is live (Asif's router, mounted), and victim-case report/list/edit/claim still need Asif's routers, so it stays `[IN_PROGRESS]`.
+- **All my assigned tasks are done (N1–N18).**
 
 ### Local test database (for anyone on Windows without Postgres)
 ```bash
@@ -175,7 +191,7 @@ cd backend && uv run pytest -q
 ### Next (in order, each: tests → commit → pull → push)
 - ~~N2~~ done.
 - ~~N3~~, ~~N4~~, ~~N5~~, ~~N6~~, ~~N7~~, ~~N8~~, ~~N9~~, ~~N10~~, ~~N11~~ done (Phase 2 complete; XREQ-001 resolved). ~~N12~~, ~~N13~~, ~~N14~~, ~~N15~~, ~~N16~~ done (Phase 3 complete).
-- Next, Phase 4 (extras): N17 staff chat (`GET /api/cases/{id}/chat`, `POST …/chat/reply`) and N18 bluebooks (`/api/kb/documents` list, upload, publish, archive). Also: update my use-case diagram to v0.4.2, and answer XREQ-003's auth part.
+- ~~N17~~, ~~N18~~ done (Phase 4 complete), diagram updated, XREQ-003 answered. **Every task assigned to me in the backend guide is done.** What's left is review and integration: Asif's routers, the open questions below, and Minhaz verifying XREQ-001.
 
 ### Blockers / handoff
 - **Galib:** rotate the AI keys (critical finding above).

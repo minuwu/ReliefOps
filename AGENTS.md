@@ -221,9 +221,12 @@ Allows scam victims to report losses via the public web form without prior regis
 ```
 
 **Fulfillment & Proof:**
-- **Branch / Commit**: `[branch-name or commit-hash]`
-- **Status / Notes**: `[Implemented route / schema / component]`
-- **Verification Proof**: `[curl command, Swagger link, or test output]`
+- **Branch / Commit**: `main`. Anim: accounts and auth (N2, N3, N7, `09c1493` … `bdf8a05`), staff side of the chat (N17, `bd1f68d`). Asif: victim-case and victim-chat services.
+- **Status / Notes** (partial, still `[IN_PROGRESS]`):
+  - **Live (Anim):** the victim account flow that replaced the access codes. `POST /api/auth/signup` (always `202`, no `role` field), `verify-email`, `resend-verification`, `login` (unverified victim → `403 EMAIL_NOT_VERIFIED`), `me`, `logout`, `forgot-password` and `reset-password`. Email links go to `FRONTEND_BASE_URL` + `/verify-email`, `/reset-password` or `/accept-invitation` with `?token=…`, which matches the frontend's routes.
+  - **Live (Asif's router, mounted by Anim):** `GET /api/victim/cases/{id}/chat`, `POST …/chat/messages`, `POST …/messages/{id}/feedback`. Staff answer escalations with `POST /api/cases/{id}/chat/reply`.
+  - **Still to route (Asif):** `POST/GET /api/victim/cases`, `GET/PATCH /api/victim/cases/{id}` and `POST /api/victim/claims`. The services and tests exist (`app/services/victim_cases.py`, `claims.py`); they need thin routers on `VictimUser` + `SessionDep`.
+- **Verification Proof**: `cd backend && uv run pytest tests/api/test_accounts.py tests/api/test_smoke.py tests/api/test_staff_chat.py` passes, including sign-up → verify → login, reset ending every session, one-time tokens under concurrency, and escalation → staff reply. `bash scripts/smoke.sh` gives 29/29 against a live server.
 
 **Status request (Minhaz, 2026-11-15 14:49):** Victim auth and victim chat are live. The victim case routes (`GET/POST /api/victim/cases`, `GET/PATCH /api/victim/cases/{id}`) are still not mounted, so the portal falls back to mock mode. Anim / Asif: please post an ETA. Also, signup drops `preferred_language` (see XREQ-005).
 
