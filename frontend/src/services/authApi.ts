@@ -12,7 +12,16 @@ import {
   request,
   storeSession,
 } from './http';
-import { allAccounts, consumeMockToken, currentUser, db, sendMockMail } from './mockStore';
+import {
+  allAccounts,
+  consumeMockToken,
+  currentUser,
+  db,
+  getMockPassword,
+  sendMockMail,
+  setMockPassword,
+} from './mockStore';
+import { DEMO_PASSWORD } from './mockData';
 
 const SESSION_HOURS = 8;
 const MIN_PASSWORD = 10;
@@ -54,9 +63,10 @@ function replaceAccount(next: User): void {
 /* --- Mock implementations ------------------------------------------------- */
 
 const mock = {
-  login(email: string): Promise<ApiResponse<AuthSession>> {
+  login(email: string, password: string): Promise<ApiResponse<AuthSession>> {
     const user = findAccount(email);
-    if (!user || !user.is_active) {
+    const expected = user ? (getMockPassword(user.email) ?? DEMO_PASSWORD) : undefined;
+    if (!user || !user.is_active || password !== expected) {
       return mockFailure(apiError('INVALID_CREDENTIALS', 'Email or password is wrong.'));
     }
     if (!user.email_verified) {
@@ -84,6 +94,7 @@ const mock = {
       };
       db.victims = [...db.victims, victim];
       db.victimCases = { ...db.victimCases, [victim.email]: [] };
+      setMockPassword(victim.email, body.password);
       sendMockMail(victim.email, 'verify-email', victim.email);
     }
     return mockEnvelope(null, SAME_ANSWER);
@@ -110,7 +121,8 @@ const mock = {
 
   resetPassword(token: string, newPassword: string): Promise<ApiResponse<null>> {
     checkPassword(newPassword, 'new_password');
-    consumeMockToken('reset-password', token);
+    const mail = consumeMockToken('reset-password', token);
+    setMockPassword(mail.subject, newPassword);
     return mockEnvelope(null, 'Password changed. Log in with your new password.');
   },
 
@@ -136,6 +148,7 @@ const mock = {
         is_active: true,
       },
     ];
+    setMockPassword(invite.email, password);
     return mockEnvelope(null, 'Account created. You can log in now.');
   },
 };
@@ -154,7 +167,7 @@ function attempt<T>(fn: () => Promise<T>): Promise<T> {
 export const authApi = {
   async login(email: string, password: string): Promise<ApiResponse<AuthSession>> {
     const res = USE_MOCK
-      ? await mock.login(email)
+      ? await mock.login(email, password)
       : await post<AuthSession>('/api/auth/login', { email, password });
     storeSession(res.data.token, res.data.user);
     return res;
