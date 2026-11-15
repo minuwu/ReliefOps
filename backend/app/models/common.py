@@ -7,9 +7,29 @@ string), as the contract requires. Anim's ``responses.py`` can re-export it.
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Annotated, Literal
+from typing import Annotated, Generic, Literal, TypeVar
 
-from pydantic import Field, PlainSerializer, StringConstraints
+from pydantic import BaseModel, Field, PlainSerializer, StringConstraints
+
+T = TypeVar("T")
+
+
+class Page(BaseModel, Generic[T]):
+    """A list response: ``{items, page, page_size, total}`` (API_SPEC §1)."""
+
+    items: list[T]
+    page: int
+    page_size: int
+    total: int
+
+
+class PageParams(BaseModel):
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=20, ge=1, le=100)
+
+    @property
+    def offset(self) -> int:
+        return (self.page - 1) * self.page_size
 
 Money = Annotated[
     Decimal,

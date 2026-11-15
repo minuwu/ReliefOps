@@ -24,6 +24,11 @@ Decision (Asif): build all my business logic as **service functions with databas
   - **Edits:** contact details until the case closes, report facts only while `received` (otherwise `409 CASE_LOCKED` with `locked_fields`). A phone or an email must remain, and edits need `expected_version`.
   - **Records:** each changed field is audited as `{from, to}`. An edit that changes nothing creates no new version.
   - 32 tests.
+- **A7, history and audit log** ([history.py](../../backend/app/services/history.py)), following API_SPEC §6.4.
+  - **Case history:** operators, supervisors and bank viewers (own bank, `404` otherwise); victims get `403`. Newest first, paginated as `{items, page, page_size, total}` with `page_size` capped at 100.
+  - **CSV export:** the contract's columns. Formula cells are neutralised, and the export is audited as `export.generated`.
+  - **Audit log:** supervisors see all banks, bank viewers their own (RLS), operators get `403`. Filters are `case_id`, `actor_id`, `action`, `from` and `to`.
+  - 10 tests.
 
 ## 2026-11-15 (session 10) — backend Phase 1 done
 
