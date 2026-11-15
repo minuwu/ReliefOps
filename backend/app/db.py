@@ -40,6 +40,7 @@ from typing import Final, Literal
 from uuid import UUID
 
 from sqlalchemy import Connection, Engine, event
+from sqlalchemy.engine import make_url
 from sqlalchemy.orm import SessionTransaction
 from sqlmodel import Session, create_engine
 
@@ -90,8 +91,25 @@ def init_engine(database_url: str, *, pool_size: int = 5, max_overflow: int = 5)
         pool_pre_ping=True,
         pool_size=pool_size,
         max_overflow=max_overflow,
+        connect_args=connect_args(database_url),
     )
     return _engine
+
+
+DEFAULT_CONNECT_TIMEOUT_SECONDS = 5
+
+
+def connect_args(database_url: str) -> dict[str, object]:
+    """Every connection works in UTC, and a down database fails fast.
+
+    Without ``timezone=UTC`` a server set to local time (e.g. Asia/Dhaka) sends
+    ``+06:00`` timestamps, but the contract promises UTC (API_SPEC §1). A timeout
+    already in the URL wins.
+    """
+    args: dict[str, object] = {"options": "-c timezone=UTC"}
+    if "connect_timeout" not in make_url(database_url).query:
+        args["connect_timeout"] = DEFAULT_CONNECT_TIMEOUT_SECONDS
+    return args
 
 
 def get_engine() -> Engine:
