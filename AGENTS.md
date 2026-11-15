@@ -62,8 +62,8 @@ This file is:
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | `XREQ-001` | `P0 (Blocker)` | Frontend (Minhaz) | Backend (Asif / Anim) | Core Cases & Bank Tenant Isolation API (`GET/POST /api/cases`) | `[IN_PROGRESS]` | 2026-11-15 13:30 |
 | `XREQ-002` | `P0 (Blocker)` | Frontend (Minhaz) | AI (Galib) / Backend (Asif) | Rule D3 Vision OCR Extraction & HITL Queue (`POST /api/documents/extract`) | `[IN_PROGRESS]` | 2026-11-15 11:30 |
-| `XREQ-003` | `P1 (High)` | Frontend (Minhaz) | Backend (Anim / Asif) | Public Citizen Intake & 6-Stage Status Tracker (`POST /api/intake`) | `[PENDING]` | 2026-11-15 11:30 |
-| `XREQ-004` | `P1 (High)` | Frontend (Minhaz) | Backend (Asif / Anim) / AI (Galib) | Cross-Bank Fraud Ring Topology & Coordinated Freeze API | `[PENDING]` | 2026-11-15 11:30 |
+| `XREQ-003` | `P1 (High)` | Frontend (Minhaz) | Backend (Anim / Asif) | Public Citizen Intake & 6-Stage Status Tracker (`POST /api/intake`) | `[IN_PROGRESS]` | 2026-11-15 15:30 |
+| `XREQ-004` | `P1 (High)` | Frontend (Minhaz) | Backend (Asif / Anim) / AI (Galib) | Cross-Bank Fraud Ring Topology & Coordinated Freeze API | `[IN_PROGRESS]` | 2026-11-15 20:00 (detection done, endpoints open) |
 
 *(When adding a request: append a row above AND add a detailed card in 2.2. Never insert in the middle.)*
 
@@ -164,9 +164,11 @@ Statutory Rule D3 dictates that AI is strictly an assistive advisor: **AI model 
 - **Priority**: `P1 (High)`
 - **From**: Frontend (Minhaz)
 - **To**: Backend (Anim / Asif)
-- **Status**: `[PENDING]`
+- **Status**: `[IN_PROGRESS]` (Asif: victim services and chat; Anim: authentication and HTTP integration)
 - **Created**: 2026-11-15 11:30 (UTC+6)
 - **Target Interface / Endpoints**: `POST /api/intake`, `POST /api/victim/auth`, `GET /api/victim/cases/{reference}`, `POST /api/victim/chat`
+
+**Contract reconciliation (Asif, 2026-11-15):** This card describes the old access-code flow. Current API_SPEC v0.4.2 uses verified accounts, `POST /api/victim/cases` and `/api/victim/cases/{case_id}/chat`. Implement those agreed routes; do not restore the removed anonymous intake. Service progress and evidence: [Asif remaining work](contributors/asif/REMAINING_WORK.md).
 
 **Requirement Details:**
 Allows scam victims to report losses via the public web form without prior registration:
@@ -216,7 +218,7 @@ Allows scam victims to report losses via the public web form without prior regis
 - **Priority**: `P1 (High)`
 - **From**: Frontend & Supervisor (Minhaz)
 - **To**: Backend (Asif / Anim) / AI (Galib)
-- **Status**: `[PENDING]`
+- **Status**: `[IN_PROGRESS]` (Galib: detection done; Backend: endpoints and freeze open)
 - **Created**: 2026-11-15 11:30 (UTC+6)
 - **Target Interface / Endpoints**: `GET /api/analytics/fraud-rings`, `POST /api/analytics/fraud-rings/{account_number}/freeze`
 
@@ -249,9 +251,9 @@ Provides the showstopper feature for hackathon judging: uncovering organized cri
 ```
 
 **Fulfillment & Proof:**
-- **Branch / Commit**: `[branch-name or commit-hash]`
-- **Status / Notes**: `[Implemented route / schema / component]`
-- **Verification Proof**: `[curl command, Swagger link, or test output]`
+- **Branch / Commit**: `main` (Galib's detection part; commit in this card's history)
+- **Status / Notes**: Split agreed in the card: **AI (Galib), done:** `app/services/fraud_rings.detect_rings(cases, include_same_bank=False, frozen_accounts=...)` returns the response items above, plus `reasons` (plain-language why), `link` (`confirmed` / `possible` / `same_bank`) and `holder_names`. It matches accounts across formats (`98-7654-3210` = `9876543210`) and holder names across spellings (`GLOBAL ASSET TRUST` = `カ）グローバルアセットトラスト`). Same digits with different holder names is only `POSSIBLE_LINK`, never `CRITICAL_SYNDICATE`, so an innocent account isn't flagged. Pure function, no DB or model calls. **Backend (Asif / Anim), open:** load the cases the supervisor may see (`id, reference, bank_id, amount, account_number, account_holder_name, transfer_date`), call `detect_rings`, serve `GET`; the `freeze` POST (supervisor only, audited, a human action) and storing frozen accounts to pass back in.
+- **Verification Proof**: `cd backend && uv run pytest tests/ai/test_fraud_rings.py` → 17 passed (seed story: account `9876543210`, 3 cases, bank_a + bank_b, ¥3,700,000 → `CRITICAL_SYNDICATE`).
 
 ---
 

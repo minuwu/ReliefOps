@@ -1,0 +1,42 @@
+[
+  {
+    "bank_id": "bank_a",
+    "file": "bank_a_bluebook.pdf",
+    "title": "Aster Regional Bank — Fraud Relief Bluebook",
+    "version": "2026.1",
+    "language": "en",
+    "audience": "victim_facing"
+  },
+  {
+    "bank_id": "bank_b",
+    "file": "bank_b_bluebook.pdf",
+    "title": "Birch Regional Bank — Fraud Relief Bluebook",
+    "version": "2026.1",
+    "language": "en",
+    "audience": "victim_facing"
+  },
+  {
+    "bank_id": "bank_c",
+    "file": "bank_c_bluebook.pdf",
+    "title": "Cobalt Regional Bank — Fraud Relief Bluebook",
+    "version": "2026.1",
+    "language": "en",
+    "audience": "victim_facing"
+  },
+  {
+    "bank_id": "bank_d",
+    "file": "bank_d_bluebook.pdf",
+    "title": "Dune Regional Bank — Fraud Relief Bluebook",
+    "version": "2026.1",
+    "language": "en",
+    "audience": "victim_facing"
+  },
+  {
+    "bank_id": "bank_e",
+    "file": "bank_e_bluebook.pdf",
+    "title": "Ember Regional Bank — Fraud Relief Bluebook",
+    "version": "2026.1",
+    "language": "en",
+    "audience": "victim_facing"
+  }
+]

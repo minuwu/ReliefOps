@@ -1,0 +1,59 @@
+[
+ {
+  "id": "h04_victim_report_typos",
+  "seconds": 5.61,
+  "error": null,
+  "fields": [
+   {
+    "name": "victim_name",
+    "value": "Arif Example",
+    "evidence": "my name is Arif Example",
+    "confidence": 1.0
+   },
+   {
+    "name": "victim_phone",
+    "value": "+880-1700-000042",
+    "evidence": "phone +880-1700-000042",
+    "confidence": 1.0
+   },
+   {
+    "name": "transfer_date",
+    "value": "2026-10-05",
+    "evidence": "on 2026/10/05",
+    "confidence": 1.0
+   },
+   {
+    "name": "amount",
+    "value": 128500,
+    "evidence": "sent JPY 128,500",
+    "confidence": 1.0
+   },
+   {
+    "name": "currency",
+    "value": "JPY",
+    "evidence": "sent JPY 128,500",
+    "confidence": 1.0
+   },
+   {
+    "name": "account_number",
+    "value": "9081726",
+    "evidence": "acc no. 9081726",
+    "confidence": 1.0
+   },
+   {
+    "name": "account_holder_name",
+    "value": "Bright Future Holdings",
+    "evidence": "acount name was Bright Future Holdings",
+    "confidence": 1.0
+   },
+   {
+    "name": "scam_type",
+    "value": "investment",
+    "evidence": "guaranteed' crypto investment",
+    "confidence": 1.0
+   }
+  ],
+  "model": "gemini-3.1-flash-lite",
+  "prompt_version": "extract-v2"
+ }
+]

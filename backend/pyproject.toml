@@ -1,0 +1,68 @@
+[project]
+name = "fraud-relief-backend"
+version = "0.1.0"
+description = "ReliefOps fraud relief backend: one FastAPI service on one PostgreSQL database"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    # Web framework (guide §3.5)
+    "fastapi[standard]>=0.115",
+    "pydantic-settings>=2.6",
+    # Database: SQLModel for models, plain SQLAlchemy Core for scoped sessions and raw SQL
+    "sqlmodel>=0.0.22",
+    "sqlalchemy>=2.0.36",
+    "psycopg[binary]>=3.2",
+    "alembic>=1.14",
+    # Password hashing
+    "pwdlib[argon2]>=0.2.1",
+    # AI module (app/services/ai_extraction.py, rag.py). Moved from requirements-ai.txt.
+    # If any are missing the module raises AIUnavailableError and the rules fallback runs.
+    # The server also needs the system packages: apt-get install -y tesseract-ocr tesseract-ocr-jpn
+    "google-genai>=1.0",
+    "openai>=1.0",
+    "pymupdf>=1.24",
+    "pytesseract>=0.3.10",
+    "pillow>=10.0",
+    "python-dotenv>=1.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-cov>=6.0",
+    "freezegun>=1.5",
+    "ruff>=0.8",
+    # tests/database/test_chat_http.py validates responses against docs/openapi.yaml
+    "pyyaml>=6.0",
+    "jsonschema>=4.23",
+]
+
+[tool.uv]
+# An application, not a library: install dependencies only, never build `app` as a package.
+package = false
+
+[tool.fastapi]
+entrypoint = "app.main:app"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Lets plain `uv run pytest` import `app` from the backend folder.
+pythonpath = ["."]
+addopts = "-ra"
+
+[tool.coverage.run]
+source = ["app"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+extend-exclude = ["migrations/versions"]
+
+[tool.ruff.lint]
+# Classic Ruff defaults, pinned so newer Ruff releases (which widen the default set) give every
+# teammate the same result. Add "I" (import sorting) once the team agrees to reformat imports.
+select = ["E4", "E7", "E9", "F"]
+
+[tool.ruff.lint.per-file-ignores]
+# Standalone scripts put backend/ on sys.path before importing app.
+"eval/**" = ["E402"]
+"seed_data/**" = ["E402"]

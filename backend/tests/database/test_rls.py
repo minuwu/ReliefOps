@@ -18,7 +18,7 @@ from .conftest import set_scope
 BANK_OWNED_TABLES = ("cases", "documents", "document_contents", "ai_extractions", "notes", "audit_log")
 ALL_TABLES = (
     "banks", "users", "sessions", "auth_tokens", "invitations", "cases", "documents",
-    "document_contents", "ai_extractions", "notes", "audit_log",
+    "document_contents", "ai_extractions", "notes", "audit_log", "kb_documents", "kb_passages", "chat_messages",
 )
 
 
@@ -136,8 +136,10 @@ def test_operator_cannot_touch_auth_tables(app_conn: Connection, world: dict[str
 def test_victim_sees_only_own_cases(app_conn: Connection, world: dict[str, str]) -> None:
     # app.bank_id is set too (the chatbot needs it); the victim policy must still match only their own case.
     set_scope(app_conn, "victim", world["victim1"], "bank_b")
-    ids = set(app_conn.exec_driver_sql("select id::text from cases").scalars())
-    assert ids == {world["case_b1"]}
+    rows = app_conn.exec_driver_sql("select id::text, victim_user_id::text from cases").all()
+    assert world["case_b1"] in {case_id for case_id, _ in rows}
+    assert {owner for _, owner in rows} == {world["victim1"]}  # every visible case is theirs
+    assert world["case_a2"] not in {case_id for case_id, _ in rows}  # victim2's case stays hidden
 
 
 @pytest.mark.parametrize("table", ["documents", "document_contents", "ai_extractions", "notes", "audit_log"])
@@ -194,7 +196,8 @@ def test_victim_with_empty_user_id_sees_nothing(app_conn: Connection, world: dic
 def test_app_user_reads_sessions_only_in_system_scope(app_conn: Connection, world: dict[str, str]) -> None:
     assert count(app_conn, "sessions") == 0
     set_scope(app_conn, "system")
-    assert count(app_conn, "sessions") == 1
+    # The fixture's own session; other modules' login tests add sessions too (guide §8.2: no global counts).
+    assert count(app_conn, "sessions", "token_hash = repeat('b', 64)") == 1
 
 
 def test_supervisor_manages_invitations(app_conn: Connection, world: dict[str, str]) -> None:
