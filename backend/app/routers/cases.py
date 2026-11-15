@@ -9,11 +9,11 @@ from uuid import UUID
 from fastapi import APIRouter, Query
 
 from app.errors import ApiError
-from app.models.cases import Case, CaseSummary, DeadlineFilter, SortField, SortOrder
+from app.models.cases import Case, CaseCreate, CaseSummary, CaseUpdate, DeadlineFilter, SortField, SortOrder
 from app.models.common import BankId, CaseStatus, Page, PageParams, ScamType
 from app.responses import Envelope, error_responses, ok
-from app.security import AnyStaffUser, SessionDep
-from app.services import cases
+from app.security import AnyStaffUser, SessionDep, StaffUser
+from app.services import case_edits, cases
 
 router = APIRouter(prefix="/api/cases", tags=["cases"])
 
@@ -75,3 +75,24 @@ def list_cases(
 )
 def get_case(case_id: UUID, who: AnyStaffUser, s: SessionDep) -> dict:
     return ok(cases.get_case(s, who, case_id, datetime.now(UTC)))
+
+
+@router.post(
+    "",
+    status_code=201,
+    response_model=Envelope[Case],
+    summary="Create a case from a phone call or paper report",
+    responses=error_responses(401, 403, 422),
+)
+def create_case(data: CaseCreate, who: StaffUser, s: SessionDep) -> dict:
+    return ok(case_edits.create_case(s, who, data, datetime.now(UTC)), "Case created")
+
+
+@router.patch(
+    "/{case_id}",
+    response_model=Envelope[Case],
+    summary="Edit case fields (send only what changed, with expected_version)",
+    responses=error_responses(401, 403, 404, 409, 422),
+)
+def update_case(case_id: UUID, data: CaseUpdate, who: StaffUser, s: SessionDep) -> dict:
+    return ok(case_edits.update_case(s, who, case_id, data, datetime.now(UTC)), "Case updated")

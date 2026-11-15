@@ -108,6 +108,16 @@ I read Asif's whole work log, [REMAINING_WORK.md](../asif/REMAINING_WORK.md), mi
   - [test_cases_read.py](../../backend/tests/api/test_cases_read.py): 13 tests on the seeded data. **Contract check:** [contract.py](../../backend/tests/api/contract.py) + [test_contract.py](../../backend/tests/api/test_contract.py) validate every response from N1–N9 (health, banks, login, me, logout, sign-up, errors, the case list and 15+ case details) against `docs/openapi.yaml`.
   - Answered XREQ-001 in AGENTS.md (reads live; transition in N11). **510 tests pass.**
 
+- **N10, create and edit a case** ([services/case_edits.py](../../backend/app/services/case_edits.py)):
+  - `POST /api/cases` (operator, supervisor) → `201` with the full `Case`: a phone or paper case in `received` with a 7-day deadline and a `next_case_reference()` reference (from 00100). Only `bank_id`, `channel` and `victim.name` are required.
+    - `web_form` → `422`, because the database requires victim consent for web forms and staff can't give it.
+    - `assigned_operator_id`: an operator may assign only themselves (else `403`); a supervisor may assign any active operator or supervisor (anyone else → `422`).
+    - `possible_duplicate` is set when contact, amount, transfer date and account match another case. Audited as `case.created`.
+  - `PATCH /api/cases/{id}`: a missing field stays unchanged, `null` clears it, and `victim` merges field by field (Asif's `VictimPatch`). Name and currency can't be cleared, and an unknown field (e.g. `status`) is `422`.
+    - The atomic version check goes through Asif's `case_sql.update_case`. **Two parallel edits → one `200`, one `409 STALE_CASE` with `current_version`, one audit entry.** A no-op keeps the version.
+    - `deadline` is supervisor-only (`403`) and needs `deadline_reason` (`422`); it's audited as `case.deadline_changed` with the reason. Every other changed field goes into `case.updated` `changes` `{from, to}`. Closed → `409 CASE_CLOSED`; viewers and victims → `403`.
+  - [test_case_edits.py](../../backend/tests/api/test_case_edits.py): 12 tests, every response validated against `openapi.yaml`. **525 tests pass.**
+
 ### Local test database (for anyone on Windows without Postgres)
 ```bash
 docker run -d --name reliefops-pg -e POSTGRES_PASSWORD=postgres -p 127.0.0.1:55433:5432 pgvector/pgvector:pg16
@@ -123,8 +133,8 @@ cd backend && uv run pytest -q
 
 ### Next (in order, each: tests → commit → pull → push)
 - ~~N2~~ done.
-- ~~N3~~, ~~N4~~, ~~N5~~, ~~N6~~, ~~N7~~, ~~N8~~, ~~N9~~ done.
-- Next: N10 (create and edit a case) and N11 (transition and assign), which finish XREQ-001.
+- ~~N3~~, ~~N4~~, ~~N5~~, ~~N6~~, ~~N7~~, ~~N8~~, ~~N9~~, ~~N10~~ done.
+- Next: N11 (transition and assign), which finishes XREQ-001.
 
 ### Blockers / handoff
 - **Galib:** rotate the AI keys (critical finding above).
