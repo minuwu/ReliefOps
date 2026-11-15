@@ -242,5 +242,3 @@ def knowledge(owner_engine, world):
                 "values (%s,%s,'assistant','Test answer','en','no_answer')", (world[key], bank),
             )
     return result
-
-

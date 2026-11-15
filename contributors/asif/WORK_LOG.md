@@ -4,6 +4,12 @@ Owner: Asif (`MdAsif-Hossain`) — Role: Backend / Services / Database — Branc
 
 Use this log to share progress, planned work, and dependencies with the team. Update it after each work session, keep the newest entry first, and use Bangladesh time (UTC+6). Link to relevant issues, commits, or pull requests when available.
 
+## 2026-11-15 (session 12) ? remaining tasks, part 3
+
+- Completed victim chat persistence, bounded AI calls, citation checks, offline fallback, escalation, feedback and concurrent hourly limits.
+- **360 backend tests passed** (database/unit/AI); Ruff passed. Model calls are stubbed in tests; no live provider accuracy claim.
+- [Detailed evidence and limitations](REMAINING_WORK.md). Next: HTTP adapter and contract/handoff verification; Anim still owns server/auth.
+
 ## 2026-11-15 (session 12) ? remaining tasks, part 2
 
 - Added bank-scoped hybrid retrieval with keyword fallback and minimized/redacted model input.

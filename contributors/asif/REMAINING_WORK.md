@@ -41,6 +41,16 @@ Each completed part gets its own tested commit and push, after pulling both the 
 - Commit message: `feat(chat): retrieve only the case bank's published guidance`.
 - User confirmed: finish agreed tasks and document XREQ-004 for team clarification; do not implement fraud-ring/freeze now.
 
+### Part 3 ? complete: persisted victim chat
+
+- Added contract models and `victim_chat.ask`, `get_thread`, `feedback`. Questions and answers persist; citations come only from retrieved passages; invalid AI answers fall back safely.
+- Case-row lock makes the 20 questions/case/hour reservation atomic. A 429 carries `details.retry_after`; the HTTP layer must expose the `Retry-After` header.
+- AI calls have a combined 20-second budget with a four-worker limit. No DB transaction remains open during embedding/answer calls. Provider failure returns passages or an audited staff escalation. Explicit requests for a person escalate even offline.
+- Guidance archived during generation is rechecked before saving citations. Known personal fields are redacted in question/history/model answer. Feedback updates only assistant messages in the victim's own case.
+- **360 complete backend tests passed** (database, unit, AI), including 14 chat cases. Ruff passed. One existing multipart import deprecation warning; no external model calls in these tests.
+- Commit message: `feat(chat): persist victim conversations with safe AI fallback`.
+- Operational limit: a process crash after committing a question can leave it unanswered; the persisted question remains visible for staff. Timed-out provider threads cannot be forcibly killed, so admission stays bounded until they finish. Availability reports recent process-local failures, not a live provider probe.
+
 ## Integration dependencies
 
 - Anim: FastAPI app, authenticated `Principal`/dependencies, error envelope, rate-limit headers, seed and staff/bluebook services.
