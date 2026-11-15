@@ -66,6 +66,17 @@ I read Asif's whole work log, [REMAINING_WORK.md](../asif/REMAINING_WORK.md), mi
   - `send` never raises. Callers send after commit, so an SMTP error is logged with the recipient's domain only and never turns a saved change into a 500. `create_app` calls `email.configure(settings)`.
   - [test_email.py](../../backend/tests/unit/test_email.py): 4 tests with a fake SMTP. **426 tests pass.**
 
+- **N5, seed** ([seed.py](../../backend/app/seed.py)): `uv run python -m app.seed` (uses `MIGRATIONS_DATABASE_URL`, `system` scope, one transaction).
+  - **Accounts (API_SPEC §8), password `Demo@1234`:** `operator1` (the contract's example ID `1111…`), `operator2`, `supervisor`, `viewer@bank-a.test`, `viewer@bank-b.test`, `victim1` (owns `RFR-2026-00042`, verified, bank_b, the contract's example case ID), `victim2` (owns `RFR-2026-00051`, received, bank_c) and `victim3` (unverified → `403 EMAIL_NOT_VERIFIED`).
+  - **42 cases** across all 5 banks and all 6 statuses; **6 overdue**; dates relative to the first run.
+  - **3 same-bank shared accounts.** Account `9876543210` (GLOBAL ASSET TRUST) also appears at a second bank, for the fraud-ring story.
+  - **39 documents** from Galib's 12 real sample files (clean, messy, the injection one).
+  - **5 extractions** for the review queue: low-confidence LLM ×2, `rules_fallback`, standard, and one `failed` (`ai_unavailable`).
+  - Plus 9 notes, `case.created` / `document.uploaded` audit entries, and the **5 published bluebooks with Galib's 70 pre-embedded passages**, so the assistant works without calling the embedding API.
+  - **Idempotent:** fixed UUIDs and `ON CONFLICT DO NOTHING`; a second run changes nothing. `document_count` and `pending_extraction_count` match the real rows.
+  - Checked over HTTP on the dev database: all 8 demo logins behave as the contract says, and `/api/banks` returns the 5 banks.
+  - [test_seed.py](../../backend/tests/database/test_seed.py): 7 tests. `seed_into(conn)` runs inside a rolled-back transaction, so the shared test database stays clean for count-based tests. **433 tests pass.**
+
 ### Local test database (for anyone on Windows without Postgres)
 ```bash
 docker run -d --name reliefops-pg -e POSTGRES_PASSWORD=postgres -p 127.0.0.1:55433:5432 pgvector/pgvector:pg16
@@ -81,7 +92,7 @@ cd backend && uv run pytest -q
 
 ### Next (in order, each: tests → commit → pull → push)
 - ~~N2~~ done.
-- ~~N3~~, ~~N4~~ done. **N5** seed. **N6** API test harness (`tests/api/conftest.py`).
+- ~~N3~~, ~~N4~~, ~~N5~~ done. **N6** API test harness (`tests/api/conftest.py`).
 - Then N7 (sign-up, verify, reset), N8 `case_workflow.py`, N9–N11 (cases: XREQ-001).
 
 ### Blockers / handoff
