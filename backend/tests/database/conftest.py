@@ -1,4 +1,4 @@
-"""Fixtures for database-rule tests (backend-development-guide.md §8.4).
+"""Fixtures for every test that needs the database (backend-development-guide.md §8.4).
 
 These tests use raw SQL, never app code, so they prove what the database
 alone enforces. They need two variables pointing at a database whose name
@@ -29,7 +29,7 @@ BACKEND_DIR = Path(__file__).resolve().parents[2]
 def _test_url(variable: str) -> str:
     url = os.environ.get(variable)
     if not url:
-        pytest.exit(f"{variable} is not set (see tests/rls/conftest.py)", returncode=2)
+        pytest.exit(f"{variable} is not set (see tests/database/conftest.py)", returncode=2)
     database = make_url(url).database or ""
     if not database.endswith("_test"):
         pytest.exit(f"refusing to run against database {database!r}: name must end in _test", returncode=2)

@@ -47,7 +47,7 @@ Raw SQL as `app_user`, never as a superuser (superusers skip RLS). Each run migr
 cd backend
 export TEST_MIGRATIONS_DATABASE_URL=postgresql+psycopg://migrator:migrator_password@localhost:5432/fraud_relief_test
 export TEST_DATABASE_URL=postgresql+psycopg://app_user:app_password@localhost:5432/fraud_relief_test
-uv run python -m pytest tests/rls -q
+uv run python -m pytest tests/database -q
 ```
 
 The tests refuse to run unless the database name ends in `_test`.
