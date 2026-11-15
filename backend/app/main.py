@@ -18,14 +18,14 @@ from app import db, email
 from app.config import Settings, get_settings
 from app.errors import register_error_handlers
 from app.middleware import RequestContextMiddleware
-from app.routers import auth, cases, reference, staff, victim_chat
+from app.routers import auth, cases, dashboard, reference, staff, victim_chat
 from app.security import get_principal
 from app.services import extraction_engine
 from app.services.victim_chat import ChatSettings
 
 API_VERSION = "0.4.2"
 
-ROUTERS: tuple[APIRouter, ...] = (reference.router, auth.router, cases.router, staff.router)
+ROUTERS: tuple[APIRouter, ...] = (reference.router, auth.router, cases.router, staff.router, dashboard.router)
 
 
 def settings_routers(settings: Settings) -> tuple[APIRouter, ...]:

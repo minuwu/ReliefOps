@@ -136,6 +136,12 @@ I read Asif's whole work log, [REMAINING_WORK.md](../asif/REMAINING_WORK.md), mi
 - **N13, notes**: `POST /api/cases/{id}/notes` (operator, supervisor) → `201` `Note`, body 1–4000 characters. Notes are **the one write a closed case still accepts**, and a note doesn't change the case's version. Audited as `note.added`; the case detail lists notes newest first. [test_notes.py](../../backend/tests/api/test_notes.py): 3 tests. **548 tests pass.**
 - **Frontend check:** Minhaz's routes `/verify-email`, `/reset-password`, `/accept-invitation` and `/claim-case` read `?token=`, which **matches the links my emails send** (and Asif's claim link), so the email-link flows work end to end.
 
+- **N14, dashboard and alerts** ([services/dashboard.py](../../backend/app/services/dashboard.py)):
+  - `GET /api/dashboard/stats` (supervisor: all banks, or one with `bank_id`; bank_viewer: always their own bank, from RLS, with `bank_id` ignored and `workload: []`). Returns open, overdue, due-soon and unassigned counts, `avg_handling_days` (closed cases: `closed_at − reported_date`), pending AI reviews (total and low-confidence), `cases_by_status` (all 6 keys) and per-operator workload (every active operator, including idle ones).
+  - The **overdue and due-soon SQL is the case list's own filter**, so the tests check that each dashboard number equals the case-list total for the same filter.
+  - `GET /api/alerts/shared-accounts` (supervisor; `min_cases` 2–50): grouped by `(bank_id, account_number)`, most cases first, with total amount and the cases. **Never compares across banks** (that's XREQ-004 and still needs the team decision); the test checks that bank_a's single `9876543210` case doesn't join bank_b's ring.
+  - [test_dashboard.py](../../backend/tests/api/test_dashboard.py): 6 tests, validated against `openapi.yaml`. **554 tests pass.**
+
 ### Local test database (for anyone on Windows without Postgres)
 ```bash
 docker run -d --name reliefops-pg -e POSTGRES_PASSWORD=postgres -p 127.0.0.1:55433:5432 pgvector/pgvector:pg16
@@ -151,8 +157,8 @@ cd backend && uv run pytest -q
 
 ### Next (in order, each: tests → commit → pull → push)
 - ~~N2~~ done.
-- ~~N3~~, ~~N4~~, ~~N5~~, ~~N6~~, ~~N7~~, ~~N8~~, ~~N9~~, ~~N10~~, ~~N11~~ done (Phase 2 complete; XREQ-001 resolved). ~~N12~~, ~~N13~~ done.
-- Next, Phase 3: N14 (dashboard, alerts), N15 (permission table), N16 (smoke script).
+- ~~N3~~, ~~N4~~, ~~N5~~, ~~N6~~, ~~N7~~, ~~N8~~, ~~N9~~, ~~N10~~, ~~N11~~ done (Phase 2 complete; XREQ-001 resolved). ~~N12~~, ~~N13~~, ~~N14~~ done.
+- Next, Phase 3: N15 (permission table), N16 (smoke script).
 
 ### Blockers / handoff
 - **Galib:** rotate the AI keys (critical finding above).
