@@ -16,6 +16,14 @@ ENV/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Local databases and dumps (may hold case data, even if synthetic)
+pgdata/
+*.dump
+*.backup
 
 # Environment & secrets (keep .env.example committed)
 .env

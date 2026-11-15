@@ -60,7 +60,7 @@ This file is:
 
 | Request ID | Priority | From | To | Target / Title | Status | Updated (UTC+6) |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| `XREQ-001` | `P0 (Blocker)` | Frontend (Minhaz) | Backend (Asif / Anim) | Core Cases & Bank Tenant Isolation API (`GET/POST /api/cases`) | `[PENDING]` | 2026-11-15 11:30 |
+| `XREQ-001` | `P0 (Blocker)` | Frontend (Minhaz) | Backend (Asif / Anim) | Core Cases & Bank Tenant Isolation API (`GET/POST /api/cases`) | `[IN_PROGRESS]` | 2026-11-15 13:30 |
 | `XREQ-002` | `P0 (Blocker)` | Frontend (Minhaz) | AI (Galib) / Backend (Asif) | Rule D3 Vision OCR Extraction & HITL Queue (`POST /api/documents/extract`) | `[PENDING]` | 2026-11-15 11:30 |
 | `XREQ-003` | `P1 (High)` | Frontend (Minhaz) | Backend (Anim / Asif) | Public Citizen Intake & 6-Stage Status Tracker (`POST /api/intake`) | `[PENDING]` | 2026-11-15 11:30 |
 | `XREQ-004` | `P1 (High)` | Frontend (Minhaz) | Backend (Asif / Anim) / AI (Galib) | Cross-Bank Fraud Ring Topology & Coordinated Freeze API | `[PENDING]` | 2026-11-15 11:30 |
@@ -75,7 +75,7 @@ This file is:
 - **Priority**: `P0 (Blocker)`
 - **From**: Frontend (Minhaz)
 - **To**: Backend (Asif / Anim)
-- **Status**: `[PENDING]`
+- **Status**: `[IN_PROGRESS]` (Asif: database bank isolation, migrations 001–002; Anim: the case endpoints)
 - **Created**: 2026-11-15 11:30 (UTC+6)
 - **Target Interface / Endpoints**: `GET /api/cases`, `GET /api/cases/{id}`, `POST /api/cases/{id}/transitions`
 

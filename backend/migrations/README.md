@@ -5,6 +5,19 @@ Hand-written Alembic migrations. RLS policies, grants and triggers can't be auto
 | Revision | What |
 | :--- | :--- |
 | `001_core` | Core tables (backend-plan §4): banks, users, sessions, auth_tokens, invitations, cases, documents, document_contents, ai_extractions, notes, audit_log |
+| `002_rls` | Row-level security on every table (`FORCE`), least-privilege grants to `app_user` (no `DELETE` anywhere), append-only `audit_log` trigger, `next_case_reference()` (sequence starts at 100) |
+
+### The scope every query needs (002)
+
+Policies read three transaction-local settings, set by `app/db.py` at the start of every transaction:
+
+| Setting | Values |
+| :--- | :--- |
+| `app.role` | `operator`, `supervisor` (all banks) · `bank_viewer` (own bank, read-only) · `victim` (own cases) · `system` (auth tables, seed, background jobs) |
+| `app.user_id` | the caller's `users.id`, or empty |
+| `app.bank_id` | the bank viewer's bank, or empty |
+
+No scope, or an unknown role, sees **no rows**. The seed must run with `app.role = 'system'`, because `FORCE ROW LEVEL SECURITY` applies to the table owner too. Set `APP_DB_ROLE` before migrating if the app's database user isn't called `app_user`.
 
 ## First time (local Postgres 16)
 
