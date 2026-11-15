@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Fraud Relief Case API
-  version: 0.4.1
+  version: 0.4.2
   summary: Shared operations center for fraud-victim relief cases across five banks.
   description: 'Machine-readable twin of [docs/API_SPEC.md](./API_SPEC.md). Change both in the same PR.
 
@@ -644,6 +644,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
   /api/cases:
     get:
       tags:
@@ -1939,6 +1941,37 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/VictimCaseListResponse'
+              example:
+                success: true
+                data:
+                - id: 7f3c2a9e-5b1d-4c8e-9a10-2d6f8b4e1c33
+                  version: 2
+                  reference: RFR-2026-00042
+                  bank_name: Birch Regional Bank
+                  status: verified
+                  closure_reason: null
+                  victim:
+                    name: Rina Example
+                    phone: +81-90-0000-0042
+                    email: rina.example@mail.test
+                    address: null
+                    preferred_language: ja
+                  amount: 250000
+                  currency: JPY
+                  transfer_date: '2026-10-28'
+                  account_number: '0012345'
+                  account_holder_name: Sample Trading LLC
+                  scam_type: impersonation
+                  description: Caller said they were from the tax office and asked me to pay a refund fee.
+                  missing_fields: []
+                  editable_fields:
+                  - victim.phone
+                  - victim.email
+                  - victim.address
+                  - victim.preferred_language
+                  submitted_at: '2026-11-02T03:12:00Z'
+                  updated_at: '2026-11-14T04:30:00Z'
+                message: ok
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -2052,6 +2085,8 @@ paths:
                   $ref: '#/components/examples/ChatThreadOk'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
     parameters:
     - *id004
   /api/victim/cases/{case_id}/chat/messages:
@@ -2096,6 +2131,8 @@ paths:
                   $ref: '#/components/examples/ChatRefused'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/ValidationError'
         '429':
@@ -2168,11 +2205,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/VictimCaseResponse'
+              examples:
+                linked:
+                  $ref: '#/components/examples/VictimCaseVerified'
         '400': *id001
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
 components:
   securitySchemes:
     bearerAuth:

@@ -1,6 +1,6 @@
 # API Specification (Shared Contract)
 
-**Version** 0.4.1 (draft) · **Updated** 2026-11-14 · **Owner** Asif (Backend)
+**Version** 0.4.2 (draft) · **Updated** 2026-11-15 · **Owner** Asif (Backend)
 
 This is the **single source of truth** for the API between Frontend, Backend and AI. Build against it now using mocks. From now on, any change goes through an `XREQ` in [AGENTS.md](../AGENTS.md). Never rename a field silently.
 
@@ -1132,7 +1132,7 @@ Response `200`: `data` is `VictimCase[]` (the victim's own cases, newest first; 
 
 #### `POST /api/victim/claims` · victim · Extra
 
-`{ "token": "<from the case invite email>" }` → `200`, `data` is the linked `VictimCase`. The victim's verified email must match the email the invite was sent to. Errors: `400 INVALID_TOKEN`, `403`.
+`{ "token": "<from the case invite email>" }` → `200`, `data` is the linked `VictimCase`. The victim's verified email must match the email the invite was sent to. Errors: `400 INVALID_TOKEN` (expired or used link), `403` (email doesn't match), `422` (no `token` in the body).
 
 #### `GET /api/victim/cases/{case_id}` · victim
 
@@ -1189,7 +1189,7 @@ Errors:
 
 #### `GET /api/victim/cases/{case_id}/chat` · victim · Extra
 
-Response `200`: `data` is the case's `ChatThread`. It starts empty.
+Response `200`: `data` is the case's `ChatThread`. It starts empty. Errors: `404` (not this victim's case), `401`.
 
 #### `POST /api/victim/cases/{case_id}/chat/messages` · victim · rate-limited · Extra
 
@@ -1234,6 +1234,7 @@ Response `201`:
 Errors:
 - `422 VALIDATION_ERROR`: empty, or over 1,000 characters
 - `429 RATE_LIMITED`: over 20 questions per case per hour
+- `404`: not this victim's case
 - `401`
 
 #### `POST /api/victim/cases/{case_id}/chat/messages/{message_id}/feedback` · victim · Extra
@@ -1423,7 +1424,8 @@ To get a specific response, send a `Prefer` header:
 - It doesn't remember anything. A `POST` or `PATCH` returns the example, not your data.
 - It accepts any bearer token, but a request with no token gets `401`.
 - It doesn't filter by role or bank. Separation is the real backend's job (backend-plan §5).
-- An invalid body returns `422` with the contract's example error, not the field that actually failed.
+- An invalid body returns `422` with the contract's example error, not the field that actually failed. The real reason is printed in the mock's console (`Violation: request.body ...`).
+- A body that isn't valid JSON gets no answer at all (the request hangs). The real backend returns `422`.
 
 ---
 
@@ -1439,6 +1441,7 @@ To get a specific response, send a `Prefer` header:
 
 | Version | Date | Change |
 | :--- | :--- | :--- |
+| 0.4.2 | 2026-11-15 | Mock fixes found by running it, additive only. `GET /api/victim/cases` and `POST /api/victim/claims` now have real examples (the mock was returning placeholder `"string"` values that broke the schema). The two victim chat routes now document `404` for another victim's case. `POST /api/victim/claims` and `GET /api/users` document `422`. §9.1 explains where the mock prints the real cause of a `422`. |
 | 0.4.1 | 2026-11-15 | Fixes where this file and `openapi.yaml` disagreed. Additive only. Reject-review example now sends `expected_version` (it was always required). `POST /api/victim/cases` no longer requires a phone or email, since `victim.email` defaults to the account's verified email. Revoking a non-pending invitation now returns a documented `409 INVALID_STATUS_TRANSITION`. `User` gains `is_active`; `GET /api/users` gains `include_inactive` (supervisor) so deactivated users can be found and reactivated; deactivated logins get `401 INVALID_CREDENTIALS`. |
 | 0.4.0 | 2026-11-14 | **Breaking for victim screens.** Accounts for everyone (D15): victim sign-up, email verification, logout, forgot/reset password, staff invitations, deactivation; victim routes are now `/api/victim/cases/...`; access codes, `/api/intake` and `/api/victim/session` removed. Also: `version` + `expected_version` → `409 STALE_CASE`; `409 CASE_CLOSED`; PATCH rules; realistic stage durations; money as JSON numbers; `Retry-After`; `payout_amount`; `possible_duplicate`; bluebook `audience`; download headers; deduplicated view audit; opaque tokens; no path versioning. |
 | 0.3.0 | 2026-11-14 | Case assistant (RAG, D14): victim chat (§6.7), staff chat view and reply, and per-bank bluebook management (§6.8); rules in §3.6; AI interface in §7.2. New: `flags.victim_question_pending`, `rag` in health, chat and bluebook audit actions. Additive only. |
