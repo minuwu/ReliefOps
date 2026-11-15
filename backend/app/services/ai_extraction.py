@@ -39,7 +39,7 @@ from typing import Any, Final
 
 from app.services.ai_errors import AIUnavailableError
 
-PROMPT_VERSION: Final = "extract-v1"
+PROMPT_VERSION: Final = "extract-v2"  # v2: keep company markers in names; masked/unclear values left out
 PROMPT_FILE: Final = Path(__file__).resolve().parents[1] / "prompts" / f"{PROMPT_VERSION}.md"
 
 BUDGET_SECONDS: Final = 17.0  # engine gives up at 20 s
@@ -61,11 +61,14 @@ class Provider:
     timeout: float  # seconds, capped by what's left of the budget
 
 
-# Measured 2026-11-15 on synthetic slips (clean + scanned), thinking off/low: 2.5 Flash ~3 s, 3.6 Flash ~6-8 s,
-# Nemotron VL ~12-21 s; all 5/5 fields. Fastest first; each later one covers a 429/503 on the one before.
+# Measured 2026-11-15 on synthetic slips, thinking off/low: 2.5 Flash ~3-5 s, 3.6 Flash ~4-10 s,
+# 3.5 Flash-Lite 3.3 s, 3.1 Flash-Lite 2.9 s, Nemotron VL ~11-21 s. Gemini free tier = 20 requests/day
+# per model, so several models give ~80/day before OpenRouter (50/day). 3.7/3.8 Flash timed out on free tier.
 CHAIN: Final = (
     Provider("gemini", "gemini-2.5-flash", 7.0),
     Provider("gemini", "gemini-3.6-flash", 9.0),
+    Provider("gemini", "gemini-3.5-flash-lite", 6.0),
+    Provider("gemini", "gemini-3.1-flash-lite", 6.0),
     Provider("openrouter", "nvidia/nemotron-3.5-super-vl:free", 14.0),
 )
 
@@ -232,11 +235,15 @@ def _json_from(text: str) -> dict[str, Any]:
     return data
 
 
+_PLACEHOLDER: Final = re.compile(
+    r"[*＊●○×]{2,}|不鮮明|不明|判読|unreadable|illegible|unknown|^n/?a$|^none$|^-+$", re.IGNORECASE)
+
+
 def clean_value(name: str, raw: Any) -> Any:
     """Return the value in the contract's format, or None if it isn't valid for that field."""
     value = normalize(str(raw)).strip()
-    if not value:
-        return None
+    if not value or _PLACEHOLDER.search(value):
+        return None  # "(印字不鮮明)", "*******", "unknown": a note about the value, not the value
     if name == "amount":
         digits = re.sub(r"[,\s¥円$]", "", value)
         if not re.fullmatch(r"\d+(\.\d{1,2})?", digits):
@@ -267,7 +274,7 @@ def _squash(text: str) -> str:
 
 _INSTRUCTION_WORDS: Final = re.compile(
     r"ignore|instruction|approve|system|assistant|prompt|override|承認|指示|無視", re.IGNORECASE)
-_CURRENCY_MARKS: Final = {"JPY": ("¥", "円", "jpy"), "USD": ("$", "usd"), "BDT": ("৳", "bdt", "taka")}
+_CURRENCY_MARKS: Final = {"JPY": ("¥", "円", "jpy", "yen"), "USD": ("$", "usd"), "BDT": ("৳", "bdt", "taka")}
 
 
 def evidence_found(name: str, evidence: str, value: Any, local_text: str) -> bool | None:
@@ -328,6 +335,20 @@ def build_fields(answer: dict[str, Any], local_text: str) -> list[dict[str, Any]
 # at its cap. An abandoned call finishes in the background; its answer is discarded.
 _POOL: Final = ThreadPoolExecutor(max_workers=8, thread_name_prefix="ai-provider")
 
+# Free tiers cap requests per model (Gemini: 20/day). After a 429 we skip that model until the reset
+# the provider reports, instead of spending budget on a certain failure. Per process; resets on restart.
+_used_up: dict[str, float] = {}
+QUOTA_DEFAULT_WAIT: Final = 60.0
+QUOTA_MAX_WAIT: Final = 24 * 3600.0
+
+
+def _note_quota(model: str, message: str) -> None:
+    if "429" not in message and "RESOURCE_EXHAUSTED" not in message and "rate limit" not in message.lower():
+        return
+    delay = re.search(r"retryDelay'?\"?:\s*'?\"?(\d+(?:\.\d+)?)s", message)
+    wait = min(float(delay.group(1)), QUOTA_MAX_WAIT) if delay else QUOTA_DEFAULT_WAIT
+    _used_up[model] = time.monotonic() + wait
+
 
 def extract_fields(file_bytes: bytes, mime_type: str, doc_type: str) -> dict[str, Any]:
     """API_SPEC §7.1. Returns {"fields": [...], "model": ..., "prompt_version": ...}.
@@ -341,6 +362,9 @@ def extract_fields(file_bytes: bytes, mime_type: str, doc_type: str) -> dict[str
     page = read_document(file_bytes, mime_type)
     errors: list[str] = []
     for provider in CHAIN:
+        if (until := _used_up.get(provider.model, 0.0)) > time.monotonic():
+            errors.append(f"{provider.model}: quota used up, {int(until - time.monotonic())} s left")
+            continue
         left = BUDGET_SECONDS - (time.monotonic() - started)
         if left < MIN_ATTEMPT_SECONDS:
             errors.append("time budget used up")
@@ -352,6 +376,7 @@ def extract_fields(file_bytes: bytes, mime_type: str, doc_type: str) -> dict[str
             errors.append(f"{provider.model}: {exc}")
             continue
         except Exception as exc:  # noqa: BLE001 - rate limit, overload, timeout, bad JSON: try the next one
+            _note_quota(provider.model, str(exc))
             errors.append(f"{provider.model}: {type(exc).__name__} {str(exc)[:60]}".rstrip())
             continue
         return {"fields": build_fields(answer, page.text), "model": provider.model, "prompt_version": PROMPT_VERSION}

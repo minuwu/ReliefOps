@@ -52,6 +52,7 @@ def providers(monkeypatch: pytest.MonkeyPatch) -> Fakes:
     monkeypatch.setattr(ai, "CHAIN", (ai.Provider("fake", "first", 5), ai.Provider("fake", "second", 5)))
     monkeypatch.setitem(ai.ASKERS, "fake", fakes.ask)
     monkeypatch.setattr(ai, "_load_env", lambda: None)
+    monkeypatch.setattr(ai, "_used_up", {})
     return fakes
 
 
@@ -66,7 +67,7 @@ def test_verified_answer_passes_the_engine_contract(providers: Fakes) -> None:
     result = ai.extract_fields(SLIP_TEXT.encode(), "text/plain", "transfer_receipt")
 
     guesses, model, prompt_version = engine.parse_ai_output(result)
-    assert (model, prompt_version) == ("first", "extract-v1")
+    assert (model, prompt_version) == ("first", ai.PROMPT_VERSION)
     assert by_name(result)["amount"]["value"] == 1450000
     assert all(g.confidence >= engine.DEFAULT_THRESHOLD for g in guesses)  # every quote is in the document
 
@@ -205,3 +206,29 @@ def test_image_is_resized_and_ocr_text_kept(monkeypatch: pytest.MonkeyPatch) -> 
 
     assert max(image.open(io.BytesIO(page.image_png)).size) == ai.MAX_IMAGE_SIDE
     assert page.text == "口座 987"  # NFKC digits; the CJK-to-digit space stays
+
+
+@pytest.mark.parametrize("raw", ["(印字不鮮明)", "＊＊＊＊＊＊＊", "unknown", "N/A", "---"])
+def test_placeholders_are_not_values(raw: str) -> None:
+    assert ai.clean_value("account_holder_name", raw) is None
+
+
+def test_yen_written_as_a_word_confirms_jpy() -> None:
+    assert ai.evidence_found("currency", "320,000 yen", "JPY", "I sent 320,000 yen") is True
+
+
+def test_a_used_up_model_is_skipped_until_its_reset(providers: Fakes) -> None:
+    providers.replies["first"] = RuntimeError("429 RESOURCE_EXHAUSTED ... 'retryDelay': '84172s'")
+    ai.extract_fields(SLIP_TEXT.encode(), "text/plain", "x")
+    providers.calls.clear()
+
+    result = ai.extract_fields(SLIP_TEXT.encode(), "text/plain", "x")
+
+    assert providers.calls == ["second"]  # first not even tried
+    assert result["model"] == "second"
+
+
+def test_other_errors_do_not_mark_a_model_used_up(providers: Fakes) -> None:
+    providers.replies["first"] = RuntimeError("503 UNAVAILABLE high demand")
+    ai.extract_fields(SLIP_TEXT.encode(), "text/plain", "x")
+    assert "first" not in ai._used_up

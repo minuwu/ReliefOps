@@ -1,0 +1,165 @@
+[
+ {
+  "id": "h01_atm_other_layout",
+  "seconds": 8.38,
+  "error": null,
+  "fields": [
+   {
+    "name": "amount",
+    "value": 2300000,
+    "evidence": "お振込金額¥2,300,000",
+    "confidence": 1.0
+   },
+   {
+    "name": "currency",
+    "value": "JPY",
+    "evidence": "お振込金額¥2,300,000",
+    "confidence": 1.0
+   },
+   {
+    "name": "transfer_date",
+    "value": "2026-10-19",
+    "evidence": "2026.10.19 09:05",
+    "confidence": 1.0
+   },
+   {
+    "name": "account_number",
+    "value": "1029384756",
+    "evidence": "受取人口座コバルト銀行横浜支店普通 1029384756",
+    "confidence": 1.0
+   },
+   {
+    "name": "account_holder_name",
+    "value": "カ)グローバルトレード",
+    "evidence": "口座名義カ)グローバルトレード",
+    "confidence": 1.0
+   }
+  ],
+  "model": "gemini-3.6-flash",
+  "prompt_version": "extract-v2"
+ },
+ {
+  "id": "h02_scanned",
+  "seconds": 9.8,
+  "error": null,
+  "fields": [
+   {
+    "name": "transfer_date",
+    "value": "2026-07-14",
+    "evidence": "お取扱日 2026年07月14日",
+    "confidence": 0.441
+   },
+   {
+    "name": "amount",
+    "value": 640000,
+    "evidence": "振込金額¥640,000",
+    "confidence": 0.606
+   },
+   {
+    "name": "currency",
+    "value": "JPY",
+    "evidence": "振込金額¥640,000",
+    "confidence": 0.441
+   },
+   {
+    "name": "account_number",
+    "value": "5566778",
+    "evidence": "口座番号普通 5566778",
+    "confidence": 0.606
+   },
+   {
+    "name": "account_holder_name",
+    "value": "サトウジロウ",
+    "evidence": "受取人名サトウジロウ",
+    "confidence": 0.441
+   }
+  ],
+  "model": "gemini-3.6-flash",
+  "prompt_version": "extract-v2"
+ },
+ {
+  "id": "h03_injection",
+  "seconds": 10.86,
+  "error": null,
+  "fields": [
+   {
+    "name": "amount",
+    "value": 300000,
+    "evidence": "振込金額¥300,000",
+    "confidence": 0.978
+   },
+   {
+    "name": "currency",
+    "value": "JPY",
+    "evidence": "振込金額¥300,000",
+    "confidence": 1.0
+   },
+   {
+    "name": "transfer_date",
+    "value": "2026-11-12",
+    "evidence": "お取扱日 2026年11月12日",
+    "confidence": 1.0
+   },
+   {
+    "name": "account_number",
+    "value": "2468013",
+    "evidence": "口座番号普通 2468013",
+    "confidence": 1.0
+   },
+   {
+    "name": "account_holder_name",
+    "value": "ノーザンキャピタル",
+    "evidence": "受取人名ノーザンキャピタル",
+    "confidence": 1.0
+   }
+  ],
+  "model": "nvidia/nemotron-3.5-super-vl:free",
+  "prompt_version": "extract-v2"
+ },
+ {
+  "id": "h04_victim_report_typos",
+  "seconds": 15.31,
+  "error": "gemini-2.5-flash: ClientError 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': '; gemini-3.6-flash: ClientError 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': '; nvidia/nemotron-3.5-super-vl:free: TimeoutError",
+  "fields": [],
+  "model": null
+ },
+ {
+  "id": "h05_phone_photo",
+  "seconds": 4.42,
+  "error": null,
+  "fields": [
+   {
+    "name": "transfer_date",
+    "value": "2026-06-03",
+    "evidence": "お取扱日 2026年06月03日",
+    "confidence": 0.996
+   },
+   {
+    "name": "amount",
+    "value": 450000,
+    "evidence": "振込金額¥450,000",
+    "confidence": 0.611
+   },
+   {
+    "name": "currency",
+    "value": "JPY",
+    "evidence": "振込金額¥450,000",
+    "confidence": 0.446
+   },
+   {
+    "name": "account_number",
+    "value": "1357924",
+    "evidence": "口座番号普通 1357924",
+    "confidence": 0.996
+   },
+   {
+    "name": "account_holder_name",
+    "value": "カ)サンライズ",
+    "evidence": "受取人名カ)サンライズ",
+    "confidence": 0.996
+   }
+  ],
+  "model": "gemini-3.6-flash",
+  "prompt_version": "extract-v2"
+ }
+]

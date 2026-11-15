@@ -4,6 +4,25 @@ Owner: Galib (`Ga-lib`) — Role: AI / LLM — Branches: `galib/*`
 
 Update after each work session. Newest entry first. Bangladesh time (UTC+6). Link commits/PRs/XREQs.
 
+## 2026-11-15 — labelled eval set and measured accuracy (XREQ-002, step 3)
+
+### Completed
+- `backend/eval/extraction/`: 12 synthetic documents (7 tuning, 5 held-out) with hand-written answers in `labels.json`, a generator (`make_docs.py`) and a scorer (`run_eval.py`) that saves reports to `results/`. See its README for the numbers and how to quote them.
+- Prompt `extract-v2` (tuned on the tuning set only): keep company markers like カ） in names; leave masked/unclear values out. Code: placeholders such as （印字不鮮明） are never values; "yen" confirms JPY.
+- Free-tier quota handling: Gemini allows 20 requests/day per model. Chain is now Gemini 2.5 Flash → 3.6 Flash → 3.5 Flash-Lite → 3.1 Flash-Lite → OpenRouter Nemotron VL, and a model that returns 429 is skipped until its reported reset.
+- Tests: 82 passed.
+
+### Measured
+- Tuning: v1 37/38 fields, v2 38/38.
+- **Held-out: 20 of 28 fields**, 0 wrong, 0 invented. All 8 misses = one document where every provider was out of free quota. When a model answered: 20/20. Prompt injection: not trusted (1/1). Retry of the failed document after the quota fix: 8/8.
+
+### Next
+- For the demo: pre-run the demo documents so judging doesn't depend on free quota; consider paid billing (cents) for the demo day.
+- Tell Asif: server needs `requirements-ai.txt` + `tesseract-ocr tesseract-ocr-jpn`.
+- Case assistant (RAG): bluebooks, `split_bluebook`, `embed`, `answer`.
+
+---
+
 ## 2026-11-15 — real `extract_fields()` with free providers (XREQ-002, step 2)
 
 ### Completed

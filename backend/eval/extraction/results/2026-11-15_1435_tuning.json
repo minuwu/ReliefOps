@@ -1,0 +1,293 @@
+[
+ {
+  "id": "t01_atm_clean",
+  "seconds": 4.52,
+  "error": null,
+  "fields": [
+   {
+    "name": "transfer_date",
+    "value": "2026-11-10",
+    "evidence": "お取扱日 2026年11月10日",
+    "confidence": 1.0
+   },
+   {
+    "name": "amount",
+    "value": 1450000,
+    "evidence": "振込金額¥1,450,000",
+    "confidence": 1.0
+   },
+   {
+    "name": "currency",
+    "value": "JPY",
+    "evidence": "¥1,450,000",
+    "confidence": 1.0
+   },
+   {
+    "name": "account_number",
+    "value": "9876543210",
+    "evidence": "口座番号普通 9876543210",
+    "confidence": 1.0
+   },
+   {
+    "name": "account_holder_name",
+    "value": "グローバルアセットトラスト",
+    "evidence": "受取人名グローバルアセットトラスト",
+    "confidence": 1.0
+   }
+  ],
+  "model": "gemini-2.5-flash",
+  "prompt_version": "extract-v2"
+ },
+ {
+  "id": "t02_netbank",
+  "seconds": 5.17,
+  "error": null,
+  "fields": [
+   {
+    "name": "transfer_date",
+    "value": "2026-10-28",
+    "evidence": "Transaction date:  2026/10/28",
+    "confidence": 0.996
+   },
+   {
+    "name": "amount",
+    "value": 250000,
+    "evidence": "Amount transferred: JPY 250,000",
+    "confidence": 0.996
+   },
+   {
+    "name": "currency",
+    "value": "JPY",
+    "evidence": "Amount transferred: JPY 250,000",
+    "confidence": 0.996
+   },
+   {
+    "name": "account_number",
+    "value": "0012345",
+    "evidence": "Account no.:  0012345",
+    "confidence": 0.996
+   },
+   {
+    "name": "account_holder_name",
+    "value": "Sample Trading LLC",
+    "evidence": "Account holder:  Sample Trading LLC",
+    "confidence": 0.996
+   }
+  ],
+  "model": "gemini-3.6-flash",
+  "prompt_version": "extract-v2"
+ },
+ {
+  "id": "t03_scanned",
+  "seconds": 5.69,
+  "error": null,
+  "fields": [
+   {
+    "name": "transfer_date",
+    "value": "2026-09-30",
+    "evidence": "日付 2026/09/30",
+    "confidence": 0.996
+   },
+   {
+    "name": "amount",
+    "value": 780000,
+    "evidence": "お振込金額¥780,000",
+    "confidence": 0.446
+   },
+   {
+    "name": "currency",
+    "value": "JPY",
+    "evidence": "お振込金額¥780,000",
+    "confidence": 0.446
+   },
+   {
+    "name": "account_number",
+    "value": "4455667",
+    "evidence": "口座番号 4455667",
+    "confidence": 0.611
+   },
+   {
+    "name": "account_holder_name",
+    "value": "カ)ミライコンサルティング",
+    "evidence": "受取人カ)ミライコンサルティング",
+    "confidence": 0.996
+   }
+  ],
+  "model": "gemini-3.6-flash",
+  "prompt_version": "extract-v2"
+ },
+ {
+  "id": "t04_victim_report",
+  "seconds": 2.49,
+  "error": null,
+  "fields": [
+   {
+    "name": "victim_name",
+    "value": "Rina Example",
+    "evidence": "Name: Rina Example",
+    "confidence": 0.955
+   },
+   {
+    "name": "victim_phone",
+    "value": "090-0000-0042",
+    "evidence": "Phone: 090-0000-0042",
+    "confidence": 0.955
+   },
+   {
+    "name": "victim_email",
+    "value": "rina.example@example.test",
+    "evidence": "Email: rina.example@example.test",
+    "confidence": 0.955
+   },
+   {
+    "name": "amount",
+    "value": 320000,
+    "evidence": "tranfered 320,000 yen",
+    "confidence": 0.955
+   },
+   {
+    "name": "currency",
+    "value": "JPY",
+    "evidence": "yen",
+    "confidence": 0.955
+   },
+   {
+    "name": "transfer_date",
+    "value": "2026-11-03",
+    "evidence": "On 3 Nov 2026",
+    "confidence": 0.955
+   },
+   {
+    "name": "account_number",
+    "value": "7788990",
+    "evidence": "account 7788990",
+    "confidence": 0.955
+   },
+   {
+    "name": "account_holder_name",
+    "value": "Kenji Sample",
+    "evidence": "holder: Kenji Sample",
+    "confidence": 0.955
+   },
+   {
+    "name": "scam_type",
+    "value": "impersonation",
+    "evidence": "a man calling himself a police oficer told me my account was used in a crime and I had to move my savings to a 'safe acount'",
+    "confidence": 0.955
+   }
+  ],
+  "model": "gemini-2.5-flash",
+  "prompt_version": "extract-v2"
+ },
+ {
+  "id": "t05_reiwa_fullwidth",
+  "seconds": 3.94,
+  "error": null,
+  "fields": [
+   {
+    "name": "transfer_date",
+    "value": "2026-10-05",
+    "evidence": "取扱日令和8年10月5日",
+    "confidence": 0.996
+   },
+   {
+    "name": "amount",
+    "value": 560000,
+    "evidence": "金額¥560,000",
+    "confidence": 0.611
+   },
+   {
+    "name": "currency",
+    "value": "JPY",
+    "evidence": "金額¥560,000",
+    "confidence": 0.446
+   },
+   {
+    "name": "account_number",
+    "value": "3322110",
+    "evidence": "口座番号 3322110",
+    "confidence": 0.446
+   },
+   {
+    "name": "account_holder_name",
+    "value": "タナカハナコ",
+    "evidence": "受取人タナカハナコ",
+    "confidence": 0.996
+   }
+  ],
+  "model": "gemini-3.6-flash",
+  "prompt_version": "extract-v2"
+ },
+ {
+  "id": "t06_missing_fields",
+  "seconds": 3.78,
+  "error": null,
+  "fields": [
+   {
+    "name": "transfer_date",
+    "value": "2026-11-01",
+    "evidence": "お取扱日 2026年11月01日",
+    "confidence": 1.0
+   },
+   {
+    "name": "amount",
+    "value": 95000,
+    "evidence": "振込金額¥95,000",
+    "confidence": 1.0
+   },
+   {
+    "name": "currency",
+    "value": "JPY",
+    "evidence": "振込金額¥95,000",
+    "confidence": 1.0
+   }
+  ],
+  "model": "gemini-3.6-flash",
+  "prompt_version": "extract-v2"
+ },
+ {
+  "id": "t07_handwritten_style",
+  "seconds": 6.0,
+  "error": null,
+  "fields": [
+   {
+    "name": "transfer_date",
+    "value": "2026-08-21",
+    "evidence": "依頼日 2026 年8月 21 日",
+    "confidence": 0.427
+   },
+   {
+    "name": "amount",
+    "value": 1200000,
+    "evidence": "金額 1,200,000円",
+    "confidence": 0.606
+   },
+   {
+    "name": "currency",
+    "value": "JPY",
+    "evidence": "金額 1,200,000円",
+    "confidence": 0.441
+   },
+   {
+    "name": "account_number",
+    "value": "6655443",
+    "evidence": "口座番号 665544 3",
+    "confidence": 0.593
+   },
+   {
+    "name": "account_holder_name",
+    "value": "ヤマダタロウ",
+    "evidence": "受取人ヤマダタロウ",
+    "confidence": 0.991
+   },
+   {
+    "name": "victim_name",
+    "value": "スズキイチロウ",
+    "evidence": "依頼人スズキイチロウ",
+    "confidence": 0.441
+   }
+  ],
+  "model": "gemini-3.6-flash",
+  "prompt_version": "extract-v2"
+ }
+]
