@@ -57,7 +57,10 @@ This file is:
 
 | Request ID | Priority | From | To | Target / Title | Status | Updated (UTC+6) |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| *No active requests.* | - | - | - | *Queue is clear.* | - | - |
+| `XREQ-001` | `P0 (Blocker)` | Frontend (Minhaz) | Backend (Asif / Anim) | Core Cases & Bank Tenant Isolation API (`GET/POST /api/cases`) | `[PENDING]` | 2026-11-15 11:30 |
+| `XREQ-002` | `P0 (Blocker)` | Frontend (Minhaz) | AI (Galib) / Backend (Asif) | Rule D3 Vision OCR Extraction & HITL Queue (`POST /api/documents/extract`) | `[PENDING]` | 2026-11-15 11:30 |
+| `XREQ-003` | `P1 (High)` | Frontend (Minhaz) | Backend (Anim / Asif) | Public Citizen Intake & 6-Stage Status Tracker (`POST /api/intake`) | `[PENDING]` | 2026-11-15 11:30 |
+| `XREQ-004` | `P1 (High)` | Frontend (Minhaz) | Backend (Asif / Anim) / AI (Galib) | Cross-Bank Fraud Ring Topology & Coordinated Freeze API | `[PENDING]` | 2026-11-15 11:30 |
 
 *(When adding a request: append a row above AND add a detailed card in 2.2. Never insert in the middle.)*
 
@@ -65,7 +68,187 @@ This file is:
 
 ### 2.2 Detailed Request Cards
 
-*No active cards. The first real request is `XREQ-001`. A worked example lives in 2.4.*
+#### `[XREQ-001]` Core Case Workstation & Bank Tenant Isolation API
+- **Priority**: `P0 (Blocker)`
+- **From**: Frontend (Minhaz)
+- **To**: Backend (Asif / Anim)
+- **Status**: `[PENDING]`
+- **Created**: 2026-11-15 11:30 (UTC+6)
+- **Target Interface / Endpoints**: `GET /api/cases`, `GET /api/cases/{id}`, `POST /api/cases/{id}/transitions`
+
+**Requirement Details:**
+Frontend workstation and case details are fully built, responsive, and running on mock contracts. For ReliefOps to operate as a live real-world solution, we need live FastAPI endpoints hooked to the database.
+1. `GET /api/cases` must support filtering by `status`, `bank_id`, `deadline_state` (`on_track`, `due_soon`, `overdue`), and text search.
+2. `GET /api/cases/{id}` must return full case facts, victim info, suspect account details, attached documents, allowed status transitions, and audit trail.
+3. `POST /api/cases/{id}/transitions` must validate and advance the 6-stage lifecycle (`received` -> `verified` -> `account_check` -> `notice_published` -> `payout_review` -> `closed`).
+4. **CRITICAL TENANT PRIVACY RULE (D1 / Banking Secrecy):** When authenticated as a `bank_viewer` (e.g. `viewer@bank-b.test`), the query MUST strictly return ONLY `bank_b` cases. Requesting a case belonging to another bank must return `404 RESOURCE_NOT_FOUND` (never 403, to prevent existence snooping).
+
+**Expected Request (`POST /api/cases/{id}/transitions`):**
+```json
+{
+  "to_status": "account_check",
+  "reason": "Voucher optical check verified by operator",
+  "expected_version": 1
+}
+```
+
+**Expected Response (200 OK):**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "c0000000-0000-4000-8000-000000000042",
+    "reference": "RFR-2026-00042",
+    "status": "account_check",
+    "version": 2,
+    "updated_at": "2026-11-15T11:30:00Z"
+  },
+  "message": "Case transitioned successfully"
+}
+```
+
+**Fulfillment & Proof (filled by recipient on completion):**
+- **Branch / Commit**: `[branch-name or commit-hash]`
+- **Status / Notes**: `[Implemented route / schema / component]`
+- **Verification Proof**: `[curl command, Swagger link, or test output]`
+
+---
+
+#### `[XREQ-002]` Rule D3 Vision OCR Extraction & HITL Queue
+- **Priority**: `P0 (Blocker)`
+- **From**: Frontend & Architecture (Minhaz)
+- **To**: AI (Galib) / Backend (Asif)
+- **Status**: `[PENDING]`
+- **Created**: 2026-11-15 11:30 (UTC+6)
+- **Target Interface / Endpoints**: `POST /api/documents/{id}/extract`, `GET /api/review-queue`, `POST /api/cases/{case_id}/extractions/{extraction_id}/accept`
+
+**Requirement Details:**
+Statutory Rule D3 dictates that AI is strictly an assistive advisor: **AI model output can NEVER directly modify bank ledgers or relief claims without certified human operator verification.**
+1. AI vision service must extract key fields from Japanese Furikomi vouchers / ATM slips: `transfer_amount`, `bank_name`, `branch_name`, `account_number`, `payee_name`, `transfer_date`.
+2. Must calculate granular field confidence scores (0.00 to 1.00). Aggregate confidence < 0.85 automatically routes the document into the `low_confidence` review lane.
+3. Must implement a **deterministic fallback** (`source: "rules_fallback"`) when Gemini API / vision model is offline or times out, ensuring the system never crashes or halts during live judging.
+4. Human operator certification endpoint `POST /api/cases/{case_id}/extractions/{extraction_id}/accept` commits human-verified values to the case record and logs an immutable audit event.
+
+**Expected Response (`GET /api/review-queue`):**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "extraction_id": "ext-2026-0089",
+      "case_id": "c0000000-0000-4000-8000-000000000042",
+      "case_reference": "RFR-2026-00042",
+      "document_filename": "ATM_Transfer_Slip_Tanaka.jpg",
+      "review_lane": "low_confidence",
+      "overall_confidence": 0.68,
+      "fields": {
+        "amount": { "value": 1450000, "confidence": 0.98 },
+        "account_number": { "value": "9876543210", "confidence": 0.68 }
+      }
+    }
+  ]
+}
+```
+
+**Fulfillment & Proof:**
+- **Branch / Commit**: `[branch-name or commit-hash]`
+- **Status / Notes**: `[Implemented route / schema / component]`
+- **Verification Proof**: `[curl command, Swagger link, or test output]`
+
+---
+
+#### `[XREQ-003]` Public Citizen Intake & 6-Stage Progress Tracker
+- **Priority**: `P1 (High)`
+- **From**: Frontend (Minhaz)
+- **To**: Backend (Anim / Asif)
+- **Status**: `[PENDING]`
+- **Created**: 2026-11-15 11:30 (UTC+6)
+- **Target Interface / Endpoints**: `POST /api/intake`, `POST /api/victim/auth`, `GET /api/victim/cases/{reference}`, `POST /api/victim/chat`
+
+**Requirement Details:**
+Allows scam victims to report losses via the public web form without prior registration:
+1. `POST /api/intake` creates a case with status `received`, generating a human-readable `reference` (`RFR-2026-XXXXX`) and an encrypted 12-character `access_code`.
+2. `POST /api/victim/auth` authenticates the victim using their reference + access code.
+3. `GET /api/victim/cases/{reference}` returns citizen-safe claim data: 6-stage lifecycle status (`received`, `verified`, `account_check`, `notice_published`, `payout_review`, `closed`), destination bank name, and frozen restitution pool balance.
+4. `POST /api/victim/chat` provides two-way messaging between the victim and assigned operations center staff.
+
+**Expected Request (`POST /api/intake`):**
+```json
+{
+  "bank_id": "bank_b",
+  "victim_name": "Haruto Tanaka",
+  "victim_phone": "090-0000-1122",
+  "victim_email": "h.tanaka@example.jp",
+  "amount": 1450000,
+  "currency": "JPY",
+  "transfer_date": "2026-11-10",
+  "account_number": "9876543210",
+  "scam_type": "impersonation",
+  "description": "Pension imposter phone scam requesting escrow transfer"
+}
+```
+
+**Expected Response (201 Created):**
+```json
+{
+  "success": true,
+  "data": {
+    "case_id": "c0000000-0000-4000-8000-000000000042",
+    "reference": "RFR-2026-00042",
+    "access_code": "K7QM-4XHP-2RTV",
+    "status": "received"
+  },
+  "message": "Intake report submitted successfully"
+}
+```
+
+**Fulfillment & Proof:**
+- **Branch / Commit**: `[branch-name or commit-hash]`
+- **Status / Notes**: `[Implemented route / schema / component]`
+- **Verification Proof**: `[curl command, Swagger link, or test output]`
+
+---
+
+#### `[XREQ-004]` Cross-Bank Fraud Ring Topology & Coordinated Freeze API
+- **Priority**: `P1 (High)`
+- **From**: Frontend & Supervisor (Minhaz)
+- **To**: Backend (Asif / Anim) / AI (Galib)
+- **Status**: `[PENDING]`
+- **Created**: 2026-11-15 11:30 (UTC+6)
+- **Target Interface / Endpoints**: `GET /api/analytics/fraud-rings`, `POST /api/analytics/fraud-rings/{account_number}/freeze`
+
+**Requirement Details:**
+Provides the showstopper feature for hackathon judging: uncovering organized criminal syndicates operating across member bank walls.
+1. `GET /api/analytics/fraud-rings` analyzes destination accounts and flags any account appearing in claims across >1 bank (e.g. account `9876543210` receiving illicit funds from Birch Bank and Aster Bank victims).
+2. Returns graph topology structure: root account node, connected bank nodes, linked victim case nodes, total illicit flow (JPY), and active threat level.
+3. `POST /api/analytics/fraud-rings/{account_number}/freeze` simulates an emergency broadcast freezing that mule account across all member institutions simultaneously.
+
+**Expected Response (`GET /api/analytics/fraud-rings`):**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "account_number": "9876543210",
+      "holder_name": "GLOBAL ASSET TRUST",
+      "case_count": 2,
+      "total_amount": 2900000,
+      "banks_involved": ["bank_a", "bank_b"],
+      "threat_level": "CRITICAL_SYNDICATE",
+      "is_frozen": false,
+      "cases": [
+        { "id": "c0000000-0000-4000-8000-000000000042", "reference": "RFR-2026-00042", "bank_id": "bank_b", "amount": 1450000 },
+        { "id": "c0000000-0000-4000-8000-000000000055", "reference": "RFR-2026-00055", "bank_id": "bank_a", "amount": 1450000 }
+      ]
+    }
+  ]
+}
+```
+
+**Fulfillment & Proof:**
+- **Branch / Commit**: `[branch-name or commit-hash]`
+- **Status / Notes**: `[Implemented route / schema / component]`
+- **Verification Proof**: `[curl command, Swagger link, or test output]`
 
 ---
 

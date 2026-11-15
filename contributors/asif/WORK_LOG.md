@@ -4,6 +4,19 @@ Owner: Asif (`MdAsif-Hossain`) — Role: Backend / Services / Database — Branc
 
 Use this log to share progress, planned work, and dependencies with the team. Update it after each work session, keep the newest entry first, and use Bangladesh time (UTC+6). Link to relevant issues, commits, or pull requests when available.
 
+## 2026-11-15 — incoming cross-functional dispatch (frontend ready, XREQ-001 & XREQ-004)
+
+### Pending XREQs Assigned (AGENTS.md §2)
+- **`[XREQ-001]` (P0 Blocker)**: Core Case Workstation & Bank Tenant Isolation API (`GET /api/cases`, `GET /api/cases/{id}`, `POST /api/cases/{id}/transitions`).
+- **`[XREQ-004]` (P1 High)**: Cross-Bank Fraud Ring Topology & Coordinated Freeze API (`GET /api/analytics/fraud-rings`, `POST /api/analytics/fraud-rings/{account_number}/freeze`).
+
+### Frontend Status & Handoff
+- Frontend UI, Neo-Brutalist design system, and in-app interactive demo tour are 100% complete and tested.
+- As soon as FastAPI routes in `backend/app/main.py` are live, Frontend will flip `USE_MOCK = false` for live end-to-end integration.
+- Database models must enforce tenant isolation (Bank B viewer receives `404 RESOURCE_NOT_FOUND` on cross-bank queries).
+
+---
+
 ## 2026-11-14 (session 8)
 
 ### Completed

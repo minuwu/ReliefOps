@@ -130,3 +130,7 @@ graphify-out/
 .claude/skills/unified-memory/
 .claude/skills/verification-loop/
 .claude/skills/windows-desktop-e2e/
+
+# Scratch & temporary artifacts
+scratch/
+/screenshot-*.png
