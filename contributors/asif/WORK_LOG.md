@@ -40,6 +40,12 @@ Decision (Asif): build all my business logic as **service functions with databas
   - **Result:** each field is saved with its `current_case_value`. A re-run marks the older pending result rejected as "superseded", and `pending_extraction_count` stays exact. Audited as `ai.extraction_completed` / `ai.extraction_failed` with the confidence and lane.
   - **The case is never changed by the AI (D3):** prompt-injection output fails as `invalid_ai_output`, and status, owner and version stay unchanged.
   - 10 tests.
+- **A10, review** ([review.py](../../backend/app/services/review.py)): `POST /api/extractions/{id}/review`, the only path from AI output to a case (D3).
+  - **Locking:** the extraction row is locked, so two reviewers at once means exactly one wins and the other gets `409 ALREADY_REVIEWED`. `expected_version` is required.
+  - **Accept:** only the chosen fields are written, each validated by type (`422` with the field name). A person may add a field the AI missed. The case version goes up only if values changed.
+  - **Reject:** needs a note; the case is unchanged.
+  - **Audit:** `ai.review_accepted` stores `ai_value` next to `final_value` per field, for measuring AI accuracy.
+  - 18 tests.
 
 ## 2026-11-15 (session 10) — backend Phase 1 done
 
