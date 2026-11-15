@@ -1,6 +1,6 @@
 # API Specification (Shared Contract)
 
-**Version** 0.4.2 (draft) · **Updated** 2026-11-15 · **Owner** Asif (Backend)
+**Version** 0.4.3 · **Updated** 2026-11-15 · **Owner** Asif (Backend)
 
 This is the **single source of truth** for the API between Frontend, Backend and AI. Build against it now using mocks. From now on, any change goes through an `XREQ` in [AGENTS.md](../AGENTS.md). Never rename a field silently.
 
@@ -39,7 +39,7 @@ The reasons behind these choices (data model, security, AI safety, devops) are i
    - The bank comes from the case on the server, so no victim can reach another bank's bluebook.
    - It never changes anything, promises money or predicts an outcome.
    - Questions it can't answer go to staff, who reply in the same thread (§3.6).
-7. **Nothing is live yet.** Every endpoint is `PLANNED`. The mock (§9.1) only replays the examples in this contract.
+7. **Every endpoint is `LIVE`** (v0.4.3): implemented, tested over HTTP against this contract, and checked through the Prism proxy. The mock (§9.1) still replays the examples for frontend work without a backend.
 
 If you disagree with one of these, file an `XREQ` before building on it.
 
@@ -233,7 +233,7 @@ type AuditAction =
   | 'ai.review_accepted' | 'ai.review_rejected'
   | 'export.generated'
   | 'auth.logout' | 'auth.signup' | 'auth.email_verified' | 'auth.password_reset'
-  | 'user.invited' | 'user.invitation_revoked' | 'user.joined' | 'user.deactivated'
+  | 'user.invited' | 'user.invitation_revoked' | 'user.joined' | 'user.deactivated' | 'user.reactivated'
   | 'case.victim_invited' | 'case.claimed'
   | 'chat.escalated' | 'chat.staff_replied'
   | 'kb.document_uploaded' | 'kb.document_published' | 'kb.document_archived';
@@ -558,59 +558,59 @@ interface Invitation {               // a staff invitation (§6.1)
 
 ## 5. Endpoint index
 
-Tiers follow the brief: **MVP** is required, **Should** is expected, **Nice** is a bonus. **Extra** is not in the brief: it's the team's own case assistant (RAG), built only once the MVP path works. Build the frontend in that order. Status: `PLANNED` = agreed, not built · `LIVE` = implemented and passing the development guide's Definition of Done. **As of v0.4.0 every endpoint is `PLANNED`; nothing is live yet.**
+Tiers follow the brief: **MVP** is required, **Should** is expected, **Nice** is a bonus. **Extra** is not in the brief: it's the team's own case assistant (RAG), built only once the MVP path works. Build the frontend in that order. Status: `PLANNED` = agreed, not built · `LIVE` = implemented and passing the development guide's Definition of Done. **As of v0.4.3 every endpoint is `LIVE`.**
 
 | # | Method | Path | Who | Tier | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| 6.1 | POST | `/api/auth/login` | public | MVP | PLANNED |
-| 6.1 | GET | `/api/auth/me` | logged in | MVP | PLANNED |
-| 6.1 | POST | `/api/auth/logout` | logged in | MVP | PLANNED |
-| 6.1 | POST | `/api/auth/signup` | public | MVP | PLANNED |
-| 6.1 | POST | `/api/auth/verify-email` | public | MVP | PLANNED |
-| 6.1 | POST | `/api/auth/resend-verification` | public | MVP | PLANNED |
-| 6.1 | POST | `/api/auth/forgot-password` | public | MVP | PLANNED |
-| 6.1 | POST | `/api/auth/reset-password` | public | MVP | PLANNED |
-| 6.1 | POST | `/api/auth/accept-invitation` | public | Should | PLANNED |
-| 6.1 | POST | `/api/invitations` | supervisor | Should | PLANNED |
-| 6.1 | GET | `/api/invitations` | supervisor | Should | PLANNED |
-| 6.1 | POST | `/api/invitations/{invitation_id}/revoke` | supervisor | Should | PLANNED |
-| 6.1 | PATCH | `/api/users/{user_id}` | supervisor | Should | PLANNED |
-| 6.2 | GET | `/api/health` | public | MVP | PLANNED |
-| 6.2 | GET | `/api/banks` | public | MVP | PLANNED |
-| 6.2 | GET | `/api/users` | operator, supervisor | MVP | PLANNED |
-| 6.7 | POST | `/api/victim/cases` | victim | MVP | PLANNED |
-| 6.7 | GET | `/api/victim/cases` | victim | MVP | PLANNED |
-| 6.7 | GET | `/api/victim/cases/{case_id}` | victim | MVP | PLANNED |
-| 6.7 | PATCH | `/api/victim/cases/{case_id}` | victim | Should | PLANNED |
-| 6.3 | GET | `/api/cases` | all roles | MVP | PLANNED |
-| 6.3 | POST | `/api/cases` | operator, supervisor | MVP | PLANNED |
-| 6.3 | GET | `/api/cases/{case_id}` | all roles | MVP | PLANNED |
-| 6.3 | PATCH | `/api/cases/{case_id}` | operator, supervisor | MVP | PLANNED |
-| 6.3 | POST | `/api/cases/{case_id}/transition` | operator, supervisor | MVP | PLANNED |
-| 6.3 | POST | `/api/cases/{case_id}/assign` | operator, supervisor | MVP | PLANNED |
-| 6.3 | POST | `/api/cases/{case_id}/notes` | operator, supervisor | Should | PLANNED |
-| 6.3 | POST | `/api/cases/{case_id}/victim-invite` | operator, supervisor | Extra | PLANNED |
-| 6.7 | POST | `/api/victim/claims` | victim | Extra | PLANNED |
-| 6.4 | GET | `/api/cases/{case_id}/history` | all roles | MVP | PLANNED |
-| 6.5 | POST | `/api/cases/{case_id}/documents` | operator, supervisor | MVP | PLANNED |
-| 6.5 | GET | `/api/documents/{document_id}/file` | all roles | Should | PLANNED |
-| 6.5 | POST | `/api/documents/{document_id}/extract` | operator, supervisor | MVP | PLANNED |
-| 6.5 | GET | `/api/extractions/{extraction_id}` | operator, supervisor | MVP | PLANNED |
-| 6.5 | POST | `/api/extractions/{extraction_id}/review` | operator, supervisor | MVP | PLANNED |
-| 6.5 | GET | `/api/review-queue` | operator, supervisor | Should | PLANNED |
-| 6.6 | GET | `/api/dashboard/stats` | supervisor, bank_viewer | Should | PLANNED |
-| 6.4 | GET | `/api/audit-logs` | supervisor, bank_viewer | MVP | PLANNED |
-| 6.6 | GET | `/api/alerts/shared-accounts` | supervisor | Nice | PLANNED |
-| 6.4 | GET | `/api/cases/{case_id}/history?format=csv` | all roles | Nice | PLANNED |
-| 6.7 | GET | `/api/victim/cases/{case_id}/chat` | victim | Extra | PLANNED |
-| 6.7 | POST | `/api/victim/cases/{case_id}/chat/messages` | victim | Extra | PLANNED |
-| 6.7 | POST | `/api/victim/cases/{case_id}/chat/messages/{message_id}/feedback` | victim | Extra | PLANNED |
-| 6.8 | GET | `/api/cases/{case_id}/chat` | operator, supervisor, bank_viewer | Extra | PLANNED |
-| 6.8 | POST | `/api/cases/{case_id}/chat/reply` | operator, supervisor | Extra | PLANNED |
-| 6.8 | GET | `/api/kb/documents` | operator, supervisor, bank_viewer | Extra | PLANNED |
-| 6.8 | POST | `/api/kb/documents` | supervisor | Extra | PLANNED |
-| 6.8 | POST | `/api/kb/documents/{kb_document_id}/publish` | supervisor | Extra | PLANNED |
-| 6.8 | POST | `/api/kb/documents/{kb_document_id}/archive` | supervisor | Extra | PLANNED |
+| 6.1 | POST | `/api/auth/login` | public | MVP | LIVE |
+| 6.1 | GET | `/api/auth/me` | logged in | MVP | LIVE |
+| 6.1 | POST | `/api/auth/logout` | logged in | MVP | LIVE |
+| 6.1 | POST | `/api/auth/signup` | public | MVP | LIVE |
+| 6.1 | POST | `/api/auth/verify-email` | public | MVP | LIVE |
+| 6.1 | POST | `/api/auth/resend-verification` | public | MVP | LIVE |
+| 6.1 | POST | `/api/auth/forgot-password` | public | MVP | LIVE |
+| 6.1 | POST | `/api/auth/reset-password` | public | MVP | LIVE |
+| 6.1 | POST | `/api/auth/accept-invitation` | public | Should | LIVE |
+| 6.1 | POST | `/api/invitations` | supervisor | Should | LIVE |
+| 6.1 | GET | `/api/invitations` | supervisor | Should | LIVE |
+| 6.1 | POST | `/api/invitations/{invitation_id}/revoke` | supervisor | Should | LIVE |
+| 6.1 | PATCH | `/api/users/{user_id}` | supervisor | Should | LIVE |
+| 6.2 | GET | `/api/health` | public | MVP | LIVE |
+| 6.2 | GET | `/api/banks` | public | MVP | LIVE |
+| 6.2 | GET | `/api/users` | operator, supervisor | MVP | LIVE |
+| 6.7 | POST | `/api/victim/cases` | victim | MVP | LIVE |
+| 6.7 | GET | `/api/victim/cases` | victim | MVP | LIVE |
+| 6.7 | GET | `/api/victim/cases/{case_id}` | victim | MVP | LIVE |
+| 6.7 | PATCH | `/api/victim/cases/{case_id}` | victim | Should | LIVE |
+| 6.3 | GET | `/api/cases` | all roles | MVP | LIVE |
+| 6.3 | POST | `/api/cases` | operator, supervisor | MVP | LIVE |
+| 6.3 | GET | `/api/cases/{case_id}` | all roles | MVP | LIVE |
+| 6.3 | PATCH | `/api/cases/{case_id}` | operator, supervisor | MVP | LIVE |
+| 6.3 | POST | `/api/cases/{case_id}/transition` | operator, supervisor | MVP | LIVE |
+| 6.3 | POST | `/api/cases/{case_id}/assign` | operator, supervisor | MVP | LIVE |
+| 6.3 | POST | `/api/cases/{case_id}/notes` | operator, supervisor | Should | LIVE |
+| 6.3 | POST | `/api/cases/{case_id}/victim-invite` | operator, supervisor | Extra | LIVE |
+| 6.7 | POST | `/api/victim/claims` | victim | Extra | LIVE |
+| 6.4 | GET | `/api/cases/{case_id}/history` | all roles | MVP | LIVE |
+| 6.5 | POST | `/api/cases/{case_id}/documents` | operator, supervisor | MVP | LIVE |
+| 6.5 | GET | `/api/documents/{document_id}/file` | all roles | Should | LIVE |
+| 6.5 | POST | `/api/documents/{document_id}/extract` | operator, supervisor | MVP | LIVE |
+| 6.5 | GET | `/api/extractions/{extraction_id}` | operator, supervisor | MVP | LIVE |
+| 6.5 | POST | `/api/extractions/{extraction_id}/review` | operator, supervisor | MVP | LIVE |
+| 6.5 | GET | `/api/review-queue` | operator, supervisor | Should | LIVE |
+| 6.6 | GET | `/api/dashboard/stats` | supervisor, bank_viewer | Should | LIVE |
+| 6.4 | GET | `/api/audit-logs` | supervisor, bank_viewer | MVP | LIVE |
+| 6.6 | GET | `/api/alerts/shared-accounts` | supervisor | Nice | LIVE |
+| 6.4 | GET | `/api/cases/{case_id}/history?format=csv` | all roles | Nice | LIVE |
+| 6.7 | GET | `/api/victim/cases/{case_id}/chat` | victim | Extra | LIVE |
+| 6.7 | POST | `/api/victim/cases/{case_id}/chat/messages` | victim | Extra | LIVE |
+| 6.7 | POST | `/api/victim/cases/{case_id}/chat/messages/{message_id}/feedback` | victim | Extra | LIVE |
+| 6.8 | GET | `/api/cases/{case_id}/chat` | operator, supervisor, bank_viewer | Extra | LIVE |
+| 6.8 | POST | `/api/cases/{case_id}/chat/reply` | operator, supervisor | Extra | LIVE |
+| 6.8 | GET | `/api/kb/documents` | operator, supervisor, bank_viewer | Extra | LIVE |
+| 6.8 | POST | `/api/kb/documents` | supervisor | Extra | LIVE |
+| 6.8 | POST | `/api/kb/documents/{kb_document_id}/publish` | supervisor | Extra | LIVE |
+| 6.8 | POST | `/api/kb/documents/{kb_document_id}/archive` | supervisor | Extra | LIVE |
 
 **Not in this version (future work):** file upload by victims, multi-factor login, sign-in with Google or a bank, token refresh, changing a user's role (re-invite instead), moving a case between banks, `Idempotency-Key`.
 
@@ -1441,6 +1441,7 @@ To get a specific response, send a `Prefer` header:
 
 | Version | Date | Change |
 | :--- | :--- | :--- |
+| 0.4.3 | 2026-11-15 | **Every endpoint is `LIVE`** (§5): all 48 operations are implemented, every response is validated against `openapi.yaml` in the backend tests, and the smoke run passes through the Prism proxy with no violations. Additive only. Responses the server could already send are now documented: `403` for the wrong role, `422` for a malformed id or query value on 21 operations, and `409 CASE_CLOSED` on assign, document upload and extraction (shared `CaseClosed` response). New audit action `user.reactivated`. Sign-up's `preferred_language` is now stored on the account (it was accepted and dropped). |
 | 0.4.2 | 2026-11-15 | Mock fixes found by running it, additive only. `GET /api/victim/cases` and `POST /api/victim/claims` now have real examples (the mock was returning placeholder `"string"` values that broke the schema). The two victim chat routes now document `404` for another victim's case. `POST /api/victim/claims` and `GET /api/users` document `422`. §9.1 explains where the mock prints the real cause of a `422`. |
 | 0.4.1 | 2026-11-15 | Fixes where this file and `openapi.yaml` disagreed. Additive only. Reject-review example now sends `expected_version` (it was always required). `POST /api/victim/cases` no longer requires a phone or email, since `victim.email` defaults to the account's verified email. Revoking a non-pending invitation now returns a documented `409 INVALID_STATUS_TRANSITION`. `User` gains `is_active`; `GET /api/users` gains `include_inactive` (supervisor) so deactivated users can be found and reactivated; deactivated logins get `401 INVALID_CREDENTIALS`. |
 | 0.4.0 | 2026-11-14 | **Breaking for victim screens.** Accounts for everyone (D15): victim sign-up, email verification, logout, forgot/reset password, staff invitations, deactivation; victim routes are now `/api/victim/cases/...`; access codes, `/api/intake` and `/api/victim/session` removed. Also: `version` + `expected_version` → `409 STALE_CASE`; `409 CASE_CLOSED`; PATCH rules; realistic stage durations; money as JSON numbers; `Retry-After`; `payout_amount`; `possible_duplicate`; bluebook `audience`; download headers; deduplicated view audit; opaque tokens; no path versioning. |

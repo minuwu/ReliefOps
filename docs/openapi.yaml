@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Fraud Relief Case API
-  version: 0.4.2
+  version: 0.4.3
   summary: Shared operations center for fraud-victim relief cases across five banks.
   description: 'Machine-readable twin of [docs/API_SPEC.md](./API_SPEC.md). Change both in the same PR.
 
@@ -482,6 +482,8 @@ paths:
                     from: accepted
                     to: revoked
                     allowed: []
+        '422':
+          $ref: '#/components/responses/ValidationError'
   /api/users/{user_id}:
     parameters:
     - name: user_id
@@ -728,6 +730,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '422':
           $ref: '#/components/responses/ValidationError'
+        '403':
+          $ref: '#/components/responses/Forbidden'
     post:
       tags:
       - cases
@@ -791,6 +795,10 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
     patch:
       tags:
       - cases
@@ -987,6 +995,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/ValidationError'
+        '409':
+          $ref: '#/components/responses/CaseClosed'
   /api/cases/{case_id}/notes:
     parameters:
     - $ref: '#/components/parameters/CaseId'
@@ -1099,6 +1109,10 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
   /api/audit-logs:
     get:
       tags:
@@ -1232,6 +1246,8 @@ paths:
                   details: {}
         '422':
           $ref: '#/components/responses/ValidationError'
+        '409':
+          $ref: '#/components/responses/CaseClosed'
   /api/documents/{document_id}/file:
     parameters:
     - $ref: '#/components/parameters/DocumentId'
@@ -1258,6 +1274,10 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
   /api/documents/{document_id}/extract:
     parameters:
     - $ref: '#/components/parameters/DocumentId'
@@ -1294,6 +1314,10 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/CaseClosed'
+        '422':
+          $ref: '#/components/responses/ValidationError'
   /api/extractions/{extraction_id}:
     parameters:
     - $ref: '#/components/parameters/ExtractionId'
@@ -1318,6 +1342,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
   /api/extractions/{extraction_id}/review:
     parameters:
     - $ref: '#/components/parameters/ExtractionId'
@@ -1434,6 +1460,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
   /api/dashboard/stats:
     get:
       tags:
@@ -1491,6 +1519,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
   /api/alerts/shared-accounts:
     get:
       tags:
@@ -1537,6 +1567,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
   /api/cases/{case_id}/chat:
     parameters:
     - $ref: '#/components/parameters/CaseId'
@@ -1562,6 +1594,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
   /api/cases/{case_id}/chat/reply:
     parameters:
     - $ref: '#/components/parameters/CaseId'
@@ -1669,6 +1703,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
     post:
       tags:
       - bluebooks
@@ -1829,6 +1865,8 @@ paths:
                     from: processing
                     to: published
                     allowed: []
+        '422':
+          $ref: '#/components/responses/ValidationError'
   /api/kb/documents/{kb_document_id}/archive:
     parameters:
     - $ref: '#/components/parameters/KbDocumentId'
@@ -1870,6 +1908,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
   /api/victim/cases:
     post:
       tags:
@@ -2001,6 +2041,10 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
     patch:
       tags:
       - victim
@@ -2066,6 +2110,8 @@ paths:
           $ref: '#/components/responses/ValidationError'
         '404':
           $ref: '#/components/responses/NotFound'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/victim/cases/{case_id}/chat:
     get:
       tags:
@@ -2087,6 +2133,10 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
     parameters:
     - *id004
   /api/victim/cases/{case_id}/chat/messages:
@@ -2137,6 +2187,8 @@ paths:
           $ref: '#/components/responses/ValidationError'
         '429':
           $ref: '#/components/responses/RateLimited'
+        '403':
+          $ref: '#/components/responses/Forbidden'
     parameters:
     - *id004
   /api/victim/cases/{case_id}/chat/messages/{message_id}/feedback:
@@ -2184,6 +2236,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/ValidationError'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/victim/claims:
     post:
       tags:
@@ -2356,6 +2410,18 @@ components:
           schema:
             type: integer
             minimum: 1
+    CaseClosed:
+      description: The case is closed and read-only (notes and staff chat replies are still allowed)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          example:
+            success: false
+            error:
+              code: CASE_CLOSED
+              message: This case is closed and can't be changed
+              details: {}
   schemas:
     BankId:
       type: string
@@ -2510,6 +2576,7 @@ components:
       - user.invitation_revoked
       - user.joined
       - user.deactivated
+      - user.reactivated
       - case.victim_invited
       - case.claimed
     ErrorCode:

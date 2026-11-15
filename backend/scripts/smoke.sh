@@ -94,7 +94,7 @@ DOC_JSON=$(curl -s -X POST "$BASE/api/cases/$PAPER/documents" -H "Authorization:
 DOC=$(echo "$DOC_JSON" | jget data.id)
 check "upload the scanned paper form" "intake_form" "$(echo "$DOC_JSON" | jget data.doc_type)"
 check "bank_a viewer can't download it (404)" "404" "$(code "$BASE/api/documents/$DOC/file" -H "Authorization: Bearer $VA")"
-EXT_JSON=$(json_post "/api/documents/$DOC/extract" "$OP" '{}')
+EXT_JSON=$(curl -s -X POST "$BASE/api/documents/$DOC/extract" -H "Authorization: Bearer $OP")   # no body (contract)
 EXT=$(echo "$EXT_JSON" | jget data.id)
 check "AI extraction waits for a person (never changes the case itself)" "pending_review" "$(echo "$EXT_JSON" | jget data.status)"
 check "it shows up in the review queue" "yes" "$(body "$BASE/api/review-queue?page_size=100" -H "Authorization: Bearer $OP"   | "$PY" -c "import json,sys; print('yes' if any(i['extraction_id']=='$EXT' for i in json.load(sys.stdin)['data']['items']) else 'no')")"
