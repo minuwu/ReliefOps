@@ -271,3 +271,10 @@ def test_unknown_files_never_hit_the_cache(providers: Fakes, cache_dir) -> None:
     providers.replies.update(first=RuntimeError(), second=RuntimeError())
     with pytest.raises(AIUnavailableError):
         ai.extract_fields(SLIP_TEXT.encode() + b" ", "text/plain", "x")  # one byte different
+
+
+def test_text_documents_match_the_cache_with_either_line_ending(providers: Fakes, cache_dir) -> None:
+    ai.record_result(b"line one\r\nline two\r\n", RECORDED, "t04")  # recorded on Windows
+    providers.replies.update(first=RuntimeError(), second=RuntimeError())
+    result = ai.extract_fields(b"line one\nline two\n", "text/plain", "x")  # served on Linux
+    assert result["model"] == "cached:gemini-2.5-flash"
