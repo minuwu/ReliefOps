@@ -4,6 +4,15 @@ Owner: Asif (`MdAsif-Hossain`) — Role: Backend / Services / Database — Branc
 
 Use this log to share progress, planned work, and dependencies with the team. Update it after each work session, keep the newest entry first, and use Bangladesh time (UTC+6). Link to relevant issues, commits, or pull requests when available.
 
+## 2026-11-15 (session 14) — A13 concurrency and failure sweep
+
+- [test_concurrency.py](../../backend/tests/database/test_concurrency.py) covers the guide §8.3/§8.6 checks that were still missing:
+  - two victim edits at once: one wins, the other gets `STALE_CASE`, and exactly one audit entry exists;
+  - a commit that fails: neither the case nor its audit entry is saved;
+  - 6 parallel uploads: `document_count` equals the real row count;
+  - 4 parallel extraction re-runs: `pending_extraction_count` equals the real number of pending results.
+- 375 tests pass. A12 (contract check through the Prism proxy) and all HTTP wiring still wait on Anim's app.
+
 ## 2026-11-15 (session 13) — review of the Codex session's work
 
 Session 12 below was written by a parallel Codex session (A15 victim chat). Reviewed with the code read in full and the suite run repeatedly against pgvector 0.8.1 (enabled in both local databases as the documented admin step). The work is careful: bank filter before ranking, RLS on every table, no transaction during AI calls, archived guidance rechecked before citing, contract-validated HTTP tests.
