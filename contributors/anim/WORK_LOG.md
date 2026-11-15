@@ -77,6 +77,14 @@ I read Asif's whole work log, [REMAINING_WORK.md](../asif/REMAINING_WORK.md), mi
   - Checked over HTTP on the dev database: all 8 demo logins behave as the contract says, and `/api/banks` returns the 5 banks.
   - [test_seed.py](../../backend/tests/database/test_seed.py): 7 tests. `seed_into(conn)` runs inside a rolled-back transaction, so the shared test database stays clean for count-based tests. **433 tests pass.**
 
+- **N6, API test harness** ([tests/api/conftest.py](../../backend/tests/api/conftest.py), guide §8.2):
+  - Explicit `Settings` from `TEST_*` (never `.env`) with the `_test` guard, `EMAIL_MODE=outbox` and `AI_MODE=off`.
+  - Once per session: migrate down to base and back to head, then **seed**, so every endpoint test starts from the §8 demo data.
+  - Before each test: `reset_rate_limits()` and `email.outbox.clear()`.
+  - `login_as("operator" | "supervisor" | "viewer_a" | "viewer_b" | "victim1" | …)` returns auth headers, with tokens cached per session.
+  - [test_smoke.py](../../backend/tests/api/test_smoke.py): the §8.8 paths that work today, on seeded data (health, banks, every demo login, victim3 → `EMAIL_NOT_VERIFIED`, 401 without a token, logout → 401, 5 wrong → 429, the victim chat on case 00042 for its owner only).
+  - `tests/api` and `tests/database` each migrate the same test database once. **441 tests pass in both folder orders.**
+
 ### Local test database (for anyone on Windows without Postgres)
 ```bash
 docker run -d --name reliefops-pg -e POSTGRES_PASSWORD=postgres -p 127.0.0.1:55433:5432 pgvector/pgvector:pg16
@@ -92,7 +100,7 @@ cd backend && uv run pytest -q
 
 ### Next (in order, each: tests → commit → pull → push)
 - ~~N2~~ done.
-- ~~N3~~, ~~N4~~, ~~N5~~ done. **N6** API test harness (`tests/api/conftest.py`).
+- ~~N3~~, ~~N4~~, ~~N5~~, ~~N6~~ done.
 - Then N7 (sign-up, verify, reset), N8 `case_workflow.py`, N9–N11 (cases: XREQ-001).
 
 ### Blockers / handoff
