@@ -188,3 +188,23 @@ def test_who_may_deactivate(client: TestClient, login_as: Login) -> None:
         client.patch(f"/api/users/{other}", headers=login_as("supervisor"), json={"role": "supervisor"}).status_code
         == 422
     )
+
+
+def test_reactivation_is_audited_as_its_own_action(client: TestClient, login_as: Login, owner: Engine) -> None:
+    address = _address("comeback")
+    invite(client, login_as, email=address)
+    accept(client, address)
+    token = login(client, address).json()["data"]["token"]
+    target = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"}).json()["data"]["id"]
+    client.patch(f"/api/users/{target}", headers=login_as("supervisor"), json={"is_active": False})
+    client.patch(f"/api/users/{target}", headers=login_as("supervisor"), json={"is_active": True})
+    with owner.begin() as conn:
+        conn.execute(text("select set_config('app.role', 'system', true)"))
+        actions = (
+            conn.execute(
+                text("select action from audit_log where metadata->>'user_id' = :id order by at"), {"id": target}
+            )
+            .scalars()
+            .all()
+        )
+    assert actions == ["user.deactivated", "user.reactivated"]
