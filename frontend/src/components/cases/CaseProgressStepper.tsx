@@ -10,9 +10,9 @@ interface CaseProgressStepperProps {
 const STAGES: { key: CaseStatus; label: string; description: string }[] = [
   { key: 'received', label: '1. Received', description: 'Intake registered' },
   { key: 'verified', label: '2. Verified', description: 'Voucher verified' },
-  { key: 'account_check', label: '3. Freeze check', description: 'Account verified' },
-  { key: 'notice_published', label: '4. 60D notice', description: 'Public notice' },
-  { key: 'payout_review', label: '5. Audit review', description: 'Pro-rata calc' },
+  { key: 'account_check', label: '3. Account check', description: 'Account frozen and checked' },
+  { key: 'notice_published', label: '4. Notice published', description: '60-day public notice' },
+  { key: 'payout_review', label: '5. Payout review', description: 'Payout amount review' },
   { key: 'closed', label: '6. Closed', description: 'Claim completed' },
 ];
 
@@ -21,9 +21,12 @@ export function CaseProgressStepper({ currentStatus, closureReason }: CaseProgre
 
   return (
     <div className="w-full py-2 font-['Space_Grotesk',sans-serif]">
-      <div className="relative flex items-center justify-between">
+      <ol className="relative grid grid-cols-6 items-start" aria-label="Case progress">
         {/* Connecting track line */}
-        <div className="absolute left-5 right-5 top-4 -translate-y-1/2 h-2 bg-[#EDE8D5] border border-[#09090B]/20 rounded-full overflow-hidden -z-0">
+        <div
+          aria-hidden="true"
+          className="absolute left-[calc(100%/12)] right-[calc(100%/12)] top-4 -translate-y-1/2 h-1.5 bg-[#EDE8D5] border border-[#09090B]/20 rounded-full overflow-hidden"
+        >
           <div
             className="h-full bg-[#D2E823] transition-all duration-300"
             style={{
@@ -38,7 +41,11 @@ export function CaseProgressStepper({ currentStatus, closureReason }: CaseProgre
           const isCurrent = idx === currentIndex;
 
           return (
-            <div key={stage.key} className="flex flex-col items-center relative z-10">
+            <li
+              key={stage.key}
+              aria-current={isCurrent ? 'step' : undefined}
+              className="flex flex-col items-center relative z-10 min-w-0 px-1"
+            >
               <div
                 className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold transition-colors border ${
                   isPassed
@@ -51,15 +58,15 @@ export function CaseProgressStepper({ currentStatus, closureReason }: CaseProgre
                 {isPassed ? (
                   <Check className="w-4 h-4 stroke-[2.5]" />
                 ) : isCurrent ? (
-                  <Clock className="w-4 h-4 animate-spin text-[#09090B]" />
+                  <Clock className="w-4 h-4 text-[#09090B]" />
                 ) : (
                   <span>{idx + 1}</span>
                 )}
               </div>
 
-              <div className="text-center mt-2 space-y-0.5 max-w-[85px]">
+              <div className="text-center mt-2 space-y-0.5 max-w-[7.5rem]">
                 <p
-                  className={`text-xs font-bold uppercase tracking-wider ${
+                  className={`text-xs font-semibold leading-snug ${
                     isCurrent
                       ? 'text-[#09090B]'
                       : isPassed
@@ -73,10 +80,10 @@ export function CaseProgressStepper({ currentStatus, closureReason }: CaseProgre
                   {stage.description}
                 </p>
               </div>
-            </div>
+            </li>
           );
         })}
-      </div>
+      </ol>
 
       {closureReason && currentStatus === 'closed' && (
         <div className="mt-3 flex justify-center">

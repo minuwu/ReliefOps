@@ -85,12 +85,12 @@ export function UrgentCasesList({ cases, onSelectCase }: UrgentCasesListProps) {
               <span className="font-mono text-xs font-bold text-[#09090B]">
                 {formatCurrency(caseItem.amount || 0, 'JPY')}
               </span>
-              <span className="font-mono text-xs text-[#52525B]">
-                {formatDate(caseItem.reported_date)}
+              <span className="text-xs text-[#52525B]">
+                Reported <span className="font-mono">{formatDate(caseItem.reported_date)}</span>
               </span>
               {caseItem.deadline && (
-                <span className="font-mono text-xs text-[#52525B]">
-                  {formatDate(caseItem.deadline)}
+                <span className="text-xs text-[#52525B]">
+                  Due <span className="font-mono">{formatDate(caseItem.deadline)}</span>
                 </span>
               )}
             </div>

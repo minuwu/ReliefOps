@@ -15,6 +15,11 @@ const emailPages = () => import('@/pages/auth/EmailLinkPages');
 const routes: RouteObject[] = [
   {
     element: <AppLayout />,
+    hydrateFallbackElement: (
+      <div className="min-h-screen bg-[#F8F4E8] flex items-center justify-center">
+        <span className="text-sm text-[#52525B]">Loading…</span>
+      </div>
+    ),
     children: [
       { index: true, element: <HomeRedirect /> },
       { path: PATHS.login, element: <LoginPage /> },

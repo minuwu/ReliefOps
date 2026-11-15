@@ -70,7 +70,7 @@ export function CaseTable({ cases, focusedIndex, onSelectCase }: CaseTableProps)
                     </td>
 
                     {/* Victim */}
-                    <td className="py-3 px-4 font-medium text-[#09090B] uppercase">
+                    <td className="py-3 px-4 font-medium text-[#09090B]">
                       {caseItem.victim_name}
                     </td>
 

@@ -54,7 +54,7 @@ export function CaseStatStrip({
           </div>
           <div className="min-w-0">
             <p className="text-xs font-bold uppercase tracking-wide text-[#52525B] truncate">
-              Due soon (&lt;48h)
+              Due within 48h
             </p>
             <p className="text-base sm:text-lg font-bold text-[#09090B] mt-0.5 truncate">
               {pluralize(dueSoonCount, 'case')}

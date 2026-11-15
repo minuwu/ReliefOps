@@ -42,7 +42,7 @@ const DEMO_ACCOUNTS: User[] = [...DEMO_USERS, ...DEMO_VICTIMS.filter((v) => v.em
 
 const desktopLinkClass = ({ isActive }: { isActive: boolean }) =>
   cn(
-    'flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors cursor-pointer border',
+    'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-colors cursor-pointer border',
     isActive
       ? 'bg-[#D2E823] text-[#09090B] border-[#09090B]'
       : 'bg-transparent text-[#09090B] border-transparent hover:bg-[#EDE8D5]'
@@ -154,7 +154,7 @@ export function Navbar({ onOpenWalkthrough }: NavbarProps) {
     <header className="sticky top-0 z-40 w-full bg-[#F8F4E8] border-b-2 border-[#09090B]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 sm:py-3">
         <div className="flex items-center justify-between gap-3 sm:gap-4">
-          <div className="flex items-center gap-4 sm:gap-6 min-w-0">
+          <div className="flex items-center gap-3 xl:gap-5 min-w-0">
             <Link
               to={homeFor(user?.role)}
               className="flex shrink-0 items-center gap-2.5 cursor-pointer text-left"
@@ -168,13 +168,13 @@ export function Navbar({ onOpenWalkthrough }: NavbarProps) {
               </span>
             </Link>
 
-            <nav aria-label="Primary" className="hidden lg:flex items-center gap-1.5">
+            <nav aria-label="Primary" className="hidden xl:flex items-center gap-1">
               {items.map((item) => {
                 const Icon = item.icon;
                 return (
                   <NavLink key={item.to} to={item.to} end={item.to === PATHS.portal} className={desktopLinkClass}>
                     <Icon className="w-4 h-4" aria-hidden="true" />
-                    <span>{item.label}</span>
+                    <span className="whitespace-nowrap">{item.label}</span>
                     {item.badge === 'review' && <ReviewBadge count={pendingReviewCount} />}
                   </NavLink>
                 );
@@ -187,13 +187,15 @@ export function Navbar({ onOpenWalkthrough }: NavbarProps) {
               <button
                 type="button"
                 onClick={onOpenWalkthrough}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[#09090B] bg-transparent hover:bg-[#EDE8D5] text-[#09090B] text-xs font-semibold cursor-pointer transition-colors"
+                className={cn(
+                  'items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[#09090B] bg-transparent hover:bg-[#EDE8D5] text-[#09090B] text-xs font-semibold cursor-pointer transition-colors whitespace-nowrap',
+                  user ? 'hidden sm:flex' : 'flex'
+                )}
                 title="Open Demo Walkthrough & Scenario Guide"
                 aria-label="Open Demo Walkthrough"
               >
                 <Sparkles className="w-3.5 h-3.5 text-[#09090B]" />
-                <span className="hidden sm:inline">Demo guide</span>
-                <span className="sm:hidden">Guide</span>
+                <span>Demo guide</span>
               </button>
             )}
 
@@ -254,7 +256,7 @@ export function Navbar({ onOpenWalkthrough }: NavbarProps) {
               <button
                 type="button"
                 onClick={() => setIsMobileMenuOpen((open) => !open)}
-                className="lg:hidden flex items-center justify-center w-8 h-8 rounded-lg border border-[#09090B] bg-transparent hover:bg-[#EDE8D5] text-[#09090B] transition-colors cursor-pointer"
+                className="xl:hidden flex items-center justify-center w-8 h-8 rounded-lg border border-[#09090B] bg-transparent hover:bg-[#EDE8D5] text-[#09090B] transition-colors cursor-pointer"
                 aria-label={isMobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
                 aria-expanded={isMobileMenuOpen}
               >
@@ -265,7 +267,20 @@ export function Navbar({ onOpenWalkthrough }: NavbarProps) {
         </div>
 
         {isMobileMenuOpen && user && (
-          <div className="lg:hidden pt-3 mt-3 border-t border-[#09090B]/15 space-y-2">
+          <div className="xl:hidden pt-3 mt-3 border-t border-[#09090B]/15 space-y-2">
+            {onOpenWalkthrough && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  onOpenWalkthrough();
+                }}
+                className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm font-semibold border border-[#09090B] bg-transparent hover:bg-[#EDE8D5] text-[#09090B] transition-colors cursor-pointer"
+              >
+                <Sparkles className="w-4 h-4 text-[#09090B]" />
+                <span>Demo guide</span>
+              </button>
+            )}
             <nav aria-label="Primary mobile" className="grid grid-cols-1 gap-1">
               {items.map((item) => {
                 const Icon = item.icon;

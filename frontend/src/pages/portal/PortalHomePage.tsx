@@ -1,19 +1,21 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, FilePlus2 } from 'lucide-react';
+import { ArrowRight, Check, FilePlus2 } from 'lucide-react';
 import type { VictimCase } from '@/types/api';
 import { victimApi } from '@/services/victimApi';
 import { errorMessage } from '@/services/http';
 import { useAuthStore } from '@/store/useAuthStore';
 import { FormNotice } from '@/components/auth/AuthCard';
-import { StageTracker } from '@/components/portal/StageTracker';
-import { CLOSURE_LABEL, formatYen } from '@/lib/caseStages';
+import { CLOSURE_LABEL, STAGE_LABEL, STAGE_ORDER, formatYen, stageIndex } from '@/lib/caseStages';
 import { PATHS } from '@/routes/paths';
 
 const ctaClass =
   'inline-flex items-center gap-2 rounded-xl border-2 border-[#09090B] bg-[#D2E823] px-4 py-2.5 text-xs font-bold uppercase tracking-wider shadow-hard hover:bg-[#e4fc28]';
 
 function CaseCard({ item }: { item: VictimCase }) {
+  const current = stageIndex(item.status);
+  const stepLabel = `Step ${current + 1} of 6 · ${STAGE_LABEL[item.status]}`;
+
   return (
     <li>
       <Link
@@ -27,7 +29,29 @@ function CaseCard({ item }: { item: VictimCase }) {
           </div>
           <p className="text-sm font-bold text-[#09090B]">{formatYen(item.amount, item.currency)}</p>
         </div>
-        <StageTracker status={item.status} isCompact />
+        <div className="space-y-2">
+          <ol className="grid grid-cols-6 gap-1.5" aria-label={stepLabel}>
+            {STAGE_ORDER.map((stage, i) => {
+              const isDone = i < current || item.status === 'closed';
+              const isCurrent = i === current;
+              const tone = isCurrent
+                ? 'bg-[#D2E823] text-[#09090B] border-2 border-[#09090B]'
+                : isDone
+                  ? 'bg-[#09090B] text-[#F8F4E8] border-2 border-[#09090B]'
+                  : 'bg-transparent text-[#52525B] border border-[#09090B]/20';
+              return (
+                <li key={stage} aria-current={isCurrent ? 'step' : undefined}>
+                  <span
+                    className={`flex h-7 items-center justify-center rounded-lg text-xs font-bold ${tone}`}
+                  >
+                    {isDone && !isCurrent ? <Check className="w-3.5 h-3.5" aria-hidden="true" /> : i + 1}
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
+          <p className="text-sm font-medium text-[#09090B]">{stepLabel}</p>
+        </div>
         {item.closure_reason && (
           <p className="mt-2 text-xs font-bold uppercase text-[#09090B]">Result: {CLOSURE_LABEL[item.closure_reason]}</p>
         )}
