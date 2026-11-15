@@ -62,7 +62,7 @@ This file is:
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | `XREQ-001` | `P0 (Blocker)` | Frontend (Minhaz) | Backend (Asif / Anim) | Core Cases & Bank Tenant Isolation API (`GET/POST /api/cases`) | `[IN_PROGRESS]` | 2026-11-15 13:30 |
 | `XREQ-002` | `P0 (Blocker)` | Frontend (Minhaz) | AI (Galib) / Backend (Asif) | Rule D3 Vision OCR Extraction & HITL Queue (`POST /api/documents/extract`) | `[IN_PROGRESS]` | 2026-11-15 11:30 |
-| `XREQ-003` | `P1 (High)` | Frontend (Minhaz) | Backend (Anim / Asif) | Public Citizen Intake & 6-Stage Status Tracker (`POST /api/intake`) | `[PENDING]` | 2026-11-15 11:30 |
+| `XREQ-003` | `P1 (High)` | Frontend (Minhaz) | Backend (Anim / Asif) | Public Citizen Intake & 6-Stage Status Tracker (`POST /api/intake`) | `[IN_PROGRESS]` | 2026-11-15 15:30 |
 | `XREQ-004` | `P1 (High)` | Frontend (Minhaz) | Backend (Asif / Anim) / AI (Galib) | Cross-Bank Fraud Ring Topology & Coordinated Freeze API | `[PENDING]` | 2026-11-15 11:30 |
 
 *(When adding a request: append a row above AND add a detailed card in 2.2. Never insert in the middle.)*
@@ -164,9 +164,11 @@ Statutory Rule D3 dictates that AI is strictly an assistive advisor: **AI model 
 - **Priority**: `P1 (High)`
 - **From**: Frontend (Minhaz)
 - **To**: Backend (Anim / Asif)
-- **Status**: `[PENDING]`
+- **Status**: `[IN_PROGRESS]` (Asif: victim services and chat; Anim: authentication and HTTP integration)
 - **Created**: 2026-11-15 11:30 (UTC+6)
 - **Target Interface / Endpoints**: `POST /api/intake`, `POST /api/victim/auth`, `GET /api/victim/cases/{reference}`, `POST /api/victim/chat`
+
+**Contract reconciliation (Asif, 2026-11-15):** This card describes the old access-code flow. Current API_SPEC v0.4.2 uses verified accounts, `POST /api/victim/cases` and `/api/victim/cases/{case_id}/chat`. Implement those agreed routes; do not restore the removed anonymous intake. Service progress and evidence: [Asif remaining work](contributors/asif/REMAINING_WORK.md).
 
 **Requirement Details:**
 Allows scam victims to report losses via the public web form without prior registration:
