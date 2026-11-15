@@ -136,8 +136,10 @@ def test_operator_cannot_touch_auth_tables(app_conn: Connection, world: dict[str
 def test_victim_sees_only_own_cases(app_conn: Connection, world: dict[str, str]) -> None:
     # app.bank_id is set too (the chatbot needs it); the victim policy must still match only their own case.
     set_scope(app_conn, "victim", world["victim1"], "bank_b")
-    ids = set(app_conn.exec_driver_sql("select id::text from cases").scalars())
-    assert ids == {world["case_b1"]}
+    rows = app_conn.exec_driver_sql("select id::text, victim_user_id::text from cases").all()
+    assert world["case_b1"] in {case_id for case_id, _ in rows}
+    assert {owner for _, owner in rows} == {world["victim1"]}  # every visible case is theirs
+    assert world["case_a2"] not in {case_id for case_id, _ in rows}  # victim2's case stays hidden
 
 
 @pytest.mark.parametrize("table", ["documents", "document_contents", "ai_extractions", "notes", "audit_log"])

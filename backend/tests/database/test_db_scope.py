@@ -75,7 +75,10 @@ def test_bank_viewer_scope_sees_only_own_bank(engine: Engine, world: dict[str, s
 def test_victim_scope_sees_only_own_case(engine: Engine, world: dict[str, str]) -> None:
     scope = db.Scope(role="victim", user_id=UUID(world["victim1"]), bank_id="bank_b")
     with db.scoped_session(scope) as s:
-        assert case_ids(s) == {world["case_b1"]}
+        owners = set(s.exec(text("select victim_user_id::text from cases")).scalars())
+        ids = case_ids(s)
+    assert owners == {world["victim1"]}  # every visible case is theirs
+    assert world["case_b1"] in ids and world["case_a2"] not in ids
 
 
 def test_system_session_reads_auth_tables(engine: Engine, world: dict[str, str]) -> None:

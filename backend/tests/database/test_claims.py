@@ -32,7 +32,16 @@ class Outbox:
         return match.group(1)
 
 
-def phone_case(owner_engine: Engine, email: str | None = "victim1@test.test", **columns: object) -> UUID:
+def fresh_victim(owner_engine: Engine) -> StaticCaller:
+    """A new verified victim, so these tests never change the shared world victims."""
+    email = f"claimer-{uuid4().hex[:10]}@test.test"
+    with owner_engine.begin() as conn:
+        set_scope(conn, "system")
+        user_id = insert_user(conn, email, "victim")
+    return StaticCaller(user_id=UUID(user_id), name=email, role="victim")
+
+
+def phone_case(owner_engine: Engine, email: str | None = "nobody@test.test", **columns: object) -> UUID:
     with owner_engine.begin() as conn:
         set_scope(conn, "system")
         return UUID(insert_case(conn, "bank_c", victim_email=email, **columns))
@@ -49,11 +58,12 @@ def claim(caller, token: str):  # noqa: ANN001, ANN201
 
 
 def test_invite_then_claim_links_the_case(app_db: Engine, owner_engine: Engine, callers: dict) -> None:
-    case_id = phone_case(owner_engine)
+    victim = fresh_victim(owner_engine)
+    case_id = phone_case(owner_engine, victim.name)
     outbox = Outbox()
     invite(callers["operator"], case_id, outbox)
     to, subject, body = outbox.sent[0]
-    assert to == "victim1@test.test" and "RFR-" in subject and body.count(BASE_URL + "/claim-case?token=") == 1
+    assert to == victim.name and "RFR-" in subject and body.count(BASE_URL + "/claim-case?token=") == 1
     token = outbox.last_token()
     with db.system_session() as s:
         stored = s.exec(text("select token_hash, expires_at - created_at as life from auth_tokens "
@@ -64,38 +74,40 @@ def test_invite_then_claim_links_the_case(app_db: Engine, owner_engine: Engine, 
     assert stored["life"] == timedelta(days=7)
     assert token not in audit_text  # the link is never audited
 
-    linked = claim(callers["victim1"], token)
+    linked = claim(victim, token)
     assert linked.id == str(case_id) and linked.status == "received"
     with db.system_session() as s:
         case = case_sql.require_case(s, case_id)
         actions = s.exec(text("select action from audit_log where case_id = :id order by at")
                          .bindparams(id=case_id)).scalars().all()
-    assert case["victim_user_id"] == callers["victim1"].user_id
+    assert case["victim_user_id"] == victim.user_id
     assert actions[:2] == ["case.victim_invited", "case.claimed"]
 
 
 def test_a_link_works_once(app_db: Engine, owner_engine: Engine, callers: dict) -> None:
-    outbox = Outbox()
-    invite(callers["operator"], phone_case(owner_engine), outbox)
-    claim(callers["victim1"], outbox.last_token())
+    victim, outbox = fresh_victim(owner_engine), Outbox()
+    invite(callers["operator"], phone_case(owner_engine, victim.name), outbox)
+    claim(victim, outbox.last_token())
     with pytest.raises(ServiceError) as caught:
-        claim(callers["victim1"], outbox.last_token())
+        claim(victim, outbox.last_token())
     assert (caught.value.status, caught.value.code) == (400, "INVALID_TOKEN")
 
 
 def test_a_new_invite_cancels_the_old_link(app_db: Engine, owner_engine: Engine, callers: dict) -> None:
-    case_id, outbox = phone_case(owner_engine), Outbox()
+    victim, outbox = fresh_victim(owner_engine), Outbox()
+    case_id = phone_case(owner_engine, victim.name)
     invite(callers["operator"], case_id, outbox)
     old = outbox.last_token()
     invite(callers["supervisor"], case_id, outbox)
     with pytest.raises(ServiceError) as caught:
-        claim(callers["victim1"], old)
+        claim(victim, old)
     assert caught.value.code == "INVALID_TOKEN"
-    assert claim(callers["victim1"], outbox.last_token()).id == str(case_id)
+    assert claim(victim, outbox.last_token()).id == str(case_id)
 
 
 def test_expired_and_made_up_links_are_invalid(app_db: Engine, owner_engine: Engine, callers: dict) -> None:
-    case_id, outbox = phone_case(owner_engine), Outbox()
+    victim, outbox = fresh_victim(owner_engine), Outbox()
+    case_id = phone_case(owner_engine, victim.name)
     invite(callers["operator"], case_id, outbox)
     with owner_engine.begin() as conn:
         set_scope(conn, "system")
@@ -103,15 +115,15 @@ def test_expired_and_made_up_links_are_invalid(app_db: Engine, owner_engine: Eng
                              (datetime.now(UTC) - timedelta(minutes=1), datetime.now(UTC) - timedelta(days=8), case_id))
     for token in (outbox.last_token(), "made-up-token"):
         with pytest.raises(ServiceError) as caught:
-            claim(callers["victim1"], token)
+            claim(victim, token)
         assert caught.value.code == "INVALID_TOKEN"
 
 
 def test_only_the_invited_email_can_claim(app_db: Engine, owner_engine: Engine, callers: dict) -> None:
-    outbox = Outbox()
-    invite(callers["operator"], phone_case(owner_engine), outbox)
+    invited, other, outbox = fresh_victim(owner_engine), fresh_victim(owner_engine), Outbox()
+    invite(callers["operator"], phone_case(owner_engine, invited.name), outbox)
     with pytest.raises(ServiceError) as caught:
-        claim(callers["victim2"], outbox.last_token())  # logged in as someone else
+        claim(other, outbox.last_token())  # logged in as someone else
     assert caught.value.status == 403
 
 
@@ -148,7 +160,7 @@ def test_invite_refusals(app_db: Engine, owner_engine: Engine, callers: dict, wh
 
 def test_invite_for_a_linked_or_unknown_case(app_db: Engine, owner_engine: Engine, callers: dict,
                                              world: dict[str, str]) -> None:
-    linked = phone_case(owner_engine, victim_user_id=world["victim1"])
+    linked = phone_case(owner_engine, victim_user_id=str(fresh_victim(owner_engine).user_id))
     with pytest.raises(ServiceError) as caught:
         invite(callers["operator"], linked, Outbox())
     assert caught.value.status == 422
