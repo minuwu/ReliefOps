@@ -60,7 +60,7 @@ This file is:
 
 | Request ID | Priority | From | To | Target / Title | Status | Updated (UTC+6) |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| `XREQ-001` | `P0 (Blocker)` | Frontend (Minhaz) | Backend (Asif / Anim) | Core Cases & Bank Tenant Isolation API (`GET/POST /api/cases`) | `[IN_PROGRESS]` | 2026-11-15 13:30 |
+| `XREQ-001` | `P0 (Blocker)` | Frontend (Minhaz) | Backend (Asif / Anim) | Core Cases & Bank Tenant Isolation API (`GET/POST /api/cases`) | `[RESOLVED]` | 2026-11-15 22:30 |
 | `XREQ-002` | `P0 (Blocker)` | Frontend (Minhaz) | AI (Galib) / Backend (Asif) | Rule D3 Vision OCR Extraction & HITL Queue (`POST /api/documents/extract`) | `[IN_PROGRESS]` | 2026-11-15 11:30 |
 | `XREQ-003` | `P1 (High)` | Frontend (Minhaz) | Backend (Anim / Asif) | Public Citizen Intake & 6-Stage Status Tracker (`POST /api/intake`) | `[IN_PROGRESS]` | 2026-11-15 15:30 |
 | `XREQ-004` | `P1 (High)` | Frontend (Minhaz) | Backend (Asif / Anim) / AI (Galib) | Cross-Bank Fraud Ring Topology & Coordinated Freeze API | `[IN_PROGRESS]` | 2026-11-15 20:00 (detection done, endpoints open) |
@@ -111,14 +111,13 @@ Frontend workstation and case details are fully built, responsive, and running o
 ```
 
 **Fulfillment & Proof (filled by recipient on completion):**
-- **Branch / Commit**: `main`. Anim: N1–N9 (`cb35243` … `0d335fc`). Asif: migrations 001–002 (bank isolation in the database).
-- **Status / Notes** (partial, still `[IN_PROGRESS]`): **`GET /api/cases` and `GET /api/cases/{id}` are live on the real backend.** Use the contract's paths and payloads (v0.4.2), not this card's older ones:
-  - The transition route is **`POST /api/cases/{id}/transition`** (singular) with `expected_version`; it arrives in N11 together with PATCH, create and assign.
-  - List filters: `status` (comma-separated), `bank_id` (ignored for bank viewers), `assigned_to` (`me`, `unassigned` or a user ID), `deadline_state`, `scam_type`, `q`, `sort`, `order`, `page` and `page_size`.
-  - The detail returns `allowed_transitions` and `allowed_closure_reasons` for the logged-in user; render the buttons from them.
-  - **Bank isolation:** `viewer@bank-b.test` sees only bank_b, and another bank's case returns `404 RESOURCE_NOT_FOUND` (never 403), enforced by Postgres RLS. Victims get `403`.
-- **Verification Proof**: `cd backend && uv run pytest tests/api/test_cases_read.py tests/api/test_contract.py`: 17 passed. Every response is validated against `docs/openapi.yaml`, and the viewer-b-only and cross-bank-404 checks are included. Run locally with `uv run python -m app.seed` and `uv run fastapi dev`, then log in as `operator1@opscenter.test` / `Demo@1234`.
-
+- **Branch / Commit**: `main`. Anim: N1–N11 (`cb35243` app framework … `36c60cf` reads, N10 create/edit, N11 transition/assign). Asif: migrations 001–002 (bank isolation in the database).
+- **Status / Notes**: **`[RESOLVED]`. Every case route is live on the real backend.** Use the contract's paths and payloads (v0.4.2), not this card's older ones:
+  - **Routes:** `GET /api/cases` (filters `status` comma-separated, `bank_id` ignored for viewers, `assigned_to` `me`/`unassigned`/ID, `deadline_state`, `scam_type`, `q`, `sort`, `order`, `page`, `page_size`), `GET /api/cases/{id}`, `POST /api/cases` (phone or paper), `PATCH /api/cases/{id}`, **`POST /api/cases/{id}/transition`** (singular) and `POST /api/cases/{id}/assign`.
+  - **Every write sends `expected_version`** (except assign); a stale one → `409 STALE_CASE` with `details.current_version`. Render buttons from `allowed_transitions` and `allowed_closure_reasons`.
+  - **Errors:** `409 INVALID_STATUS_TRANSITION` `{from, to, allowed}`, `422 MISSING_REQUIRED_INFO` `{missing_fields}`, `409 CASE_CLOSED`, and `403` for money closures by an operator.
+  - **Bank isolation:** `viewer@bank-b.test` sees only bank_b, and another bank's case returns `404 RESOURCE_NOT_FOUND` (never 403), enforced by Postgres RLS. Victims get `403` on staff routes.
+- **Verification Proof**: `cd backend && uv run pytest tests/api`: test_cases_read (13), test_case_edits (12), test_case_moves (9) and test_contract (4) all pass, and every response is validated against `docs/openapi.yaml`. This includes the full received → paid_out lifecycle, the cross-bank 404, and two concurrent writes giving one `200` and one `409`. Locally: `uv run python -m app.seed`, `uv run fastapi dev`, log in as `operator1@opscenter.test` / `Demo@1234`. **Minhaz:** please test from the frontend and mark it `[VERIFIED_AND_CLOSED]`.
 ---
 
 #### `[XREQ-002]` Rule D3 Vision OCR Extraction & HITL Queue

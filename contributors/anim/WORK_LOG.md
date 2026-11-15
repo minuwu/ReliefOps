@@ -118,6 +118,12 @@ I read Asif's whole work log, [REMAINING_WORK.md](../asif/REMAINING_WORK.md), mi
     - `deadline` is supervisor-only (`403`) and needs `deadline_reason` (`422`); it's audited as `case.deadline_changed` with the reason. Every other changed field goes into `case.updated` `changes` `{from, to}`. Closed → `409 CASE_CLOSED`; viewers and victims → `403`.
   - [test_case_edits.py](../../backend/tests/api/test_case_edits.py): 12 tests, every response validated against `openapi.yaml`. **525 tests pass.**
 
+- **N11, transition and assign (finishes XREQ-001)** ([services/case_moves.py](../../backend/app/services/case_moves.py)):
+  - `POST /api/cases/{id}/transition`: N8's rules plus the atomic version check. On success the case gets the new stage deadline (or the closed fields), and `case.status_changed` is audited ("Status Received → Verified") with the note in metadata and the closure reason and payout in `changes`.
+  - `POST /api/cases/{id}/assign` (`operator_id`, `null` unassigns): operators may assign only themselves and unassign only their own cases; supervisors may assign any active operator or supervisor. Closed → `409`. The contract has no `expected_version` here, so it bumps the version without checking it. Audited as `case.assigned`.
+  - [test_case_moves.py](../../backend/tests/api/test_case_moves.py): 9 tests, including **the full received → paid_out lifecycle**, `MISSING_REQUIRED_INFO` `[document]`, a skipped step, a back move without a note, money closures, **two concurrent transitions → one `200`, one `409`, one audit entry**, and every role. **535 tests pass.**
+  - **XREQ-001 → `[RESOLVED]`** in AGENTS.md, with proof. Minhaz can switch the case screens off the mock.
+
 ### Local test database (for anyone on Windows without Postgres)
 ```bash
 docker run -d --name reliefops-pg -e POSTGRES_PASSWORD=postgres -p 127.0.0.1:55433:5432 pgvector/pgvector:pg16
@@ -133,8 +139,8 @@ cd backend && uv run pytest -q
 
 ### Next (in order, each: tests → commit → pull → push)
 - ~~N2~~ done.
-- ~~N3~~, ~~N4~~, ~~N5~~, ~~N6~~, ~~N7~~, ~~N8~~, ~~N9~~, ~~N10~~ done.
-- Next: N11 (transition and assign), which finishes XREQ-001.
+- ~~N3~~, ~~N4~~, ~~N5~~, ~~N6~~, ~~N7~~, ~~N8~~, ~~N9~~, ~~N10~~, ~~N11~~ done (Phase 2 complete; XREQ-001 resolved).
+- Next, Phase 3: N12 (invitations, accept, deactivate, users list), N13 (notes), N14 (dashboard, alerts), N15 (permission table), N16 (smoke script).
 
 ### Blockers / handoff
 - **Galib:** rotate the AI keys (critical finding above).

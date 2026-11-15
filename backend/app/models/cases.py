@@ -76,6 +76,26 @@ class CaseUpdate(BaseModel):
         return self
 
 
+class TransitionRequest(BaseModel):
+    """``POST /api/cases/{id}/transition``. ``note`` is required to move back or close (checked in the service)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    expected_version: int = Field(ge=1)
+    to_status: CaseStatus
+    note: Annotated[str, StringConstraints(strip_whitespace=True, max_length=4000)] | None = None
+    closure_reason: ClosureReason | None = None
+    payout_amount: Money | None = None
+
+
+class AssignRequest(BaseModel):
+    """``POST /api/cases/{id}/assign``. ``operator_id: null`` unassigns; the key itself is required."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    operator_id: UUID | None
+
+
 DeadlineState = Literal["on_track", "due_soon", "overdue", "none"]
 DeadlineFilter = Literal["on_track", "due_soon", "overdue"]
 SortField = Literal["deadline", "reported_date", "amount", "updated_at"]
