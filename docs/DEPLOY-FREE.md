@@ -10,9 +10,35 @@ Goal: API live for judging at **zero cost**, **no card**, **no sleep**, on **one
 |---|---|---|---|
 | Frontend | Firebase Hosting (already live: `https://reliefops.web.app`) | Free | Never |
 | Backend + AI | **Northflank Developer Sandbox**: 1 service built from `backend/Dockerfile` | Free, "No card needed" | "Always on, no sleeping" |
-| Database | **Northflank Postgres addon** (same project), `pgvector` built in | Free (the Sandbox's 1 database) | Never |
+| Database | **Supabase free**, project `reliefops`, Tokyo. **Already set up, migrated and seeded** (see below). Replaces the Northflank Postgres addon. | Free | Pauses only after 7 days with no traffic |
 
-Sandbox quota ([pricing](https://northflank.com/pricing)): 2 services, 2 jobs, 1 database, up to $20/mo of resources, Dockerfile builds included. We use 1 service + 1 job + 1 database.
+Sandbox quota ([pricing](https://northflank.com/pricing)): 2 services, 2 jobs, 1 database, up to $20/mo of resources, Dockerfile builds included. We use 1 service + 1 job (the database is on Supabase).
+
+## Database: Supabase (done 2026-11-15, Anim)
+
+**A2, B1 and B4 are done.** Skip the Northflank Postgres addon. The `api` service only needs the two URLs below as secrets.
+
+- **Project:** `reliefops`, ref `hlfmfzcadbitrqymktxe`, region `ap-northeast-1` (Tokyo), Postgres 17.11, pgvector 0.8.2, free plan.
+- **Connect through the session pooler** (IPv4): host `aws-1-ap-northeast-1.pooler.supabase.com`, port `5432`, database `postgres`, users `migrator.hlfmfzcadbitrqymktxe` and `app_user.hlfmfzcadbitrqymktxe`, `?sslmode=require`.
+  - Don't use the direct host `db.<ref>.supabase.co`: it's IPv6-only on the free plan.
+  - Don't use port `6543` (the transaction pooler): psycopg's prepared statements break behind it.
+- **Getting the URLs:** they're in Anim's local `backend/.env.deploy` (gitignored). Anim sends them privately; never put them in git or chat. They go in the Northflank secret group as `DATABASE_URL` (app_user) and `MIGRATIONS_DATABASE_URL` (migrator).
+- **What was set up (as the Supabase admin):**
+  - Roles `migrator` and `app_user`: `NOSUPERUSER NOBYPASSRLS`, passwords set as SCRAM hashes only.
+  - `CREATE EXTENSION vector WITH SCHEMA extensions`.
+  - `migrator` can create in `public`; `app_user` can only use it.
+  - Per role: `search_path = "$user", public, extensions` (Supabase adds `extensions` only for `postgres`, so without this `vector` doesn't resolve) and `TimeZone = UTC`.
+  - `REVOKE USAGE ON SCHEMA public FROM anon, authenticated`, which closes Supabase's Data API. The app never uses it.
+- **Migrated and seeded:** 001→005, and the seed line matched (`banks=5, users=8, cases=42, documents=39, ai_extractions=5, notes=9, kb_documents=5, kb_passages=70`).
+- **Checked with the API in prod mode against it:**
+  - `/api/health` gave `db: ok`.
+  - CORS allowed `reliefops.web.app` and refused other origins.
+  - Supervisor saw 42 cases, viewer A saw 8 (bank_a only), viewer B saw 11 (bank_b only).
+  - A victim on a staff route got `403`.
+  - The app's `options=-c timezone=UTC` connect argument works through the pooler.
+  - Supabase security advisor: 0 issues.
+- **Future migrations:** run the `migrate` job (B4) as written; it works against Supabase. Or run them locally: `set -a; . backend/.env.deploy; set +a; cd backend && uv run alembic upgrade head`.
+- **Free-plan limits:** 500 MB database. The project pauses after 7 days with no traffic (restore it from the Supabase dashboard).
 
 **Budget (the $20/mo cap is the real limit).** Plan prices from `https://api.northflank.com/v1/plans`:
 
@@ -22,6 +48,8 @@ Sandbox quota ([pricing](https://northflank.com/pricing)): 2 services, 2 jobs, 1
 | `db` addon | `nf-compute-20` | 0.2 / 512 MB | 5.40 |
 | addon storage + job runs | smallest disk, a few minutes per run | | ~1–2 |
 | **Total** | | | **~18–19, under 20** |
+
+**With the database on Supabase** (done, see above), the `db` addon row and its storage drop out: about **$13–14/mo** (API plus job runs).
 
 `nf-compute-100-1` (1 vCPU, $18) for the API would push the total over $20, so `nf-compute-50` is the ceiling. Honest expectation: normal API calls are fast. OCR of a large scanned PDF on 0.5 vCPU takes a few seconds longer than on a laptop, which is fine for a demo. If judges need more speed, the Cloud Run fallback below is faster.
 
@@ -43,7 +71,7 @@ Tick these in the XREQ-007 reply block. If one fails, write why in the card and 
 
 **Backend (Asif / Anim):**
 - [ ] **A1.** Sign up at northflank.com with the team GitHub account. Confirm the Sandbox plan shows **no card required** and **always on**, and write down which **regions** a free project may use (the docs don't list them). *(Fails: see Fallback.)*
-- [ ] **A2.** Do step B1 (addon + the full role SQL). The **whole** DEPLOY.md §1 script must succeed as the addon's admin user, not just a probe role. *(Fails even after the `GRANT migrator TO` fix in B1: keep the service on Northflank, put the database on **Neon** free instead: 1 GB, pgvector 0.8, scale-to-zero after 5 min, wakes in under a second. Run DEPLOY.md §1 there.)*
+- [x] **A2. Done on Supabase instead (2026-11-15, Anim); skip it.** Original check: do step B1 (addon + the full role SQL). The **whole** DEPLOY.md §1 script must succeed as the addon's admin user, not just a probe role. *(Fails even after the `GRANT migrator TO` fix in B1: keep the service on Northflank, put the database on **Neon** free instead: 1 GB, pgvector 0.8, scale-to-zero after 5 min, wakes in under a second. Run DEPLOY.md §1 there.)*
 - [ ] **A3.** Confirm the Sandbox lets the service use **`nf-compute-50`** (0.5 vCPU / 1 GB) while the addon runs on `nf-compute-20`. 512 MB for the API may run out of memory on large scans.
 - [ ] **A4.** Email choice: `console` (demo with the pre-verified seed accounts) or `smtp` (needs SMTP secrets). Post it.
 
@@ -57,6 +85,8 @@ Tick these in the XREQ-007 reply block. If one fails, write why in the card and 
 ## Phase B: implement (all in the Northflank web UI)
 
 ### B1. Project and database
+> **Database already done on Supabase** (see "Database: Supabase" above). Only do step 1 here, then go to B2 with the two Supabase URLs.
+
 1. **Create project** `reliefops`, region closest to the judges (Asia if offered).
 2. **Add addon:** PostgreSQL, version 16, plan `nf-compute-20`, smallest disk, TLS off, **not** publicly accessible. Name it `db`.
 3. Reach it from a laptop through the CLI tunnel. Copy the exact `forward` command from the addon's **Local access** section; it looks like:
@@ -96,6 +126,8 @@ LOG_LEVEL=INFO
 7. Create. Wait for the build and the first deploy. Logs should show uvicorn on `0.0.0.0:8080`.
 
 ### B4. Migrate and seed (one-off job, same image)
+> **Already run against Supabase on 2026-11-15.** Create the job anyway for future migrations. Running it again is harmless: Alembic is at head and the seed is idempotent. On Supabase the laptop alternative below needs no tunnel: use the URLs from `backend/.env.deploy` (see "Database: Supabase").
+
 A job can't reuse a **combined** service's build (Northflank docs), so the job builds the same Dockerfile itself.
 1. **Create job**, type **Manual**, name it `migrate`. Source: **version control**, same repo, branch `main`, Dockerfile build, context `/backend`, Dockerfile `/backend/Dockerfile`. Plan `nf-compute-10` is enough. It gets the project secret group too.
 2. Advanced, Docker runtime mode: **custom command** `sh -c "alembic upgrade head && python -m app.seed"`.

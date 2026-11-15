@@ -8,6 +8,29 @@ My area (backend guide §1): the app framework (`create_app`, settings, errors, 
 
 ---
 
+## 2026-11-15 (session 6): production database on Supabase (XREQ-007)
+
+### Completed
+- **Compared hosting options** for the free always-on deploy:
+  - Vercel: needs code changes (4.5 MB upload cap, no Tesseract in the Python runtime, in-memory limits shared across instances).
+  - Hugging Face Docker Space (Galib's proposal): won't work. It needs PRO, a Private Space returns 404 to others, and only outbound ports 80/443/8080 are open, so it can't reach Postgres.
+- **Created Supabase project `reliefops`** (Tokyo, free, Postgres 17.11, pgvector 0.8.2):
+  - Roles `migrator` / `app_user` (`NOBYPASSRLS`), passwords sent only as SCRAM hashes.
+  - Per-role `search_path` that includes `extensions` (otherwise `vector` doesn't resolve on Supabase).
+  - Data API closed (`REVOKE USAGE ON SCHEMA public FROM anon, authenticated`).
+- **Migrations 001→005 and the seed** ran through the session pooler; the seed line matches.
+- **Prod-mode API against it:** health `db: ok`, CORS correct, bank separation correct (42 / 8 / 11 cases), victim on a staff route `403`, Supabase security advisor 0 issues.
+- **Docs:** [DEPLOY-FREE.md](../../docs/DEPLOY-FREE.md) § "Database: Supabase"; XREQ-007 is `[IN_PROGRESS]`, with step-by-step instructions for Galib.
+
+### Next
+- Backend: A1/A3 (Northflank Sandbox), A4 (email), then B2/B3/B5 with the Supabase URLs.
+- Send the two connection URLs from `backend/.env.deploy` privately to whoever does B2.
+
+### Blockers / handoff
+- Galib: A5 (rotate the AI keys), A6 (quotas), A7 (live image test). See the XREQ-007 card.
+
+---
+
 ## 2026-11-15 (session 5) — backend lead: finishing Asif's list, the contract and deployment
 
 From this session on I lead the whole backend (Asif's area and mine).

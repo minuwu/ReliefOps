@@ -66,7 +66,7 @@ This file is:
 | `XREQ-004` | `P1 (High)` | Frontend (Minhaz) | Backend (Asif / Anim) / AI (Galib) | Cross-Bank Shared Accounts (`GET /api/alerts/shared-accounts`); freeze needs a team decision | `[IN_PROGRESS]` | 2026-11-15 20:10 (detection done, freeze not agreed) |
 | `XREQ-005` | `P1 (High)` | Frontend (Minhaz) | Backend (Anim / Asif) | All 48 v0.4.2 routes mounted; the 3 contract deviations closed (contract v0.4.3) | `[RESOLVED]` | 2026-11-15 22:15 (48/48 routes, v0.4.3) |
 | `XREQ-006` | `P0 (Blocker)` | Frontend (Minhaz) | Backend (Asif / Anim) / AI (Galib) | Deploy backend + database + AI to the cloud, post the public HTTPS API URL, allow the frontend origin (CORS) | `[IN_PROGRESS]` | 2026-11-15 22:15 (image + runbook ready, cloud steps left) |
-| `XREQ-007` | `P0 (Blocker)` | Frontend (Minhaz) | Backend (Asif / Anim) / AI (Galib) | Free always-on deploy: verify, then implement [docs/DEPLOY-FREE.md](docs/DEPLOY-FREE.md) (Northflank Sandbox service + Postgres, Firebase), post `API_URL` | `[PENDING]` | 2026-11-16 00:10 (revised: HF Spaces is paid now) |
+| `XREQ-007` | `P0 (Blocker)` | Frontend (Minhaz) | Backend (Asif / Anim) / AI (Galib) | Free always-on deploy: verify, then implement [docs/DEPLOY-FREE.md](docs/DEPLOY-FREE.md) (Northflank Sandbox service + Postgres, Firebase), post `API_URL` | `[IN_PROGRESS]` | 2026-11-15 23:45 (DB done on Supabase; Galib: A5–A7, see card) |
 
 *(When adding a request: append a row above AND add a detailed card in 2.2. Never insert in the middle.)*
 
@@ -390,7 +390,7 @@ EMAIL_MODE: console | smtp
 - **Priority**: `P0 (Blocker)`
 - **From**: Frontend (Minhaz)
 - **To**: Backend (Asif / Anim) / AI (Galib)
-- **Status**: `[PENDING]`
+- **Status**: `[IN_PROGRESS]`
 - **Created**: 2026-11-15 23:30 (UTC+6), **revised** 2026-11-16 00:40 (plan re-verified: budget, DB access, job source fixed)
 - **Target Interface / Endpoint**: a public `https://` base URL serving `/api/*` (contract v0.4.3), free and awake during judging
 
@@ -425,9 +425,37 @@ EMAIL_MODE: console | smtp
 ```
 
 **Fulfillment & Proof (filled by recipient on completion):**
-- **Branch / Commit**: `[commit hash, if any repo change was needed]`
-- **Status / Notes**: `[Phase A results, then deploy notes]`
-- **Verification Proof**: `[curl /api/health output, CORS header line, smoke.sh result]`
+- **Branch / Commit**: no code change. Docs only: [docs/DEPLOY-FREE.md](docs/DEPLOY-FREE.md) § "Database: Supabase".
+- **Status / Notes** (Anim, backend lead, 2026-11-15 23:45):
+  - **The database is done, on Supabase instead of the Northflank addon.** A2, B1 and B4 are complete.
+    - Project `reliefops`, Tokyo, Postgres 17.11, pgvector 0.8.2, free plan.
+    - Roles `migrator` / `app_user` (`NOBYPASSRLS`), migrations 001→005, and the seed; the seed line matches.
+    - Connect through the session pooler `aws-1-ap-northeast-1.pooler.supabase.com:5432` (IPv4).
+    - The two connection URLs are in Anim's local `backend/.env.deploy`. **Ask Anim; they're sent privately, never in git or chat.**
+  - **Still open for backend:** A1 and A3 (Northflank Sandbox plan and size), A4 (email choice), then B2, B3 and B5 using the Supabase URLs.
+  - **For Galib (AI). What to do now, in this order:**
+    1. **Stop the Hugging Face plan.** It can't work, for three separate reasons:
+       - Docker Spaces need a paid PRO plan.
+       - A *Private* Space returns 404 to everyone except collaborators, so the frontend and the judges couldn't reach it.
+       - Spaces block outbound ports other than 80, 443 and 8080, so the API couldn't reach Postgres on 5432 at all.
+       ([HF docs](https://huggingface.co/docs/hub/en/spaces-overview): "Space visibility", "Networking".)
+    2. **A5: rotate** `GEMINI_API_KEY`, `GROQ_API_KEY` and `OPENROUTER_API_KEY` at the providers now. The old ones are in git history (`9018383`). Put the new ones **only** in the Northflank secret group (B2). Never put them in git, `.env.example` or chat.
+    3. **A6:** write each provider's free quota (requests per minute and per day) here, with the `AI_MAX_CONCURRENT` / `AI_TIMEOUT_SECONDS` values you plan to use.
+    4. **A7:** build the image (`docker build -t reliefops-backend backend`) and run it with `AI_MODE=live` against your **local** database, not Supabase, because extraction writes rows. `/api/health` must show `ai` and `rag` available, and one extraction on a seed document must succeed.
+    5. **After the API is live (B5):** run one real extraction and one KB chat question through the live URL. Check that the answer cites passages, then tick "Live extraction + KB chat" below.
+    6. You don't need to set anything up in the database. It's ready.
+- **Reply so far:**
+  ```text
+  Phase A  A1 [ ] A2 [x] A3 [ ] A4 [ ] (backend)   A5 [ ] A6 [ ] A7 [ ] (AI)
+  Fallback used (if any): database on Supabase free (Tokyo) instead of the Northflank addon / Neon
+  DB migrated + seeded (seed line matches): yes
+  ```
+- **Verification Proof** (API run locally in prod mode against Supabase, 2026-11-15):
+  - `/api/health` → `{"status":"healthy","db":"ok","ai":"disabled","rag":"disabled"}` (no AI keys locally).
+  - Preflight from `https://reliefops.web.app` → `access-control-allow-origin: https://reliefops.web.app`; from another origin → `400`.
+  - Supervisor 42 cases (5 banks), viewer A 8 (bank_a only), viewer B 11 (bank_b only), a victim on `/api/cases` → `403`, no token → `401`.
+  - Supabase security advisor: 0 issues.
+  - The live `smoke.sh` waits for B5.
 ---
 
 ### 2.3 Blank XREQ Template (copy & paste)
