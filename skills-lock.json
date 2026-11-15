@@ -50,6 +50,13 @@
       "computedHash": "860b88bf82d823eaed15b9b9fa9ce4273f94c7bdcf3aeaa3e6649eb578763d4b",
       "installMode": "copy"
     },
+    "impeccable": {
+      "source": "pbakaus/impeccable",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/impeccable/SKILL.md",
+      "computedHash": "c33b2d46e00adf2896eed068c35ad5b4fb0b71e1c54232987a7dfdd1d10d5ce5",
+      "installMode": "copy"
+    },
     "nextjs-app-router-patterns": {
       "source": "wshobson/agents",
       "sourceType": "github",

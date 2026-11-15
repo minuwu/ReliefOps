@@ -11,7 +11,7 @@ Skills are versioned instruction packs (`SKILL.md` + reference files) that make 
 | You are about to… | Load first | Then |
 | :--- | :--- | :--- |
 | Write or review React / Next.js code | `vercel-react-best-practices` | `nextjs-app-router-patterns` (App Router, server components, streaming) |
-| Build or restyle UI, pick layout/typography/colors | `frontend-design` | `frontend-ui-engineering` (component patterns, accessibility, state), `premium-frontend-ui` (motion design, typography, immersive polish), `tailwind-v4-shadcn` (Tailwind v4 + shadcn/ui + Vite setup, dark mode) |
+| Build or restyle UI, pick layout/typography/colors | `frontend-design` | `frontend-ui-engineering` (component patterns, accessibility, state), `premium-frontend-ui` (motion design, typography, immersive polish), `impeccable` (critique, audit, polish passes on existing UI; run its launcher only after reviewing it), `tailwind-v4-shadcn` (Tailwind v4 + shadcn/ui + Vite setup, dark mode) |
 | Write FastAPI routes, Pydantic models, SSE streaming | `fastapi` | `python-testing-patterns` (pytest, fixtures, mocking) |
 | Design, create or alter database tables / queries | `supabase-postgres-best-practices` | `supabase` (Auth, Realtime, Storage, Edge Functions) **or** `prisma-orm-setup` |
 | Define or change the API contract | `openapi-spec-generation` | update [`docs/API_SPEC.md`](API_SPEC.md) |
@@ -34,6 +34,7 @@ Skill paths: `.claude/skills/<name>/SKILL.md`.
 | `frontend-design` | `anthropics/skills` | ~1.1M | Distinctive, intentional UI design; avoids generic "AI look" |
 | `frontend-ui-engineering` | `addyosmani/agent-skills` | ~45K | Production-quality, accessible, responsive UI engineering, composition, state |
 | `premium-frontend-ui` | `github/awesome-copilot` | ~25K | Immersive, high-performance web experiences with advanced motion, typography, and polish |
+| `impeccable` | `pbakaus/impeccable` | ~408K | Design-director commands (critique, audit, polish, harden, typeset, layout) for refining existing UI |
 | `tailwind-v4-shadcn` | `secondsky/claude-skills` | ~8K | Tailwind v4 + shadcn/ui + Vite/React setup, dark mode, troubleshooting |
 | `fastapi` | `fastapi/fastapi` (official) | ~15K | FastAPI conventions, Pydantic, dependencies, SSE, serving frontend |
 | `python-testing-patterns` | `wshobson/agents` | ~40K | pytest, fixtures, mocking, TDD |
