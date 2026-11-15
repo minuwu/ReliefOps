@@ -40,6 +40,16 @@ I read Asif's whole work log, [REMAINING_WORK.md](../asif/REMAINING_WORK.md), mi
 - **Tests:** [tests/unit/test_app.py](../../backend/tests/unit/test_app.py) has 16 tests with no database: every error family, `Retry-After`, the 500 envelope with CORS, request IDs, no secrets in the request log, CORS preflight, health with the database down, AI breaker → `unavailable`/`degraded`, `AI_MODE=off`, settings validation, OpenAPI builds. **391 tests pass** (375 + 16); Ruff clean.
 - **Live check:** against the Docker database, `/api/health` returns `db: ok`. `/api/banks` returns `[]` until the seed (N5).
 
+- **N2, security** ([security.py](../../backend/app/security.py)):
+  - argon2id hashing via `pwdlib`. An unknown email still runs one verification (timing), and a malformed stored hash counts as a wrong password, never a 500.
+  - Opaque `secrets.token_urlsafe(32)` session tokens; only the SHA-256 is stored. `issue_session()` returns the plaintext once.
+  - Every request looks the token up in `sessions ⋈ users` (system scope): unknown, expired, revoked, or deactivated user → `401 UNAUTHORIZED`. This **closes review item H4 without `token_version`**.
+  - `Principal` (frozen dataclass) satisfies Asif's `Caller`: `.scope()` → `db.Scope` (bank only for bank viewers), `.actor()` → `audit.Actor`.
+  - Dependencies: `CurrentPrincipal`, `StaffUser` (operator/supervisor), `AnyStaffUser` (+ bank_viewer), `SupervisorUser`, `VictimUser` (verified; else `403 EMAIL_NOT_VERIFIED`), `require_roles(...)` for other mixes, and `SessionDep` (`db.session_for(who.scope())`, `scope="function"`, so it closes before the response is sent).
+  - The request log now records the user ID, never the token.
+  - **Asif's victim-chat router is mounted** in `main.py` with `get_principal` and `ChatSettings` from settings.
+  - [test_security.py](../../backend/tests/database/test_security.py): 22 tests on the real database, covering hashing, token lookup (expired, revoked, deactivated, oversized), every role dependency, the bank scope through `SessionDep` (a bank_a viewer sees only bank_a), the log line, and the mounted chat routes. **413 tests pass.**
+
 ### Local test database (for anyone on Windows without Postgres)
 ```bash
 docker run -d --name reliefops-pg -e POSTGRES_PASSWORD=postgres -p 127.0.0.1:55433:5432 pgvector/pgvector:pg16
@@ -54,7 +64,7 @@ cd backend && uv run pytest -q
 - Guide §10 says framework files (`pyproject.toml`, `main.py`, `config.py`, `security.py`, `tests/conftest.py`) go through a branch, a PR and one approval. **Decision (Anim, 2026-11-15):** push each finished task straight to `main` after `git pull`, so Asif and Galib can wire their routers at once. **Asif: please review `1ab74c0` and the N1 commit on `main` after the fact,** the same way session 7 handled the contract.
 
 ### Next (in order, each: tests → commit → pull → push)
-- **N2** `security.py`: argon2 hashing, opaque session tokens (SHA-256 in `sessions`), `Principal` (`.scope()`, `.actor()`), `CurrentPrincipal` / `StaffUser` / `SupervisorUser` / `VictimUser`, and `SessionDep` from `db.session_for(who.scope())`.
+- ~~N2~~ done.
 - **N3** login, logout, me, in-memory rate limits with `Retry-After`. **N4** `email.py`. **N5** seed. **N6** API test harness (`tests/api/conftest.py`).
 - Then N7 (sign-up, verify, reset), N8 `case_workflow.py`, N9–N11 (cases: XREQ-001).
 

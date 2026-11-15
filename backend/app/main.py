@@ -18,12 +18,20 @@ from app import db
 from app.config import Settings, get_settings
 from app.errors import register_error_handlers
 from app.middleware import RequestContextMiddleware
-from app.routers import reference
+from app.routers import reference, victim_chat
+from app.security import get_principal
 from app.services import extraction_engine
+from app.services.victim_chat import ChatSettings
 
 API_VERSION = "0.4.2"
 
 ROUTERS: tuple[APIRouter, ...] = (reference.router,)
+
+
+def settings_routers(settings: Settings) -> tuple[APIRouter, ...]:
+    """Routers built from settings or with the auth dependency injected."""
+    chat = ChatSettings(timeout=settings.ai_timeout_seconds, ai_enabled=settings.ai_configured)
+    return (victim_chat.create_router(get_principal, chat),)
 
 
 def configure_logging(settings: Settings) -> None:
@@ -63,7 +71,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         expose_headers=["Retry-After", "X-Request-ID", "Content-Disposition"],
     )
 
-    for router in ROUTERS:
+    for router in (*ROUTERS, *settings_routers(settings)):
         app.include_router(router)
     return app
 
