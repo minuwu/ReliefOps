@@ -2,16 +2,17 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/services/api';
 import { errorMessage } from '@/services/http';
-import { DashboardStats, SharedAccountAlert, CaseSummary } from '@/types/api';
+import { DashboardStats, SharedAccountAlert, CaseSummary, DeadlineState, CaseStatus } from '@/types/api';
 import { useCaseStore } from '@/store/useCaseStore';
 import { useAuthStore } from '@/store/useAuthStore';
-import { HeroCommandSection } from '@/components/dashboard/HeroCommandSection';
-import { BentoMetricsGrid } from '@/components/dashboard/BentoMetricsGrid';
-import { UrgentCasesCarousel } from '@/components/dashboard/UrgentCasesCarousel';
-import { FraudRingVisualizer } from '@/components/dashboard/FraudRingVisualizer';
-import { Marquee } from '@/components/ui/Marquee';
+import { Button } from '@/components/ui/Button';
 import { CaseIntakeModal } from '@/components/cases/CaseIntakeModal';
 import { PATHS } from '@/routes/paths';
+import { Plus } from 'lucide-react';
+import { StatStrip } from '@/components/dashboard/StatStrip';
+import { CasesByStatus } from '@/components/dashboard/CasesByStatus';
+import { UrgentCasesList } from '@/components/dashboard/UrgentCasesList';
+import { SharedAccountsList } from '@/components/dashboard/SharedAccountsList';
 
 export function DashboardPage() {
   const navigate = useNavigate();
@@ -21,7 +22,7 @@ export function DashboardPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isIntakeOpen, setIsIntakeOpen] = useState(false);
 
-  const { cases, fetchCases } = useCaseStore();
+  const { cases, fetchCases, setFilters } = useCaseStore();
   const role = useAuthStore((s) => s.user?.role);
   // Shared-account alerts are supervisor-only; bank viewers read stats but cannot create cases.
   const isSupervisor = role === 'supervisor';
@@ -45,77 +46,110 @@ export function DashboardPage() {
       }
     }
     loadData();
-  }, []);
+  }, [isSupervisor, fetchCases]);
 
   const totalClaimedJPY = cases.reduce((acc, c) => acc + (c.amount || 0), 0);
 
   const openCase = (caseId: string) => navigate(PATHS.caseDetail(caseId));
-  const goToCases = () => navigate(PATHS.cases);
+
+  const goToCases = (deadlineFilter?: DeadlineState) => {
+    setFilters({ deadline_state: deadlineFilter });
+    navigate(PATHS.cases);
+  };
+
+  const goToCasesWithStatus = (status: CaseStatus) => {
+    setFilters({ status });
+    navigate(PATHS.cases);
+  };
+
   const goToReview = () => navigate(PATHS.review);
 
   if (loadError) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-24 text-center" role="alert">
-        <p className="font-['Dela_Gothic_One'] text-2xl uppercase text-[#09090B]">DASHBOARD UNAVAILABLE</p>
-        <p className="text-sm font-medium text-[#52525B] mt-2">{loadError}</p>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center" role="alert">
+        <h1 className="font-['Dela_Gothic_One'] text-xl sm:text-2xl text-[#09090B]">
+          Could not load the dashboard.
+        </h1>
+        <p className="text-sm text-[#52525B] mt-2">{loadError}</p>
       </div>
     );
   }
 
   if (isLoading || !stats) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-24 text-center">
-        <p className="font-['Dela_Gothic_One'] text-2xl uppercase tracking-tighter text-[#09090B]">
-          SYNCHRONIZING 5-BANK CLEARINGHOUSE...
-        </p>
-        <p className="text-xs font-mono text-[#52525B] mt-2">Connecting to distributed ledger nodes</p>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center">
+        <p className="text-sm text-[#52525B]">Loading dashboard…</p>
       </div>
     );
   }
 
-  // Marquee Alert Items
-  const marqueeItems = [
-    `CRITICAL ESCALATION: ${stats.overdue_cases} CASES EXCEEDED STATUTORY DEADLINE`,
-    `AI OCR QUEUE: ${stats.ai_review_pending} WIRE VOUCHERS AWAITING HUMAN CONFIRMATION`,
-    `FIVE-BANK ALLIANCE: TOKYO • OSAKA • NAGOYA • FUKUOKA • SAPPORO NODES ACTIVE`,
-    `MULE SYNDICATE THREAT DETECTED: 3 BENEFICIARY ACCOUNTS FLAGGED ACROSS BANKS`,
-    `TOTAL VALUE PROTECTED: ¥${(totalClaimedJPY / 1000000).toFixed(1)}M PRO-RATA RECOVERY`,
-  ];
-
   return (
-    <div className="space-y-6 sm:space-y-8 w-full max-w-full overflow-x-hidden min-w-0">
-      {/* Continuous Marquee Banner */}
-      <Marquee items={marqueeItems} speed="24s" />
-
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 space-y-8 sm:space-y-12">
-        {/* Hero Command Section (12 Columns) */}
-        <HeroCommandSection
-          onOpenIntake={isSupervisor ? () => setIsIntakeOpen(true) : undefined}
-          onOpenReview={goToReview}
-          overdueCount={stats.overdue_cases}
-        />
-
-        {/* Bento Category Grid */}
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="border-b-2 border-[#09090B] pb-2 mb-4 sm:mb-6">
-            <h2 className="text-lg sm:text-2xl font-['Dela_Gothic_One'] uppercase text-[#09090B]">
-              CONSORTIUM TELEMETRY BENTO
-            </h2>
-          </div>
-          <BentoMetricsGrid
-            stats={stats}
-            totalClaimedJPY={totalClaimedJPY}
-            onNavigateToCases={goToCases}
-            onNavigateToReview={goToReview}
-          />
+          <h1 className="font-['Dela_Gothic_One'] text-2xl sm:text-3xl text-[#09090B]">
+            Dashboard
+          </h1>
+          <p className="text-sm text-[#52525B] mt-1">
+            Case volume, deadlines and items waiting for review.
+          </p>
         </div>
-
-        {/* Urgent Escalation Horizontal Scrolling Section */}
-        <UrgentCasesCarousel cases={cases} onSelectCase={(c: CaseSummary) => openCase(c.id)} />
-
-        {/* Fraud Ring Visualizer */}
-        <FraudRingVisualizer alerts={alerts} onInspectCase={openCase} />
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={goToReview}
+            className="gap-2"
+          >
+            <span>Review queue</span>
+            <span className="px-1.5 py-0.5 rounded text-xs font-mono font-bold bg-[#EDE8D5] text-[#09090B] border border-[#09090B]">
+              {stats.ai_review_pending}
+            </span>
+          </Button>
+          {isSupervisor && (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setIsIntakeOpen(true)}
+              className="gap-1.5"
+            >
+              <Plus className="w-4 h-4" />
+              <span>New case</span>
+            </Button>
+          )}
+        </div>
       </div>
+
+      {/* Stat Strip */}
+      <StatStrip
+        stats={stats}
+        totalClaimedJPY={totalClaimedJPY}
+        onNavigateToCases={goToCases}
+        onNavigateToReview={goToReview}
+      />
+
+      {/* Cases by Status Breakdown */}
+      {stats.cases_by_status && (
+        <CasesByStatus
+          casesByStatus={stats.cases_by_status}
+          onSelectStatus={goToCasesWithStatus}
+        />
+      )}
+
+      {/* Needs Attention (Urgent Cases) */}
+      <UrgentCasesList
+        cases={cases}
+        onSelectCase={(c: CaseSummary) => openCase(c.id)}
+      />
+
+      {/* Shared Beneficiary Accounts (Supervisor only) */}
+      {isSupervisor && (
+        <SharedAccountsList
+          alerts={alerts}
+          onInspectCase={openCase}
+        />
+      )}
 
       {/* Case Intake Modal */}
       {isIntakeOpen && (
