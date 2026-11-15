@@ -11,12 +11,21 @@ sh scripts/setup.sh      # Windows: powershell -ExecutionPolicy Bypass -File scr
 
 | Read | Why |
 | :--- | :--- |
+| **[frontend/walkthrough/README.md](frontend/walkthrough/README.md)** | **🔥 Demo Walkthrough & Scenarios**: Complete visual guide with 6 end-to-end user journeys, stories, interaction steps, and high-res screenshots |
 | [TEAM_INSTRUCTIONS.md](TEAM_INSTRUCTIONS.md) | Human onboarding, daily loop, per-person checklists, kickoff agenda |
 | [AGENTS.md](AGENTS.md) | **Agent protocol**: `XREQ` cross-team queue (Step 0), mandatory skills (Step 1), graph-first (Step 2), git rules |
 | [docs/SKILLS.md](docs/SKILLS.md) | Which skill an agent must load for which task; how to add more |
 | [docs/API_SPEC.md](docs/API_SPEC.md) | Shared API contract (single source of truth) |
 | [HACKATHON_PRESETUP.md](HACKATHON_PRESETUP.md) | Stack options, monorepo layout, contract-first playbooks |
 | [docs/README.md](docs/README.md) | Documentation index |
+
+## 🌟 Live Demo & Walkthrough
+
+Explore the end-to-end user stories, real-world personas, and interactions in our comprehensive visual walkthrough:
+👉 **[Read the Demo Walkthrough with Full Screenshots](frontend/walkthrough/README.md)**
+
+Inside the running app (`http://localhost:5173/`), click **`DEMO TOUR`** in the top navigation bar or the floating **`DEMO WALKTHROUGH & SCENARIOS`** launcher at the bottom-right. The in-app modal lets you experience any of the 6 scenarios with 1-click role and state orchestration!
+
 
 ## Repository Layout
 

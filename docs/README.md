@@ -8,6 +8,7 @@ Welcome to the documentation hub for **BJET-Hackathon**. All architectural plans
 
 | Directory / File | Description | Audience |
 | :--- | :--- | :--- |
+| **[frontend/walkthrough/README.md](../frontend/walkthrough/README.md)** | **🔥 Interactive Demo Walkthrough**: 6 Scenarios (Victim, Operator, HITL AI OCR, Supervisor, Bank Tenant, FSA Auditor) with stories & high-res screenshots | Entire Team & Hackathon Judges |
 | **[AGENTS.md](../AGENTS.md)** | **Master Protocol**: Coding agent directives, active `XREQ` queue, team & contributor rules | AI Agents & Developers |
 | **[TEAM_INSTRUCTIONS.md](../TEAM_INSTRUCTIONS.md)** | Human onboarding, daily loop, per-person checklists | Human Developers |
 | **[scripts/](../scripts/)** | `setup.sh` / `setup.ps1` one-shot onboarding | Entire Team |
