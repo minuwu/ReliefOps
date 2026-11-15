@@ -93,6 +93,37 @@ I read Asif's whole work log, [REMAINING_WORK.md](../asif/REMAINING_WORK.md), mi
   - [test_accounts.py](../../backend/tests/api/test_accounts.py): 11 HTTP tests. **452 tests pass.**
   - **Open (Asif):** `SignupRequest.preferred_language` is in the contract, but `users` has no column for it, so it's accepted and dropped for now. Add a `users.preferred_language` column, or remove the field from the contract?
 
+- **N8, case lifecycle rules** ([case_workflow.py](../../backend/app/services/case_workflow.py)): pure functions over a case row and the caller, so the cases routes, Asif's review and victim edits, and tests all use one set of rules (API_SPEC §3.1–3.3).
+  - `allowed_transitions` gives the buttons in order (forward, back, closed): `verified` as an operator → `["account_check", "received", "closed"]`, the contract example. `allowed_closure_reasons`: operators `withdrawn`; supervisors `rejected`, `withdrawn`, plus `paid_out` only in `payout_review`. Viewers, victims and closed cases get `[]`.
+  - `check_transition` raises the contract's errors. `409 CASE_CLOSED`. `403` for a non-staff role or a money closure by an operator. `409 INVALID_STATUS_TRANSITION` with `{from, to, allowed}` for a skipped step or `paid_out` outside `payout_review`. `422 VALIDATION_ERROR` for a missing `note` (back or close), `closure_reason` or `payout_amount`, or closure fields on a normal move. `422 MISSING_REQUIRED_INFO` with `missing_fields` when leaving `received` forward; closing needs no facts.
+  - `deadline_state`: `none` (closed), `overdue`, `due_soon` (the last 20% of the stage, at least 1 day) or `on_track`. `transition_values` gives the column changes (new stage deadline, or closed fields).
+  - [test_case_workflow.py](../../backend/tests/unit/test_case_workflow.py): 24 unit tests. **493 tests pass.**
+
+- **N9, case list and detail (XREQ-001, reads)** ([services/cases.py](../../backend/app/services/cases.py), [routers/cases.py](../../backend/app/routers/cases.py), [models/cases.py](../../backend/app/models/cases.py)):
+  - `GET /api/cases` (operator, supervisor, bank_viewer; victim → 403) is **one SQL query**: bank and operator joins, a correlated count for `shared_account_case_count`, and `count(*) over ()` for the total.
+    - Filters: `status` (comma-separated, validated), `bank_id` (**ignored for bank viewers**), `assigned_to` (`me`, `unassigned` or a user ID), `deadline_state` (computed in SQL with the same `now` as the response field, so the filter and the field agree), `scam_type`, and `q` (reference, victim name or account number, with `%` and `_` escaped).
+    - Sort by `deadline` (default), `reported_date`, `amount` or `updated_at`, nulls last and ties broken by reference. `page` and `page_size` ≤ 100.
+  - `GET /api/cases/{id}`: the full `Case` with `allowed_transitions` and `allowed_closure_reasons` for this user, Asif's `case_documents()`, and notes (newest first). A **`case.viewed` audit is written at most once per 10 minutes**. Another bank's case → **404**.
+  - `build_case` and `load_case` are ready for N10/N11 (writes return the full `Case`). The models reuse Asif's `UserRef`, `DocumentMeta` and `VictimOut`.
+  - [test_cases_read.py](../../backend/tests/api/test_cases_read.py): 13 tests on the seeded data. **Contract check:** [contract.py](../../backend/tests/api/contract.py) + [test_contract.py](../../backend/tests/api/test_contract.py) validate every response from N1–N9 (health, banks, login, me, logout, sign-up, errors, the case list and 15+ case details) against `docs/openapi.yaml`.
+  - Answered XREQ-001 in AGENTS.md (reads live; transition in N11). **510 tests pass.**
+
+- **N10, create and edit a case** ([services/case_edits.py](../../backend/app/services/case_edits.py)):
+  - `POST /api/cases` (operator, supervisor) → `201` with the full `Case`: a phone or paper case in `received` with a 7-day deadline and a `next_case_reference()` reference (from 00100). Only `bank_id`, `channel` and `victim.name` are required.
+    - `web_form` → `422`, because the database requires victim consent for web forms and staff can't give it.
+    - `assigned_operator_id`: an operator may assign only themselves (else `403`); a supervisor may assign any active operator or supervisor (anyone else → `422`).
+    - `possible_duplicate` is set when contact, amount, transfer date and account match another case. Audited as `case.created`.
+  - `PATCH /api/cases/{id}`: a missing field stays unchanged, `null` clears it, and `victim` merges field by field (Asif's `VictimPatch`). Name and currency can't be cleared, and an unknown field (e.g. `status`) is `422`.
+    - The atomic version check goes through Asif's `case_sql.update_case`. **Two parallel edits → one `200`, one `409 STALE_CASE` with `current_version`, one audit entry.** A no-op keeps the version.
+    - `deadline` is supervisor-only (`403`) and needs `deadline_reason` (`422`); it's audited as `case.deadline_changed` with the reason. Every other changed field goes into `case.updated` `changes` `{from, to}`. Closed → `409 CASE_CLOSED`; viewers and victims → `403`.
+  - [test_case_edits.py](../../backend/tests/api/test_case_edits.py): 12 tests, every response validated against `openapi.yaml`. **525 tests pass.**
+
+- **N11, transition and assign (finishes XREQ-001)** ([services/case_moves.py](../../backend/app/services/case_moves.py)):
+  - `POST /api/cases/{id}/transition`: N8's rules plus the atomic version check. On success the case gets the new stage deadline (or the closed fields), and `case.status_changed` is audited ("Status Received → Verified") with the note in metadata and the closure reason and payout in `changes`.
+  - `POST /api/cases/{id}/assign` (`operator_id`, `null` unassigns): operators may assign only themselves and unassign only their own cases; supervisors may assign any active operator or supervisor. Closed → `409`. The contract has no `expected_version` here, so it bumps the version without checking it. Audited as `case.assigned`.
+  - [test_case_moves.py](../../backend/tests/api/test_case_moves.py): 9 tests, including **the full received → paid_out lifecycle**, `MISSING_REQUIRED_INFO` `[document]`, a skipped step, a back move without a note, money closures, **two concurrent transitions → one `200`, one `409`, one audit entry**, and every role. **535 tests pass.**
+  - **XREQ-001 → `[RESOLVED]`** in AGENTS.md, with proof. Minhaz can switch the case screens off the mock.
+
 ### Local test database (for anyone on Windows without Postgres)
 ```bash
 docker run -d --name reliefops-pg -e POSTGRES_PASSWORD=postgres -p 127.0.0.1:55433:5432 pgvector/pgvector:pg16
@@ -108,8 +139,8 @@ cd backend && uv run pytest -q
 
 ### Next (in order, each: tests → commit → pull → push)
 - ~~N2~~ done.
-- ~~N3~~, ~~N4~~, ~~N5~~, ~~N6~~, ~~N7~~ done.
-- Next: N8 `case_workflow.py`, N9–N11 (cases: XREQ-001).
+- ~~N3~~, ~~N4~~, ~~N5~~, ~~N6~~, ~~N7~~, ~~N8~~, ~~N9~~, ~~N10~~, ~~N11~~ done (Phase 2 complete; XREQ-001 resolved).
+- Next, Phase 3: N12 (invitations, accept, deactivate, users list), N13 (notes), N14 (dashboard, alerts), N15 (permission table), N16 (smoke script).
 
 ### Blockers / handoff
 - **Galib:** rotate the AI keys (critical finding above).

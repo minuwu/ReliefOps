@@ -1,0 +1,37 @@
+{
+ "fields": [
+  {
+   "name": "transfer_date",
+   "value": "2026-10-05",
+   "evidence": "取扱日令和8年10月5日",
+   "confidence": 0.996
+  },
+  {
+   "name": "amount",
+   "value": 560000,
+   "evidence": "金額¥560,000",
+   "confidence": 0.611
+  },
+  {
+   "name": "currency",
+   "value": "JPY",
+   "evidence": "金額¥560,000",
+   "confidence": 0.446
+  },
+  {
+   "name": "account_number",
+   "value": "3322110",
+   "evidence": "口座番号 3322110",
+   "confidence": 0.446
+  },
+  {
+   "name": "account_holder_name",
+   "value": "タナカハナコ",
+   "evidence": "受取人タナカハナコ",
+   "confidence": 0.996
+  }
+ ],
+ "model": "gemini-3.6-flash",
+ "prompt_version": "extract-v2",
+ "source_file": "t05_reiwa_fullwidth.png"
+}

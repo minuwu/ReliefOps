@@ -1,0 +1,37 @@
+{
+ "fields": [
+  {
+   "name": "transfer_date",
+   "value": "2026-09-30",
+   "evidence": "日付 2026/09/30",
+   "confidence": 0.978
+  },
+  {
+   "name": "amount",
+   "value": 780000,
+   "evidence": "お振込金額¥780,000",
+   "confidence": 0.427
+  },
+  {
+   "name": "currency",
+   "value": "JPY",
+   "evidence": "お振込金額¥780,000",
+   "confidence": 0.427
+  },
+  {
+   "name": "account_number",
+   "value": "4455667",
+   "evidence": "口座番号 4455667",
+   "confidence": 0.593
+  },
+  {
+   "name": "account_holder_name",
+   "value": "カ)ミライコンサルティング",
+   "evidence": "受取人カ)ミライコンサルティング",
+   "confidence": 0.978
+  }
+ ],
+ "model": "gemini-3.6-flash",
+ "prompt_version": "extract-v2",
+ "source_file": "t03_scanned.jpg"
+}

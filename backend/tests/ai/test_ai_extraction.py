@@ -233,3 +233,48 @@ def test_other_errors_do_not_mark_a_model_used_up(providers: Fakes) -> None:
     providers.replies["first"] = RuntimeError("503 UNAVAILABLE high demand")
     ai.extract_fields(SLIP_TEXT.encode(), "text/plain", "x")
     assert ai_quota.seconds_left("first") == 0
+
+
+# ---------------------------------------------------------------- demo replay cache
+
+
+@pytest.fixture
+def cache_dir(tmp_path, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(ai, "CACHE_DIR", tmp_path)
+    return tmp_path
+
+
+RECORDED = {"fields": [{"name": "amount", "value": 1450000, "confidence": 0.98, "evidence": "¥1,450,000"}],
+            "model": "gemini-2.5-flash", "prompt_version": ai.PROMPT_VERSION}
+
+
+def test_replay_is_used_only_when_every_provider_fails(providers: Fakes, cache_dir) -> None:
+    ai.record_result(SLIP_TEXT.encode(), RECORDED, "t01")
+    assert ai.extract_fields(SLIP_TEXT.encode(), "text/plain", "x")["model"] == "first"  # live wins
+
+    providers.replies.update(first=RuntimeError("429"), second=RuntimeError("503"))
+    result = ai.extract_fields(SLIP_TEXT.encode(), "text/plain", "x")
+
+    assert result["model"] == "cached:gemini-2.5-flash"  # labelled as a replay
+    assert result["fields"] == RECORDED["fields"]
+
+
+def test_replay_from_an_older_prompt_is_ignored(providers: Fakes, cache_dir) -> None:
+    ai.record_result(SLIP_TEXT.encode(), {**RECORDED, "prompt_version": "extract-v0"}, "t01")
+    providers.replies.update(first=RuntimeError(), second=RuntimeError())
+    with pytest.raises(AIUnavailableError):
+        ai.extract_fields(SLIP_TEXT.encode(), "text/plain", "x")
+
+
+def test_unknown_files_never_hit_the_cache(providers: Fakes, cache_dir) -> None:
+    ai.record_result(SLIP_TEXT.encode(), RECORDED, "t01")
+    providers.replies.update(first=RuntimeError(), second=RuntimeError())
+    with pytest.raises(AIUnavailableError):
+        ai.extract_fields(SLIP_TEXT.encode() + b" ", "text/plain", "x")  # one byte different
+
+
+def test_text_documents_match_the_cache_with_either_line_ending(providers: Fakes, cache_dir) -> None:
+    ai.record_result(b"line one\r\nline two\r\n", RECORDED, "t04")  # recorded on Windows
+    providers.replies.update(first=RuntimeError(), second=RuntimeError())
+    result = ai.extract_fields(b"line one\nline two\n", "text/plain", "x")  # served on Linux
+    assert result["model"] == "cached:gemini-2.5-flash"

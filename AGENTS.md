@@ -60,7 +60,7 @@ This file is:
 
 | Request ID | Priority | From | To | Target / Title | Status | Updated (UTC+6) |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| `XREQ-001` | `P0 (Blocker)` | Frontend (Minhaz) | Backend (Asif / Anim) | Core Cases & Bank Tenant Isolation API (`GET/POST /api/cases`, `POST /api/cases/{case_id}/transition`) | `[IN_PROGRESS]` | 2026-11-15 20:10 (path agreed: `/transition`) |
+| `XREQ-001` | `P0 (Blocker)` | Frontend (Minhaz) | Backend (Asif / Anim) | Core Cases & Bank Tenant Isolation API (`GET/POST /api/cases`, `POST /api/cases/{case_id}/transition`) | `[RESOLVED]` | 2026-11-15 22:30 (path agreed: `/transition`) |
 | `XREQ-002` | `P0 (Blocker)` | Frontend (Minhaz) | AI (Galib) / Backend (Asif) | Rule D3 Vision OCR Extraction & HITL Queue (`POST /api/documents/{id}/extract`, `POST /api/extractions/{id}/review`) | `[IN_PROGRESS]` | 2026-11-15 20:10 (accept/reject is one review call) |
 | `XREQ-003` | `P1 (High)` | Frontend (Minhaz) | Backend (Anim / Asif) | Victim accounts, case reports & 6-Stage Status Tracker (`POST /api/victim/cases`) | `[IN_PROGRESS]` | 2026-11-15 20:10 (intake replaced by victim accounts) |
 | `XREQ-004` | `P1 (High)` | Frontend (Minhaz) | Backend (Asif / Anim) / AI (Galib) | Cross-Bank Shared Accounts (`GET /api/alerts/shared-accounts`); freeze needs a team decision | `[IN_PROGRESS]` | 2026-11-15 20:10 (detection done, freeze not agreed) |
@@ -113,10 +113,13 @@ Frontend workstation and case details are fully built, responsive, and running o
 ```
 
 **Fulfillment & Proof (filled by recipient on completion):**
-- **Branch / Commit**: `[branch-name or commit-hash]`
-- **Status / Notes**: `[Implemented route / schema / component]`
-- **Verification Proof**: `[curl command, Swagger link, or test output]`
-
+- **Branch / Commit**: `main`. Anim: N1–N11 (`cb35243` app framework … `36c60cf` reads, N10 create/edit, N11 transition/assign). Asif: migrations 001–002 (bank isolation in the database).
+- **Status / Notes**: **`[RESOLVED]`. Every case route is live on the real backend.** Use the contract's paths and payloads (v0.4.2), not this card's older ones:
+  - **Routes:** `GET /api/cases` (filters `status` comma-separated, `bank_id` ignored for viewers, `assigned_to` `me`/`unassigned`/ID, `deadline_state`, `scam_type`, `q`, `sort`, `order`, `page`, `page_size`), `GET /api/cases/{id}`, `POST /api/cases` (phone or paper), `PATCH /api/cases/{id}`, **`POST /api/cases/{id}/transition`** (singular) and `POST /api/cases/{id}/assign`.
+  - **Every write sends `expected_version`** (except assign); a stale one → `409 STALE_CASE` with `details.current_version`. Render buttons from `allowed_transitions` and `allowed_closure_reasons`.
+  - **Errors:** `409 INVALID_STATUS_TRANSITION` `{from, to, allowed}`, `422 MISSING_REQUIRED_INFO` `{missing_fields}`, `409 CASE_CLOSED`, and `403` for money closures by an operator.
+  - **Bank isolation:** `viewer@bank-b.test` sees only bank_b, and another bank's case returns `404 RESOURCE_NOT_FOUND` (never 403), enforced by Postgres RLS. Victims get `403` on staff routes.
+- **Verification Proof**: `cd backend && uv run pytest tests/api`: test_cases_read (13), test_case_edits (12), test_case_moves (9) and test_contract (4) all pass, and every response is validated against `docs/openapi.yaml`. This includes the full received → paid_out lifecycle, the cross-bank 404, and two concurrent writes giving one `200` and one `409`. Locally: `uv run python -m app.seed`, `uv run fastapi dev`, log in as `operator1@opscenter.test` / `Demo@1234`. **Minhaz:** please test from the frontend and mark it `[VERIFIED_AND_CLOSED]`.
 ---
 
 #### `[XREQ-002]` Rule D3 Vision OCR Extraction & HITL Queue
@@ -261,7 +264,7 @@ Provides the showstopper feature for hackathon judging: uncovering organized cri
 **Fulfillment & Proof:**
 - **Branch / Commit**: `main` (Galib's detection part; commit in this card's history)
 - **Status / Notes**: Split agreed in the card: **AI (Galib), done:** `app/services/fraud_rings.detect_rings(cases, include_same_bank=False, frozen_accounts=...)` returns the response items above, plus `reasons` (plain-language why), `link` (`confirmed` / `possible` / `same_bank`) and `holder_names`. It matches accounts across formats (`98-7654-3210` = `9876543210`) and holder names across spellings (`GLOBAL ASSET TRUST` = `カ）グローバルアセットトラスト`). Same digits with different holder names is only `POSSIBLE_LINK`, never `CRITICAL_SYNDICATE`, so an innocent account isn't flagged. Pure function, no DB or model calls. **Backend (Asif / Anim), open:** load the cases the supervisor may see (`id, reference, bank_id, amount, account_number, account_holder_name, transfer_date`), call `detect_rings`, serve `GET`; the `freeze` POST (supervisor only, audited, a human action) and storing frozen accounts to pass back in.
-- **Verification Proof**: `cd backend && uv run pytest tests/ai/test_fraud_rings.py` → 17 passed (seed story: account `9876543210`, 3 cases, bank_a + bank_b, ¥3,700,000 → `CRITICAL_SYNDICATE`).
+- **Verification Proof**: `cd backend && uv run pytest tests/ai/test_fraud_rings.py` → 19 passed. On the real demo seed (`app.seed.all_cases()`): exactly one cross-bank ring, account `9876543210`, 3 cases at bank_a + bank_b, ¥4,485,000 → `CRITICAL_SYNDICATE` (test `test_the_real_demo_seed_has_one_critical_cross_bank_ring`).
 
 ---
 

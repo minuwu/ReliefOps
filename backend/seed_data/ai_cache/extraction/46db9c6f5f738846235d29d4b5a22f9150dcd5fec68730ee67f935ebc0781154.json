@@ -1,0 +1,61 @@
+{
+ "fields": [
+  {
+   "name": "victim_name",
+   "value": "Rina Example",
+   "evidence": "Name: Rina Example",
+   "confidence": 1.0
+  },
+  {
+   "name": "victim_phone",
+   "value": "090-0000-0042",
+   "evidence": "Phone: 090-0000-0042",
+   "confidence": 1.0
+  },
+  {
+   "name": "victim_email",
+   "value": "rina.example@example.test",
+   "evidence": "Email: rina.example@example.test",
+   "confidence": 1.0
+  },
+  {
+   "name": "transfer_date",
+   "value": "2026-11-03",
+   "evidence": "On 3 Nov 2026",
+   "confidence": 1.0
+  },
+  {
+   "name": "scam_type",
+   "value": "impersonation",
+   "evidence": "a man calling himself a police oficer told me my account was used in a crime",
+   "confidence": 1.0
+  },
+  {
+   "name": "amount",
+   "value": 320000,
+   "evidence": "320,000 yen",
+   "confidence": 1.0
+  },
+  {
+   "name": "currency",
+   "value": "JPY",
+   "evidence": "320,000 yen",
+   "confidence": 1.0
+  },
+  {
+   "name": "account_number",
+   "value": "7788990",
+   "evidence": "account 7788990",
+   "confidence": 1.0
+  },
+  {
+   "name": "account_holder_name",
+   "value": "Kenji Sample",
+   "evidence": "holder: Kenji Sample",
+   "confidence": 1.0
+  }
+ ],
+ "model": "gemini-3.6-flash",
+ "prompt_version": "extract-v2",
+ "source_file": "t04_victim_report.txt"
+}
