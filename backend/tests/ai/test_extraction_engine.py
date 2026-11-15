@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -246,8 +247,9 @@ def test_at_most_max_concurrent_calls_run_at_once(caller: engine.AICaller) -> No
     assert all(o.source == "llm" for o in outs)
 
 
-def test_missing_ai_module_counts_as_unavailable(caller: engine.AICaller) -> None:
-    out = engine.extract(RECEIPT, "text/plain", "other", caller=caller)  # default: Galib's module, not installed yet
+def test_missing_ai_module_counts_as_unavailable(caller: engine.AICaller, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setitem(sys.modules, "app.services.ai_extraction", None)  # import now raises ModuleNotFoundError
+    out = engine.extract(RECEIPT, "text/plain", "other", caller=caller)
     assert out.error["reason"] == "ai_unavailable"
 
 
