@@ -1,17 +1,18 @@
 /**
  * HTTP layer shared by every API module.
  *
- * Mode is chosen by env (see frontend/.env.example):
- *   VITE_USE_MOCK=true  (default) -> in-memory demo data, no network
- *   VITE_USE_MOCK=false           -> real HTTP to VITE_API_URL
- *                                    (Prism contract mock on :4010 or FastAPI on :8000)
+ * Mode is resolved once per page load (see ./dataMode.ts):
+ *   demo -> in-memory demo data, no network
+ *   live -> real HTTP to the API URL (Prism contract mock on :4010 or FastAPI)
+ * The build env (VITE_USE_MOCK, VITE_API_URL) sets the default; the footer
+ * switch overrides it and reloads.
  */
 import type { ApiErrorDetail, ApiResponse, User } from '@/types/api';
+import { type DataMode, persistDataMode, resolveApiUrl, resolveDataMode } from './dataMode';
 
-export const USE_MOCK: boolean = import.meta.env.VITE_USE_MOCK !== 'false';
+export const USE_MOCK: boolean = resolveDataMode() === 'demo';
 
-export const API_BASE_URL: string =
-  import.meta.env.VITE_API_URL || (USE_MOCK ? '' : 'http://localhost:8000');
+export const API_BASE_URL: string = USE_MOCK ? '' : resolveApiUrl();
 
 export const DEFAULT_TIMEOUT_MS = 15_000;
 /** The server waits up to 20 s for the assistant, so chat calls get more headroom. */
@@ -69,6 +70,16 @@ let unauthorizedListener: UnauthorizedListener | null = null;
 
 export function onUnauthorized(listener: UnauthorizedListener): void {
   unauthorizedListener = listener;
+}
+
+/**
+ * Switches between demo and live data. Sessions do not carry across modes,
+ * so this signs the user out and reloads at the sign-in page.
+ */
+export function switchDataMode(mode: DataMode, apiUrl?: string): void {
+  persistDataMode(mode, apiUrl);
+  clearSession();
+  window.location.assign('/login');
 }
 
 export function triggerUnauthorized(): void {

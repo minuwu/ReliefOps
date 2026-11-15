@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { PATHS } from '@/routes/paths';
+import { DataModeSwitch } from './DataModeSwitch';
 
 export function Footer() {
   return (
@@ -10,7 +11,8 @@ export function Footer() {
           <span>·</span>
           <span>Fraud relief operations for partner banks.</span>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+          <DataModeSwitch />
           <Link to={PATHS.portalReport} className="hover:text-[#09090B] transition-colors">
             Report a scam
           </Link>
