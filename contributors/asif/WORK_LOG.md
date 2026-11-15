@@ -35,6 +35,11 @@ Decision (Asif): build all my business logic as **service functions with databas
   - `case_documents()` gives Anim's case detail each document with its latest extraction.
   - Gotcha: on Windows, a parametrized test ID over 32 KB breaks pytest's `PYTEST_CURRENT_TEST`, so large test inputs get explicit `ids`.
   - 11 tests.
+- **A9, extraction service** ([extraction.py](../../backend/app/services/extraction.py)): `POST /api/documents/{id}/extract` and `GET /api/extractions/{id}`.
+  - **No transaction during the AI call:** read, commit, call the engine, write in a fresh scoped transaction. Proven with `pg_stat_activity`: no app connection is `idle in transaction` while the AI works.
+  - **Result:** each field is saved with its `current_case_value`. A re-run marks the older pending result rejected as "superseded", and `pending_extraction_count` stays exact. Audited as `ai.extraction_completed` / `ai.extraction_failed` with the confidence and lane.
+  - **The case is never changed by the AI (D3):** prompt-injection output fails as `invalid_ai_output`, and status, owner and version stay unchanged.
+  - 10 tests.
 
 ## 2026-11-15 (session 10) — backend Phase 1 done
 
