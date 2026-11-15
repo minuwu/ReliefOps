@@ -4,6 +4,20 @@ Owner: Galib (`Ga-lib`) — Role: AI / LLM — Branches: `galib/*`
 
 Update after each work session. Newest entry first. Bangladesh time (UTC+6). Link commits/PRs/XREQs.
 
+## 2026-11-15 (evening) — XREQ-004 fraud ring detection
+
+### Completed
+- Checked main: Asif already wired the case assistant (`victim_chat` calls `rag.embed(task="query")` and `rag.answer`, seed loads `kb_passages.json`) and moved the AI packages into `pyproject.toml`. No handoff message needed. `uv run pytest tests/ai tests/unit`: 146 passed.
+- Claimed XREQ-004 (`[IN_PROGRESS]`) with a split in the card: `backend/app/services/fraud_rings.py` (`detect_rings`) is done; endpoints and freeze stay with Backend.
+- Matching: account numbers across formats; holder names across spellings via a sound key (English ↔ katakana, company markers ignored). Same digits with different names → `POSSIBLE_LINK` only, so an innocent account holder isn't flagged critical. Every ring has plain-language `reasons`.
+- `tests/ai/test_fraud_rings.py`: 17 passed (seed: `9876543210`, 3 cases, bank_a + bank_b, ¥3,700,000 → `CRITICAL_SYNDICATE`).
+
+### Next
+- Backend: `GET /api/analytics/fraud-rings` calling `detect_rings`, the freeze POST (supervisor, audited), and frozen-account storage.
+- Open decisions: refuse vs explain "How much will I get back?"; bluebooks are 2 pages, not 4–6.
+
+---
+
 ## 2026-11-15 — case assistant AI functions, bluebooks and eval (D14, API_SPEC §7.2)
 
 ### Completed
