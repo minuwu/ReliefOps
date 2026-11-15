@@ -31,7 +31,7 @@ BJET-Hackathon/
 ├── scripts/setup.sh|.ps1     # one-shot onboarding
 ├── contributors/<name>/      # per-person WORK_LOG.md
 ├── docs/                     # API_SPEC, SKILLS, plans/
-├── graphify-out/             # knowledge graph: graph.html, graph.json, GRAPH_REPORT.md
+├── graphify-out/             # local knowledge graph (untracked)
 ├── frontend/                 # (created at Hour 0)
 └── backend/                  # (created at Hour 0)
 ```

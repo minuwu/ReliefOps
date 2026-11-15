@@ -172,11 +172,11 @@ Rules:
 
 ### 3.4 Step 2 — Query the Knowledge Graph First
 
-`graphify-out/graph.json` is the committed knowledge graph of this repo (docs + code).
+`graphify-out/` is the local knowledge graph of this repo (untracked in git to prevent sync noise).
 - Codebase question → `graphify query "<question>"` before any grep/glob/read.
 - Relationship → `graphify path "A" "B"`. One concept → `graphify explain "X"`.
 - Broad architecture review only → read `graphify-out/GRAPH_REPORT.md`.
-- **After changing code** → `graphify update .` (AST only, free). **After changing docs** → `/graphify . --update`.
+- **After changing code** → `graphify update .` (local AST update, free). **After changing docs** → `/graphify . --update`.
 - `graphify` missing → `pip install graphifyy`, or `python -m graphify`.
 
 ### 3.5 Git Rules for Agents
@@ -239,7 +239,7 @@ Per-person setup checklists are in [TEAM_INSTRUCTIONS.md](TEAM_INSTRUCTIONS.md).
 ### 5.2 Minhaz
 - **Role**: lead architecture, Frontend / Full-Stack integration, repo hygiene.
 - **Branches**: `minhaz/<topic>`; `minhaz` (legacy long-lived branch) merges to `main` via PR.
-- **Agent instructions in Minhaz's workspace**: fulfil `XREQ`s where `To: Frontend` or `To: Minhaz`; load Frontend skills (4.1); keep `AGENTS.md`, `docs/SKILLS.md`, and the graphify graph current.
+- **Agent instructions in Minhaz's workspace**: fulfil `XREQ`s where `To: Frontend` or `To: Minhaz`; load Frontend skills (4.1); keep `AGENTS.md` and `docs/SKILLS.md` current.
 
 ### 5.3 Asif
 - **Role**: Backend engineering, data models, API integrations.

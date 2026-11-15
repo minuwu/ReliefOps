@@ -44,7 +44,7 @@ Then:
 | **Work log** | [contributors/minhaz/WORK_LOG.md](contributors/minhaz/WORK_LOG.md) | [contributors/asif/WORK_LOG.md](contributors/asif/WORK_LOG.md) | [contributors/anim/WORK_LOG.md](contributors/anim/WORK_LOG.md) | [contributors/galib/WORK_LOG.md](contributors/galib/WORK_LOG.md) | `cp -r contributors/_template contributors/<name>` |
 | **Skills your agent loads** | `vercel-react-best-practices`, `nextjs-app-router-patterns`, `frontend-design`, `tailwind-v4-shadcn`, `deploy-to-vercel` | `fastapi`, `python-testing-patterns`, `supabase-postgres-best-practices`, `openapi-spec-generation` | `fastapi`, `python-testing-patterns`, `supabase-postgres-best-practices`, `openapi-spec-generation` | `fastapi`, `python-testing-patterns`; AI directives in AGENTS.md §4.3 | per role, see [docs/SKILLS.md §1](docs/SKILLS.md) |
 | **XREQs you answer** | `To: Frontend` / `To: Minhaz` | `To: Backend` / `To: Asif` | `To: Backend` / `To: Anim` | `To: AI` / `To: Galib` | `To: <Team>` / `To: <name>` |
-| **You own** | `frontend/`, `AGENTS.md`, `docs/SKILLS.md`, graphify graph, PR merges | `backend/`, `docs/API_SPEC.md`, Swagger `/docs`, DB schema | `backend/` services agreed with Asif; keep `docs/API_SPEC.md` in sync | `backend/app/prompts/`, AI services in `backend/` agreed with Asif and Anim | agreed at kickoff, recorded in AGENTS.md §5 |
+| **You own** | `frontend/`, `AGENTS.md`, `docs/SKILLS.md`, PR merges | `backend/`, `docs/API_SPEC.md`, Swagger `/docs`, DB schema | `backend/` services agreed with Asif; keep `docs/API_SPEC.md` in sync | `backend/app/prompts/`, AI services in `backend/` agreed with Asif and Anim | agreed at kickoff, recorded in AGENTS.md §5 |
 | **Hour-0 task** | Scaffold `frontend/` with mock toggle; deploy hello-world to Vercel | Scaffold `backend/` with CORS + `/api/health`; deploy to Render/Railway | Pair with Asif on `backend/` scaffold; claim first endpoint in WORK_LOG | Run `scripts/setup`; pick the model/provider and stub the AI endpoint with a deterministic fallback | run `scripts/setup`, read AGENTS.md, claim first task in WORK_LOG |
 
 Add a column when a teammate joins (AGENTS.md §5.6).
@@ -59,7 +59,7 @@ Add a column when a teammate joins (AGENTS.md §5.6).
 
 ## 6. Keeping the Knowledge Graph Fresh
 
-`graphify-out/` is committed so agents can answer "how does X connect to Y" without reading everything.
+`graphify-out/` is generated locally (untracked in git) so agents can answer "how does X connect to Y" without reading everything.
 - After code changes: `graphify update .`
 - After doc changes: ask your agent `/graphify . --update`
 - Ask questions: `graphify query "how does the frontend mock toggle work"`

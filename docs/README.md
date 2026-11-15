@@ -11,7 +11,7 @@ Welcome to the documentation hub for **BJET-Hackathon**. All architectural plans
 | **[AGENTS.md](../AGENTS.md)** | **Master Protocol**: Coding agent directives, active `XREQ` queue, team & contributor rules | AI Agents & Developers |
 | **[TEAM_INSTRUCTIONS.md](../TEAM_INSTRUCTIONS.md)** | Human onboarding, daily loop, per-person checklists | Human Developers |
 | **[scripts/](../scripts/)** | `setup.sh` / `setup.ps1` one-shot onboarding | Entire Team |
-| **[graphify-out/](../graphify-out/)** | Knowledge graph (`graph.html`, `graph.json`, `GRAPH_REPORT.md`) — query with `graphify query` | AI Agents & Developers |
+| **[graphify-out/](../graphify-out/)** | Local knowledge graph (`graph.html`, `graph.json`, untracked) — query with `graphify query` | AI Agents & Developers |
 | **[HACKATHON_PRESETUP.md](../HACKATHON_PRESETUP.md)** | Architecture options, stack recommendation, contract-first guide | Entire Team |
 | **[docs/SKILLS.md](SKILLS.md)** | Mandatory agent skill packs: routing table, catalog, how to add | AI Agents & Developers |
 | **[docs/API_SPEC.md](../docs/API_SPEC.md)** | Shared API contract ledger, data models & endpoints | Frontend & Backend |

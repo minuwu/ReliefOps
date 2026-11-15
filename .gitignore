@@ -61,15 +61,8 @@ Desktop.ini
 *.swp
 *~
 
-# graphify: share graph outputs, not machine-specific state
-graphify-out/cache/
-graphify-out/20*/
-graphify-out/.graphify_python
-graphify-out/.graphify_root
-graphify-out/.graphify_*.json
-graphify-out/.graphify_*.txt
-graphify-out/.needs_update
-!graphify-out/.graphify_build.json
+# graphify: local knowledge graph cache/output (not synced in git)
+graphify-out/
 
 # ECC (Everything Claude Code) — installed per machine by scripts/setup.
 # Hook commands embed this machine's absolute path, so ECC files are never committed.

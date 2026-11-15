@@ -61,7 +61,7 @@ BJET-Hackathon/
 │   └── SKILLS.md         # Mandatory agent skill routing
 ├── contributors/<name>/  # Per-person WORK_LOG.md
 ├── .claude/skills/       # Committed agent skill packs
-├── graphify-out/         # Knowledge graph (query before grep)
+├── graphify-out/         # Local knowledge graph (untracked, query before grep)
 ├── AGENTS.md             # Agent + team protocol
 ├── .gitignore
 └── README.md
