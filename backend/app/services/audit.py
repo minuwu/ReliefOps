@@ -125,7 +125,9 @@ def record(
     s.exec(
         insert(AuditLogRow).values(
             id=uuid4(),
-            at=at or datetime.now(UTC),
+            # The database clock (microseconds) by default: Python's clock on Windows ticks
+            # every ~15 ms, so two quick events could share a timestamp and lose their order.
+            at=at if at is not None else func.clock_timestamp(),
             actor_type=actor.type,
             actor_id=actor.id,
             actor_name=actor.name,
