@@ -60,10 +60,10 @@ This file is:
 
 | Request ID | Priority | From | To | Target / Title | Status | Updated (UTC+6) |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| `XREQ-001` | `P0 (Blocker)` | Frontend (Minhaz) | Backend (Asif / Anim) | Core Cases & Bank Tenant Isolation API (`GET/POST /api/cases`) | `[IN_PROGRESS]` | 2026-11-15 13:30 |
-| `XREQ-002` | `P0 (Blocker)` | Frontend (Minhaz) | AI (Galib) / Backend (Asif) | Rule D3 Vision OCR Extraction & HITL Queue (`POST /api/documents/extract`) | `[IN_PROGRESS]` | 2026-11-15 11:30 |
-| `XREQ-003` | `P1 (High)` | Frontend (Minhaz) | Backend (Anim / Asif) | Public Citizen Intake & 6-Stage Status Tracker (`POST /api/intake`) | `[IN_PROGRESS]` | 2026-11-15 15:30 |
-| `XREQ-004` | `P1 (High)` | Frontend (Minhaz) | Backend (Asif / Anim) / AI (Galib) | Cross-Bank Fraud Ring Topology & Coordinated Freeze API | `[IN_PROGRESS]` | 2026-11-15 20:00 (detection done, endpoints open) |
+| `XREQ-001` | `P0 (Blocker)` | Frontend (Minhaz) | Backend (Asif / Anim) | Core Cases & Bank Tenant Isolation API (`GET/POST /api/cases`, `POST /api/cases/{case_id}/transition`) | `[IN_PROGRESS]` | 2026-11-15 20:10 (path agreed: `/transition`) |
+| `XREQ-002` | `P0 (Blocker)` | Frontend (Minhaz) | AI (Galib) / Backend (Asif) | Rule D3 Vision OCR Extraction & HITL Queue (`POST /api/documents/{id}/extract`, `POST /api/extractions/{id}/review`) | `[IN_PROGRESS]` | 2026-11-15 20:10 (accept/reject is one review call) |
+| `XREQ-003` | `P1 (High)` | Frontend (Minhaz) | Backend (Anim / Asif) | Victim accounts, case reports & 6-Stage Status Tracker (`POST /api/victim/cases`) | `[IN_PROGRESS]` | 2026-11-15 20:10 (intake replaced by victim accounts) |
+| `XREQ-004` | `P1 (High)` | Frontend (Minhaz) | Backend (Asif / Anim) / AI (Galib) | Cross-Bank Shared Accounts (`GET /api/alerts/shared-accounts`); freeze needs a team decision | `[IN_PROGRESS]` | 2026-11-15 20:10 (detection done, freeze not agreed) |
 
 *(When adding a request: append a row above AND add a detailed card in 2.2. Never insert in the middle.)*
 
@@ -77,7 +77,9 @@ This file is:
 - **To**: Backend (Asif / Anim)
 - **Status**: `[IN_PROGRESS]` (Asif: database bank isolation, migrations 001–002; Anim: the case endpoints)
 - **Created**: 2026-11-15 11:30 (UTC+6)
-- **Target Interface / Endpoints**: `GET /api/cases`, `GET /api/cases/{id}`, `POST /api/cases/{id}/transitions`
+- **Target Interface / Endpoints**: `GET /api/cases`, `GET /api/cases/{id}`, `POST /api/cases/{case_id}/transition`
+
+**Contract reconciliation (Minhaz, 2026-11-15):** Agreed with the backend answer: the route is `/transition` (singular), and the frontend now calls it with `expected_version`. Bank separation is enforced by the database, and other banks' cases return `404`. The `/transitions` wording below is the original request.
 
 **Requirement Details:**
 Frontend workstation and case details are fully built, responsive, and running on mock contracts. For ReliefOps to operate as a live real-world solution, we need live FastAPI endpoints hooked to the database.
@@ -123,7 +125,9 @@ Frontend workstation and case details are fully built, responsive, and running o
 - **To**: AI (Galib) / Backend (Asif)
 - **Status**: `[IN_PROGRESS]`
 - **Created**: 2026-11-15 11:30 (UTC+6)
-- **Target Interface / Endpoints**: `POST /api/documents/{id}/extract`, `GET /api/review-queue`, `POST /api/cases/{case_id}/extractions/{extraction_id}/accept`
+- **Target Interface / Endpoints**: `POST /api/documents/{id}/extract`, `GET /api/review-queue`, `POST /api/extractions/{id}/review`
+
+**Contract reconciliation (Minhaz, 2026-11-15):** Agreed: accept and reject are one call, `POST /api/extractions/{id}/review` with `decision`. The frontend review queue uses it. The `.../accept` route in point 4 below is the original request.
 
 **Requirement Details:**
 Statutory Rule D3 dictates that AI is strictly an assistive advisor: **AI model output can NEVER directly modify bank ledgers or relief claims without certified human operator verification.**
@@ -166,7 +170,9 @@ Statutory Rule D3 dictates that AI is strictly an assistive advisor: **AI model 
 - **To**: Backend (Anim / Asif)
 - **Status**: `[IN_PROGRESS]` (Asif: victim services and chat; Anim: authentication and HTTP integration)
 - **Created**: 2026-11-15 11:30 (UTC+6)
-- **Target Interface / Endpoints**: `POST /api/intake`, `POST /api/victim/auth`, `GET /api/victim/cases/{reference}`, `POST /api/victim/chat`
+- **Target Interface / Endpoints**: `POST /api/victim/cases`, `GET /api/victim/cases/{case_id}`, `/api/victim/cases/{case_id}/chat` (was `POST /api/intake`, `POST /api/victim/auth`, `GET /api/victim/cases/{reference}`, `POST /api/victim/chat`)
+
+**Frontend agreement (Minhaz, 2026-11-15):** Agreed. The frontend now has victim sign-up, email verification, the portal and case reports on these routes, and looks cases up by `id`.
 
 **Contract reconciliation (Asif, 2026-11-15):** This card describes the old access-code flow. Current API_SPEC v0.4.2 uses verified accounts, `POST /api/victim/cases` and `/api/victim/cases/{case_id}/chat`. Implement those agreed routes; do not restore the removed anonymous intake. Service progress and evidence: [Asif remaining work](contributors/asif/REMAINING_WORK.md).
 
@@ -220,7 +226,9 @@ Allows scam victims to report losses via the public web form without prior regis
 - **To**: Backend (Asif / Anim) / AI (Galib)
 - **Status**: `[IN_PROGRESS]` (Galib: detection done; Backend: endpoints and freeze open)
 - **Created**: 2026-11-15 11:30 (UTC+6)
-- **Target Interface / Endpoints**: `GET /api/analytics/fraud-rings`, `POST /api/analytics/fraud-rings/{account_number}/freeze`
+- **Target Interface / Endpoints**: `GET /api/alerts/shared-accounts` (was `GET /api/analytics/fraud-rings`); `POST /api/analytics/fraud-rings/{account_number}/freeze` is **not in the contract**
+
+**Contract reconciliation (Minhaz, 2026-11-15):** Agreed: the dashboard reads cross-bank accounts from `GET /api/alerts/shared-accounts`. Freezing has real-world impact, so nobody builds it until the team decides who may freeze, how it is audited and how it is undone.
 
 **Requirement Details:**
 Provides the showstopper feature for hackathon judging: uncovering organized criminal syndicates operating across member bank walls.
