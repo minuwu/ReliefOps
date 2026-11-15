@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useReviewQueueStore } from '@/store/useReviewQueueStore';
+import { PATHS } from '@/routes/paths';
 import { ExtractionReviewModal } from '@/components/extraction/ExtractionReviewModal';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -22,10 +24,23 @@ export function ReviewQueuePage() {
   const { queue, fetchQueue, activeExtraction, fetchExtraction, clearActive, isLoading } =
     useReviewQueueStore();
   const [laneFilter, setLaneFilter] = useState<'all' | 'standard' | 'low_confidence'>('all');
+  const navigate = useNavigate();
+  // The open extraction lives in the URL (/review/:extractionId), so it can be linked from a case.
+  const { extractionId } = useParams<{ extractionId?: string }>();
 
   useEffect(() => {
     fetchQueue();
   }, []);
+
+  useEffect(() => {
+    if (extractionId) void fetchExtraction(extractionId);
+    else clearActive();
+  }, [extractionId]);
+
+  const closeReview = () => {
+    clearActive();
+    navigate(PATHS.review);
+  };
 
   const filteredQueue = queue.filter((item) => {
     if (laneFilter === 'all') return true;
@@ -193,7 +208,7 @@ export function ReviewQueuePage() {
                 <Button
                   variant="primary"
                   size="md"
-                  onClick={() => fetchExtraction(item.extraction_id)}
+                  onClick={() => navigate(PATHS.reviewDetail(item.extraction_id))}
                   className="w-full gap-2 shadow-hard hover:shadow-hard-sm"
                 >
                   <Sparkles className="w-4 h-4" />
@@ -207,19 +222,12 @@ export function ReviewQueuePage() {
       )}
 
       {/* Extraction Review Modal */}
-      {activeExtraction && (
+      {extractionId && activeExtraction?.id === extractionId && (
         <ExtractionReviewModal
           extraction={activeExtraction}
-          isOpen={Boolean(activeExtraction)}
-          onClose={clearActive}
-          onSuccess={() => {
-            clearActive();
-            fetchQueue();
-          }}
-          onReviewed={() => {
-            clearActive();
-            fetchQueue();
-          }}
+          isOpen
+          onClose={closeReview}
+          onReviewed={closeReview}
         />
       )}
     </div>

@@ -15,7 +15,7 @@ export function AuditLogsPage() {
     setIsLoading(true);
     try {
       const res = await api.getAuditLogs();
-      setLogs(res.data);
+      setLogs(res.data.items);
     } finally {
       setIsLoading(false);
     }
