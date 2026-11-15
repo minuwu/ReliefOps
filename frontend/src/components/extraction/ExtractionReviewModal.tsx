@@ -124,7 +124,7 @@ export function ExtractionReviewModal({
 
           {/* Right Column: Extracted Fields Review */}
           <div className={showOpticalPreview ? 'lg:col-span-7' : 'lg:col-span-12'}>
-            <div className="p-5 rounded-2xl border-2 border-[#09090B] bg-[#F8F4E8] shadow-hard space-y-4">
+            <div className="p-5 rounded-2xl border border-[#09090B]/15 bg-[#F8F4E8] space-y-4">
               <h3 className="text-sm font-bold uppercase tracking-wide text-[#09090B]">
                 Extracted field values
               </h3>
@@ -176,6 +176,7 @@ export function ExtractionReviewModal({
 
                       <input
                         type="text"
+                        aria-label={`Edit ${field.name.replace(/_/g, ' ')}`}
                         value={String(val)}
                         onChange={(e) => handleFieldChange(field.name, e.target.value)}
                         className="w-full text-xs font-mono font-medium bg-[#F8F4E8] border border-[#09090B]/30 rounded-lg p-2 focus:border-[#09090B] focus:outline-none"
@@ -187,10 +188,11 @@ export function ExtractionReviewModal({
 
               {/* Operator Verification Note */}
               <div className="space-y-1.5 pt-2">
-                <label className="block text-xs font-bold uppercase tracking-wider text-[#09090B]">
+                <label htmlFor="review-note" className="block text-xs font-bold uppercase tracking-wider text-[#09090B]">
                   Review note
                 </label>
                 <input
+                  id="review-note"
                   type="text"
                   value={reviewNote}
                   onChange={(e) => setReviewNote(e.target.value)}

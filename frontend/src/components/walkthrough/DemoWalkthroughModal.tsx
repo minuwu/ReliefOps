@@ -177,46 +177,46 @@ const SCENARIOS: Scenario[] = [
   },
   {
     id: 'supervisor',
-    badge: 'Supervisor Command',
+    badge: 'Supervisor overview',
     icon: BarChart3,
-    title: 'Control Tower & Cross-Bank Syndicate Hunting',
-    subtitle: '5-Bank Ecosystem Oversight & Fraud Ring Topology',
+    title: 'Operations dashboard and shared beneficiary accounts',
+    subtitle: 'Multi-bank oversight and cross-bank account alerts',
     persona: 'Supervisor Sato (Chief Operations Officer, Tokyo Ops Hub)',
-    roleDescription: 'Executive supervisor directing inter-bank intelligence and regulatory compliance',
+    roleDescription: 'Operations supervisor reviewing metrics, deadlines, and cross-bank accounts',
     targetPath: PATHS.dashboard,
     userEmail: 'supervisor@opscenter.test',
     story:
-      'Supervisor Sato manages the shared operations command center for member banks. He tracks center-wide KPIs, monitors SLA breaches, and investigates organized crime rings laundering stolen funds across multiple banks.',
-    goal: 'Monitor center-wide metrics, review urgent SLA countdowns, explore the multi-bank fraud syndicate graph, and execute a coordinated account freeze.',
+      'Supervisor Sato manages the shared operations center for member banks. He tracks center-wide metrics, monitors deadlines, and investigates beneficiary accounts appearing across multiple banks.',
+    goal: 'Monitor center-wide metrics, review urgent deadlines, find the account under Shared beneficiary accounts, and press Inspect to open the linked case.',
     steps: [
       {
         number: '01',
-        action: 'Inspect Executive Metrics Grid',
+        action: 'Inspect operations metrics grid',
         outcome:
-          'Review Active Cases, Protected Funds, Overdue Cases, and SLA Adherence metrics.',
+          'Review active cases, protected funds, overdue cases, and deadline adherence.',
       },
       {
         number: '02',
-        action: 'Examine Urgent Cases SLA List',
+        action: 'Examine urgent cases list',
         outcome:
-          'Track live countdown timers for cases approaching regulatory 48-hour reporting windows.',
+          'Track countdown timers for cases approaching regulatory deadlines.',
       },
       {
         number: '03',
-        action: 'Explore Cross-Bank Fraud Syndicate Topology',
+        action: 'Find the account under Shared beneficiary accounts',
         outcome:
-          'Visualize shared mule destination account linked across member banks.',
+          'Review destination accounts that appear in claims across multiple member banks.',
       },
       {
         number: '04',
-        action: 'Execute Multi-Bank Emergency Freeze Simulation',
+        action: 'Press Inspect to open the linked case',
         outcome:
-          'Coordinate immediate simultaneous freeze across member institutions.',
+          'Open the case details to inspect the linked claims and beneficiary account information.',
       },
     ],
-    actionLabel: 'Launch Supervisor Command (Control Tower)',
+    actionLabel: 'Open supervisor dashboard',
     systemGuarantee:
-      'Shared-entity detection identifies organized rings across tenant walls without leaking non-syndicate data.',
+      'Shared account alerts flag common destination accounts across tenant walls without exposing unrelated bank cases.',
   },
   {
     id: 'bank_viewer',
