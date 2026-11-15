@@ -127,7 +127,7 @@ The palette pairs high-contrast ink and archival paper with two surgical high-vi
 - **Label / Mono** (Bold 700 / Medium 500, 11px–12px / 0.6875rem–0.75rem, line-height 1.4): Table headers, status badges, case references, amounts, and timestamps (`tabular-nums`).
 
 ### Named Rules
-**The Restrained Display Rule.** Dela Gothic One is used exclusively for primary page `h1` headings and modal dialog titles. It must never appear on card headers, subheaders, body text, or statistics counters.
+**The Restrained Display Rule.** Dela Gothic One is used exclusively for primary page `h1` headings and modal dialog titles (exception: the brand wordmark uses Dela Gothic One). It must never appear on card headers, subheaders, body text, or statistics counters (exception: KPI figures use `font-mono font-bold tabular-nums`).
 **The Sentence Case Doctrine.** Page headings (`h1`) and modal titles are rendered in clean sentence case. Never apply `uppercase` to Dela Gothic One page titles.
 
 ## Layout
@@ -199,6 +199,7 @@ Containers and interactive elements feature geometric curvature bound by consist
 - **Don't** use Dela Gothic One for card titles, stat values, table cells, badges, or buttons.
 - **Don't** use `uppercase` on page `h1` headings.
 - **Don't** use coral (`#FF334B`) for standard counters, decorative badges, or non-urgent notifications.
+- **Don't** use coral for counts or badges that are not danger or overdue.
 - **Don't** add colored side-stripe borders on focused table rows.
 - **Don't** use fuzzy, blurred, or ambient drop-shadows; keep all shadows crisp hard-edge 0px blur.
 - **Don't** use banned elements: glitch text, stickers, marquees, custom cursor, noise overlay, or side-stripe borders.

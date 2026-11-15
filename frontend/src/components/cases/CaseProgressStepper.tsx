@@ -64,7 +64,7 @@ export function CaseProgressStepper({ currentStatus, closureReason }: CaseProgre
                       ? 'text-[#09090B]'
                       : isPassed
                       ? 'text-[#09090B]'
-                      : 'text-[#71717A]'
+                      : 'text-[#52525B]'
                   }`}
                 >
                   {stage.label}

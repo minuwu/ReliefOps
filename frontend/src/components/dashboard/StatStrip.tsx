@@ -23,7 +23,7 @@ export function StatStrip({
           className="text-left px-2 sm:px-4 py-2 hover:bg-[#09090B]/5 rounded-lg transition-colors cursor-pointer"
         >
           <p className="text-xs font-bold uppercase tracking-wide text-[#52525B]">Open cases</p>
-          <p className="text-2xl sm:text-3xl font-['Dela_Gothic_One'] text-[#09090B] mt-1">
+          <p className="text-2xl sm:text-3xl font-mono font-bold tabular-nums text-[#09090B] mt-1">
             {stats.open_cases}
           </p>
         </button>
@@ -36,7 +36,7 @@ export function StatStrip({
           <p className="text-xs font-bold uppercase tracking-wide text-[#52525B]">Overdue</p>
           <p
             className={cn(
-              "text-2xl sm:text-3xl font-['Dela_Gothic_One'] mt-1",
+              "text-2xl sm:text-3xl font-mono font-bold tabular-nums mt-1",
               stats.overdue_cases > 0 ? 'text-[#FF334B]' : 'text-[#09090B]'
             )}
           >
@@ -50,7 +50,7 @@ export function StatStrip({
           className="text-left px-2 sm:px-4 py-2 hover:bg-[#09090B]/5 rounded-lg transition-colors cursor-pointer"
         >
           <p className="text-xs font-bold uppercase tracking-wide text-[#52525B]">Due within 48h</p>
-          <p className="text-2xl sm:text-3xl font-['Dela_Gothic_One'] text-[#09090B] mt-1">
+          <p className="text-2xl sm:text-3xl font-mono font-bold tabular-nums text-[#09090B] mt-1">
             {stats.due_soon_cases}
           </p>
         </button>
@@ -61,7 +61,7 @@ export function StatStrip({
           className="text-left px-2 sm:px-4 py-2 hover:bg-[#09090B]/5 rounded-lg transition-colors cursor-pointer"
         >
           <p className="text-xs font-bold uppercase tracking-wide text-[#52525B]">Awaiting review</p>
-          <p className="text-2xl sm:text-3xl font-['Dela_Gothic_One'] text-[#09090B] mt-1">
+          <p className="text-2xl sm:text-3xl font-mono font-bold tabular-nums text-[#09090B] mt-1">
             {stats.ai_review_pending}
           </p>
         </button>

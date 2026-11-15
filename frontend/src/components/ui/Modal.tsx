@@ -74,7 +74,7 @@ export function Modal({
             {title && (
               <h2
                 id={titleId}
-                className="text-lg sm:text-xl font-['Dela_Gothic_One'] uppercase tracking-tight text-[#09090B]"
+                className="text-lg sm:text-xl font-['Dela_Gothic_One'] tracking-tight text-[#09090B]"
               >
                 {title}
               </h2>

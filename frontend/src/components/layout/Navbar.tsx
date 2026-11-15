@@ -59,7 +59,7 @@ const mobileLinkClass = ({ isActive }: { isActive: boolean }) =>
 function ReviewBadge({ count, long }: { count: number; long?: boolean }) {
   if (count <= 0) return null;
   return (
-    <span className="px-1.5 py-0.5 rounded-full text-xs font-bold bg-[#FF334B] text-[#09090B] border border-[#09090B] leading-none">
+    <span className="px-1.5 py-0.5 rounded-full text-xs font-bold bg-[#09090B] text-[#D2E823] border border-[#09090B] leading-none">
       {count}
       {long ? ' pending' : ''}
     </span>

@@ -49,7 +49,7 @@ export function CardTitle({ className, ...props }: React.HTMLAttributes<HTMLHead
   return (
     <h3
       className={cn(
-        'font-["Dela_Gothic_One",cursive,sans-serif] uppercase tracking-tighter text-base sm:text-lg text-foreground',
+        'font-bold tracking-tight text-base sm:text-lg text-foreground',
         className
       )}
       {...props}

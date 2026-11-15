@@ -18,10 +18,10 @@ export function AuthCard({ title, subtitle, children, footer }: AuthCardProps) {
           <div className="w-10 h-10 rounded-xl bg-[#09090B] text-[#D2E823] flex items-center justify-center border-2 border-[#09090B]">
             <ShieldAlert className="w-5 h-5" aria-hidden="true" />
           </div>
-          <h1 className="text-2xl sm:text-3xl font-['Dela_Gothic_One'] uppercase text-[#09090B] leading-tight">
+          <h1 className="text-2xl sm:text-3xl font-['Dela_Gothic_One'] text-[#09090B] leading-tight">
             {title}
           </h1>
-          {subtitle && <p className="text-sm font-medium text-[#52525B]">{subtitle}</p>}
+          {subtitle && <p className="text-sm text-[#52525B]">{subtitle}</p>}
         </div>
         {children}
       </div>

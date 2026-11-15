@@ -49,7 +49,7 @@ export function CaseStatStrip({
 
         {/* Due Soon */}
         <div className="lg:px-5 flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-[#FBBF24]/30 text-[#09090B] border border-[#09090B]/20 shrink-0">
+          <div className="p-2 rounded-lg bg-[#EDE8D5] text-[#09090B] border border-[#09090B]/20 shrink-0">
             <Clock className="w-4 h-4" />
           </div>
           <div className="min-w-0">

@@ -166,7 +166,7 @@ export function CaseHistoryPanel({ caseId }: CaseHistoryPanelProps) {
 
       {!isLoading && !error && history.length === 0 && (
         <div className="py-8 text-center space-y-2 rounded-xl border border-dashed border-[#09090B]/20 bg-[#EDE8D5]/30">
-          <History className="w-6 h-6 mx-auto text-[#71717A]" />
+          <History className="w-6 h-6 mx-auto text-[#52525B]" />
           <p className="text-xs font-bold uppercase tracking-wider text-[#09090B]">
             No audit records
           </p>
