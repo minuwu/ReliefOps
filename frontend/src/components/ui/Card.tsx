@@ -1,31 +1,75 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 
-export function Card({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+  hoverable?: boolean;
+  shadowSize?: 'sm' | 'md' | 'lg' | 'none';
+  variant?: 'paper' | 'dark' | 'acid';
+}
+
+export function Card({
+  className,
+  hoverable = false,
+  shadowSize = 'md',
+  variant = 'paper',
+  ...props
+}: CardProps) {
+  const shadowStyles = {
+    none: 'shadow-none',
+    sm: 'shadow-hard-sm',
+    md: 'shadow-hard',
+    lg: 'shadow-hard-lg',
+  };
+
+  const variantStyles = {
+    paper: 'bg-[#F8F4E8] text-[#09090B] border-2 border-[#09090B]',
+    dark: 'bg-[#09090B] text-[#F8F4E8] border-2 border-[#09090B]',
+    acid: 'bg-[#D2E823] text-[#09090B] border-2 border-[#09090B]',
+  };
+
   return (
     <div
-      className={cn('rounded-lg border border-border bg-card text-card-foreground shadow-sm', className)}
+      className={cn(
+        'rounded-2xl transition-all duration-150',
+        variantStyles[variant],
+        shadowStyles[shadowSize],
+        hoverable && 'hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-hard-sm',
+        className
+      )}
       {...props}
     />
   );
 }
 
 export function CardHeader({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('flex flex-col space-y-1.5 p-5', className)} {...props} />;
+  return <div className={cn('flex flex-col space-y-1.5 p-6', className)} {...props} />;
 }
 
 export function CardTitle({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
-  return <h3 className={cn('font-semibold leading-none tracking-tight text-base sm:text-lg', className)} {...props} />;
+  return (
+    <h3
+      className={cn(
+        'font-["Dela_Gothic_One",cursive,sans-serif] uppercase tracking-tighter text-base sm:text-lg text-foreground',
+        className
+      )}
+      {...props}
+    />
+  );
 }
 
 export function CardDescription({ className, ...props }: React.HTMLAttributes<HTMLParagraphElement>) {
-  return <p className={cn('text-sm text-muted-foreground', className)} {...props} />;
+  return (
+    <p
+      className={cn('text-xs sm:text-sm text-[#52525B] font-["Space_Grotesk",sans-serif]', className)}
+      {...props}
+    />
+  );
 }
 
 export function CardContent({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('p-5 pt-0', className)} {...props} />;
+  return <div className={cn('p-6 pt-0 font-["Space_Grotesk",sans-serif]', className)} {...props} />;
 }
 
 export function CardFooter({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('flex items-center p-5 pt-0', className)} {...props} />;
+  return <div className={cn('flex items-center p-6 pt-0 font-["Space_Grotesk",sans-serif]', className)} {...props} />;
 }

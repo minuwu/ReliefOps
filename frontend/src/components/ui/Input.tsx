@@ -12,9 +12,9 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
 
     return (
-      <div className="w-full space-y-1.5">
+      <div className="w-full space-y-1.5 font-['Space_Grotesk',sans-serif]">
         {label && (
-          <label htmlFor={inputId} className="block text-xs font-semibold text-foreground/90 uppercase tracking-wider">
+          <label htmlFor={inputId} className="block text-xs font-bold uppercase tracking-wider text-[#09090B]">
             {label}
           </label>
         )}
@@ -22,15 +22,25 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
           id={inputId}
           type={type}
           ref={ref}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={inputId && (error || helperText) ? `${inputId}-hint` : undefined}
           className={cn(
-            'flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
-            error && 'border-destructive focus-visible:ring-destructive',
+            'flex h-11 w-full rounded-xl border-2 border-[#09090B] bg-[#F8F4E8] px-3.5 py-2 text-sm text-[#09090B] font-medium shadow-[2px_2px_0px_0px_#09090B] transition-all placeholder:text-[#52525B] focus:outline-none focus:shadow-hard focus:translate-x-[-1px] focus:translate-y-[-1px] disabled:cursor-not-allowed disabled:opacity-50',
+            error && 'border-[#FF334B] shadow-[2px_2px_0px_0px_#FF334B]',
             className
           )}
           {...props}
         />
-        {helperText && !error && <p className="text-xs text-muted-foreground">{helperText}</p>}
-        {error && <p className="text-xs font-medium text-destructive">{error}</p>}
+        {helperText && !error && (
+          <p id={inputId ? `${inputId}-hint` : undefined} className="text-xs text-[#52525B]">
+            {helperText}
+          </p>
+        )}
+        {error && (
+          <p id={inputId ? `${inputId}-hint` : undefined} role="alert" className="text-xs font-bold text-[#FF334B]">
+            {error}
+          </p>
+        )}
       </div>
     );
   }

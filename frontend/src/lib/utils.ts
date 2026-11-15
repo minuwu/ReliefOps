@@ -14,6 +14,18 @@ export function formatCurrency(amount: number | null | undefined, currency: stri
   }).format(amount);
 }
 
+/** `account_check` -> `Account check`. One label format for every status/enum chip. */
+export function formatEnumLabel(value: string | null | undefined): string {
+  if (!value) return "—";
+  const words = value.replace(/_/g, " ").trim();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+/** `pluralize(1, "case")` -> `1 case`, `pluralize(3, "case")` -> `3 cases`. */
+export function pluralize(count: number, singular: string, plural = `${singular}s`): string {
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
 export function formatDate(isoDate: string | null | undefined): string {
   if (!isoDate) return "—";
   try {

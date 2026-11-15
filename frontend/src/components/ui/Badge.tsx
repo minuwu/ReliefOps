@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 import { CaseStatus, DeadlineState, ReviewLane } from '@/types/api';
 
 interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
-  variant?: 'default' | 'secondary' | 'outline' | 'destructive' | 'success' | 'warning' | 'info';
+  variant?: 'default' | 'secondary' | 'outline' | 'destructive' | 'success' | 'warning' | 'info' | 'acid';
   status?: CaseStatus;
   deadlineState?: DeadlineState;
   reviewLane?: ReviewLane;
@@ -18,76 +18,79 @@ export function Badge({
   children,
   ...props
 }: BadgeProps) {
-  let computedClass = 'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors';
+  let computedClass =
+    'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-transform duration-100 border-2 border-[#09090B] shadow-[1px_1px_0px_0px_#09090B] font-["Space_Grotesk",sans-serif]';
 
   if (status) {
     switch (status) {
       case 'received':
-        computedClass = cn(computedClass, 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700');
+        computedClass = cn(computedClass, 'bg-[#E4E4E7] text-[#09090B]');
         break;
       case 'verified':
-        computedClass = cn(computedClass, 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800');
+        computedClass = cn(computedClass, 'bg-[#93C5FD] text-[#09090B]');
         break;
       case 'account_check':
-        computedClass = cn(computedClass, 'bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800');
+        computedClass = cn(computedClass, 'bg-[#D8B4FE] text-[#09090B]');
         break;
       case 'notice_published':
-        computedClass = cn(computedClass, 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800');
+        computedClass = cn(computedClass, 'bg-[#FDE68A] text-[#09090B]');
         break;
       case 'payout_review':
-        computedClass = cn(computedClass, 'bg-teal-50 text-teal-700 dark:bg-teal-950/60 dark:text-teal-300 border border-teal-200 dark:border-teal-800');
+        computedClass = cn(computedClass, 'bg-[#A7F3D0] text-[#09090B]');
         break;
       case 'closed':
-        computedClass = cn(computedClass, 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800');
+        computedClass = cn(computedClass, 'bg-[#86EFAC] text-[#09090B]');
         break;
     }
   } else if (deadlineState) {
     switch (deadlineState) {
       case 'on_track':
-        computedClass = cn(computedClass, 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300');
+        computedClass = cn(computedClass, 'bg-[#86EFAC] text-[#09090B]');
         break;
       case 'due_soon':
-        computedClass = cn(computedClass, 'bg-amber-50 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 animate-pulse');
+        computedClass = cn(computedClass, 'bg-[#FBBF24] text-[#09090B]');
         break;
       case 'overdue':
-        computedClass = cn(computedClass, 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 font-semibold');
+        computedClass = cn(computedClass, 'bg-[#FF334B] text-[#09090B] animate-pulse');
         break;
       case 'none':
-        computedClass = cn(computedClass, 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400');
+        computedClass = cn(computedClass, 'bg-[#E4E4E7] text-[#52525B]');
         break;
     }
   } else if (reviewLane) {
     switch (reviewLane) {
       case 'standard':
-        computedClass = cn(computedClass, 'bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300');
+        computedClass = cn(computedClass, 'bg-[#E4E4E7] text-[#09090B]');
         break;
       case 'low_confidence':
-        computedClass = cn(computedClass, 'bg-amber-50 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 font-medium');
+        computedClass = cn(computedClass, 'bg-[#FF334B] text-[#09090B]');
         break;
     }
   } else {
     switch (variant) {
-      case 'default':
-        computedClass = cn(computedClass, 'bg-primary text-primary-foreground');
+      case 'acid':
+        computedClass = cn(computedClass, 'bg-[#D2E823] text-[#09090B]');
         break;
       case 'secondary':
-        computedClass = cn(computedClass, 'bg-secondary text-secondary-foreground');
-        break;
-      case 'outline':
-        computedClass = cn(computedClass, 'border border-border text-foreground');
+        computedClass = cn(computedClass, 'bg-[#EDE8D5] text-[#09090B]');
         break;
       case 'destructive':
-        computedClass = cn(computedClass, 'bg-destructive/10 text-destructive border border-destructive/20');
+        computedClass = cn(computedClass, 'bg-[#FF334B] text-[#09090B]');
         break;
       case 'success':
-        computedClass = cn(computedClass, 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300');
+        computedClass = cn(computedClass, 'bg-[#86EFAC] text-[#09090B]');
         break;
       case 'warning':
-        computedClass = cn(computedClass, 'bg-amber-50 text-amber-800 dark:bg-amber-950 dark:text-amber-300');
+        computedClass = cn(computedClass, 'bg-[#FBBF24] text-[#09090B]');
         break;
       case 'info':
-        computedClass = cn(computedClass, 'bg-sky-50 text-sky-700 dark:bg-sky-950 dark:text-sky-300');
+        computedClass = cn(computedClass, 'bg-[#93C5FD] text-[#09090B]');
         break;
+      case 'outline':
+        computedClass = cn(computedClass, 'bg-transparent text-[#09090B]');
+        break;
+      default:
+        computedClass = cn(computedClass, 'bg-[#09090B] text-[#D2E823]');
     }
   }
 
