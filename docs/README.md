@@ -1,5 +1,8 @@
 # Repository Documentation & Artifacts Hub
 
+> 🚀 **Live Production Deployment**: **[https://reliefops.web.app](https://reliefops.web.app)**  
+> 📦 **GitHub Release**: **[v1.0.0 Releases](https://github.com/minuwu/BJET-Hackathon/releases)**
+
 Welcome to the documentation hub for **BJET-Hackathon**. All architectural plans, API specifications, and team guidelines are indexed here.
 
 ---

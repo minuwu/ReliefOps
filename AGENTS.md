@@ -3,7 +3,10 @@
 > **CRITICAL DIRECTIVE FOR ALL CODING AGENTS (Claude Code, Cursor, Antigravity, Copilot, Gemini CLI, Codex):**
 > Whenever you start or resume work in this repository:
 > - **STEP 0** — Read Section 2 ("Active Cross-Functional Request Queue"). If a request assigned to your team or contributor is `[PENDING]`, **suspend all backlog work and fulfill it first**.
-> - **STEP 1** — Before writing code, load the matching skill from `.claude/skills/` (see Section 3.3 and [docs/SKILLS.md](docs/SKILLS.md)). Skills are mandatory, not optional.
+> - **STEP 1** — **Pre-Flight Arming Hook (MANDATORY)**:
+>   - **1A. Grill Me / Align**: Proactively interview the user (`/grill-me` or `ask_question`) to clarify ambiguous requirements, constraints, and edge cases before coding.
+>   - **1B. Skill Discovery & Activation**: Check `.claude/skills/` (see Section 3.3 and [docs/SKILLS.md](docs/SKILLS.md)), find missing skills (`npx skills find "<topic>"`), and activate process skills (`superpowers`). Skills are mandatory.
+>   - **1C. Web Search for Standards**: Run `search_web` to inspect official docs, modern API standards, and library best practices rather than relying on unverified assumptions.
 > - **STEP 2** — For any question about this codebase, query the knowledge graph first: `graphify query "<question>"` (see Section 3.4).
 >
 > Cross-functional dependencies ALWAYS take precedence over isolated feature implementation.

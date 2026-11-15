@@ -1,4 +1,8 @@
-# BJET-Hackathon
+# 🛡️ ReliefOps — Shared Operations Hub for Furikomi Scam Relief
+
+> **Act on Special Measures Concerning Relief for Victims of Transfer Frauds (Act No. 133 of 2007)**  
+> 🚀 **Live Production Deployment**: **[https://reliefops.web.app](https://reliefops.web.app)** *(Mirror: [https://reliefops.firebaseapp.com](https://reliefops.firebaseapp.com))*  
+> 📦 **GitHub Release**: **[v1.0.0 Releases](https://github.com/minuwu/BJET-Hackathon/releases)**
 
 Monorepo for the team: frontend, backend, AI, docs, and the agent protocol that keeps three workstreams unblocked. Contract-first parallel development, automated pre-push sync, committed agent skills, and a knowledge graph for agentic coding.
 
@@ -24,7 +28,7 @@ sh scripts/setup.sh      # Windows: powershell -ExecutionPolicy Bypass -File scr
 Explore the end-to-end user stories, real-world personas, and interactions in our comprehensive visual walkthrough:
 👉 **[Read the Demo Walkthrough with Full Screenshots](frontend/walkthrough/README.md)**
 
-Inside the running app (`http://localhost:5173/`), click **`DEMO TOUR`** in the top navigation bar or the floating **`DEMO WALKTHROUGH & SCENARIOS`** launcher at the bottom-right. The in-app modal lets you experience any of the 6 scenarios with 1-click role and state orchestration!
+Launch the live application directly at **[https://reliefops.web.app](https://reliefops.web.app)** (or run locally at `http://localhost:5173/`), then click **`DEMO TOUR`** in the top navigation bar or the floating **`DEMO WALKTHROUGH & SCENARIOS`** launcher at the bottom-right. The in-app modal lets you experience any of the 6 scenarios with 1-click role and state orchestration!
 
 
 ## Repository Layout

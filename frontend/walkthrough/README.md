@@ -1,7 +1,9 @@
 # 🛡️ ReliefOps: Shared Operations Hub for Furikomi Scam Relief
 ### End-to-End Scenario Walkthrough & Interactive Demo Guide
 > **Japanese Furikomi Fraud Relief Act (Law No. 133 / 振り込め詐欺救済法)**  
-> *A unified, multi-tenant operations center shared across 5 regional banks, featuring Human-In-The-Loop AI vision OCR, real-time syndicate graph detection, and strict zero-leakage bank privacy.*
+> *A unified, multi-tenant operations center shared across 5 regional banks, featuring Human-In-The-Loop AI vision OCR, real-time syndicate graph detection, and strict zero-leakage bank privacy.*  
+> 🚀 **Live Production App**: **[https://reliefops.web.app](https://reliefops.web.app)** *(Mirror: [https://reliefops.firebaseapp.com](https://reliefops.firebaseapp.com))*  
+> 📦 **GitHub Release**: **[v1.0.0 Releases](https://github.com/minuwu/BJET-Hackathon/releases)**
 
 ---
 
@@ -42,7 +44,7 @@ ReliefOps transforms this broken manual workflow into an automated, highly secur
 
 ## 2. Interactive In-Website Walkthrough Launcher
 
-You do not need to imagine how the platform works—you can experience all 6 scenarios directly inside the live application!
+You do not need to imagine how the platform works—you can experience all 6 scenarios directly inside the live application at **[https://reliefops.web.app](https://reliefops.web.app)**!
 
 The web application features an **In-App Demo Walkthrough & Scenario Launcher**:
 * Click **`DEMO TOUR`** in the top navigation bar or the floating **`DEMO WALKTHROUGH & SCENARIOS`** launcher at the bottom-right of the screen.
