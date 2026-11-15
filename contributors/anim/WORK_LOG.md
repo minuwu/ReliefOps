@@ -8,6 +8,30 @@ My area (backend guide §1): the app framework (`create_app`, settings, errors, 
 
 ---
 
+## 2026-11-15 (session 5) — backend lead: finishing Asif's list, the contract and deployment
+
+From this session on I lead the whole backend (Asif's area and mine).
+
+### Completed (each step tested → commit → pull → push)
+- **Security** (`9018383`): blanked the three AI keys in `backend/.env.example` without reading or printing them. No other tracked file has key-shaped strings (checked by prefix only). **The keys are still in git history, so Galib must rotate them.**
+- **Migration 005** (`6d55546`): `users.preferred_language` (en/ja/bn) is now stored at sign-up, and reactivating a user is audited as the new `user.reactivated`. The downgrade restores the old action list `NOT VALID`, so the append-only log keeps its rows and test databases can still migrate to base. 756 tests pass twice in a row (down and up each session).
+  - Process note: a folder-wide `ruff format` reformatted ~45 of Asif's and Galib's files; I reverted that churn before committing, so only real changes went in.
+- **Asif's item 1, contract tests for his routes** ([test_contract_routes.py](../../backend/tests/api/test_contract_routes.py)): every route over HTTP, each body validated against the schema `openapi.yaml` declares **for that exact path, method and status**. It found real contract gaps right away: **21 operations could send `403`/`422`/`409` the contract didn't declare.**
+- **Contract v0.4.3** (`869b477`, additive): declared those statuses (new shared `CaseClosed`), added `user.reactivated`, and **marked all 48 operations LIVE** in API_SPEC §5 (Asif's item 4). `redocly lint`: valid (5 expected warnings).
+- **Asif's item 3, A12 Prism check:** the smoke run through `prism proxy --errors` gives **39/39 with 0 response violations**. It caught one bug, in my smoke script: it sent a `{}` body to `/extract`, which the contract defines with none.
+- **Asif's item 2** was done in session 4 (the smoke script's full demo flow).
+- **Asif's item 6:** I reviewed my own two edits to his tests (`test_db_scope.py`, `test_rls.py`). They count the fixture's own session instead of all sessions, intent unchanged, and are covered by the suite. Signed off as backend lead.
+- **Deployment, XREQ-006** (`9dc1936`): `backend/Dockerfile` (python 3.12-slim, tesseract+jpn, uv-locked, non-root, prod by default, uvicorn `--proxy-headers`), `.dockerignore`, and [docs/DEPLOY.md](../../docs/DEPLOY.md) (Cloud Run + Postgres with pgvector, roles, secrets, migrate+seed job, flags, CORS, email decision, rollback).
+  - **Rehearsed locally on an empty database with the same image:** no database URL → refuses to start; the job applies 001→005 and seeds; prod health `ok`; CORS allows `reliefops.web.app` and rejects others; **the login lockout is per client behind a proxy** (attacker IP → 429, another client → 200; without `--proxy-headers` everyone would share the proxy's IP); smoke 39/39 against the container.
+- **XREQ cards:** 002, 003 and 005 → `[RESOLVED]` with proof; 006 → `[IN_PROGRESS]` (ready, cloud steps left); 004 unchanged (the freeze needs a team decision).
+
+### Left (needs people or accounts, not code)
+- **Galib:** rotate the three AI keys.
+- **Team:** a Google Cloud project and database account for DEPLOY.md §1–5, the **email decision** (console vs SMTP), and the XREQ-004 freeze decision.
+- **Minhaz:** test XREQ-001/002/003/005 against the live backend and mark them `[VERIFIED_AND_CLOSED]`.
+
+---
+
 ## 2026-11-15 (session 4) — check after Asif's routes, and the full demo run in the smoke script
 
 ### What I checked after Asif's push (`3c506a3`)
