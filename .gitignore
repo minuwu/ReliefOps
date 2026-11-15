@@ -34,6 +34,18 @@ out/
 .turbo/
 coverage/
 .nyc_output/
+# Firebase & Cloud Credentials (sensitive)
+.firebase/
+.firebaserc
+firebase-debug.log*
+firestore-debug.log*
+ui-debug.log*
+*firebase-adminsdk*.json
+*serviceAccountKey*.json
+*service-account*.json
+google-services.json
+GoogleService-Info.plist
+.runtimeconfig.json
 
 # Logs
 logs/
