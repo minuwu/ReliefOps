@@ -61,7 +61,7 @@ This file is:
 | Request ID | Priority | From | To | Target / Title | Status | Updated (UTC+6) |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | `XREQ-001` | `P0 (Blocker)` | Frontend (Minhaz) | Backend (Asif / Anim) | Core Cases & Bank Tenant Isolation API (`GET/POST /api/cases`) | `[IN_PROGRESS]` | 2026-11-15 13:30 |
-| `XREQ-002` | `P0 (Blocker)` | Frontend (Minhaz) | AI (Galib) / Backend (Asif) | Rule D3 Vision OCR Extraction & HITL Queue (`POST /api/documents/extract`) | `[PENDING]` | 2026-11-15 11:30 |
+| `XREQ-002` | `P0 (Blocker)` | Frontend (Minhaz) | AI (Galib) / Backend (Asif) | Rule D3 Vision OCR Extraction & HITL Queue (`POST /api/documents/extract`) | `[IN_PROGRESS]` | 2026-11-15 11:30 |
 | `XREQ-003` | `P1 (High)` | Frontend (Minhaz) | Backend (Anim / Asif) | Public Citizen Intake & 6-Stage Status Tracker (`POST /api/intake`) | `[PENDING]` | 2026-11-15 11:30 |
 | `XREQ-004` | `P1 (High)` | Frontend (Minhaz) | Backend (Asif / Anim) / AI (Galib) | Cross-Bank Fraud Ring Topology & Coordinated Freeze API | `[PENDING]` | 2026-11-15 11:30 |
 
@@ -121,13 +121,13 @@ Frontend workstation and case details are fully built, responsive, and running o
 - **Priority**: `P0 (Blocker)`
 - **From**: Frontend & Architecture (Minhaz)
 - **To**: AI (Galib) / Backend (Asif)
-- **Status**: `[PENDING]`
+- **Status**: `[IN_PROGRESS]`
 - **Created**: 2026-11-15 11:30 (UTC+6)
 - **Target Interface / Endpoints**: `POST /api/documents/{id}/extract`, `GET /api/review-queue`, `POST /api/cases/{case_id}/extractions/{extraction_id}/accept`
 
 **Requirement Details:**
 Statutory Rule D3 dictates that AI is strictly an assistive advisor: **AI model output can NEVER directly modify bank ledgers or relief claims without certified human operator verification.**
-1. AI vision service must extract key fields from Japanese Furikomi vouchers / ATM slips: `transfer_amount`, `bank_name`, `branch_name`, `account_number`, `payee_name`, `transfer_date`.
+1. AI vision service must extract key fields from Japanese Furikomi vouchers / ATM slips, using the `ExtractableField` names from `docs/API_SPEC.md` §3.4: `amount`, `currency`, `transfer_date`, `account_number`, `account_holder_name` (the payee). Bank and branch are not extractable fields; the case's `bank_id` already sets the bank. The AI function is `extract_fields()` in `backend/app/services/ai_extraction.py` (Galib, API_SPEC §7.1); the caller with timeout and fallback is `backend/app/services/extraction.py` (Asif).
 2. Must calculate granular field confidence scores (0.00 to 1.00). Aggregate confidence < 0.85 automatically routes the document into the `low_confidence` review lane.
 3. Must implement a **deterministic fallback** (`source: "rules_fallback"`) when Gemini API / vision model is offline or times out, ensuring the system never crashes or halts during live judging.
 4. Human operator certification endpoint `POST /api/cases/{case_id}/extractions/{extraction_id}/accept` commits human-verified values to the case record and logs an immutable audit event.
