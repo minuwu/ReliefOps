@@ -90,10 +90,11 @@ export function CaseIntakeModal({ isOpen, onClose, onCaseCreated }: CaseIntakeMo
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
           {/* Target Bank */}
           <div className="space-y-1.5">
-            <label className="block text-xs font-bold uppercase tracking-wider text-[#09090B]">
+            <label htmlFor="intake-bank" className="block text-xs font-bold uppercase tracking-wider text-[#09090B]">
               Affected partner bank
             </label>
             <select
+              id="intake-bank"
               value={bankId}
               onChange={(e) => setBankId(e.target.value as BankId)}
               className="w-full text-xs font-medium bg-[#F8F4E8] border border-[#09090B]/20 rounded-xl p-2.5 focus:outline-none focus:border-[#09090B]"
@@ -108,10 +109,11 @@ export function CaseIntakeModal({ isOpen, onClose, onCaseCreated }: CaseIntakeMo
 
           {/* Scam Typology */}
           <div className="space-y-1.5">
-            <label className="block text-xs font-bold uppercase tracking-wider text-[#09090B]">
+            <label htmlFor="intake-scam-type" className="block text-xs font-bold uppercase tracking-wider text-[#09090B]">
               Scam categorization
             </label>
             <select
+              id="intake-scam-type"
               value={scamType}
               onChange={(e) => setScamType(e.target.value as ScamType)}
               className="w-full text-xs font-medium bg-[#F8F4E8] border border-[#09090B]/20 rounded-xl p-2.5 focus:outline-none focus:border-[#09090B]"
@@ -201,10 +203,11 @@ export function CaseIntakeModal({ isOpen, onClose, onCaseCreated }: CaseIntakeMo
 
         {/* Narrative Description */}
         <div className="space-y-1.5 pt-3 border-t border-[#09090B]/15">
-          <label className="block text-xs font-bold uppercase tracking-wider text-[#09090B]">
+          <label htmlFor="intake-description" className="block text-xs font-bold uppercase tracking-wider text-[#09090B]">
             Incident summary / police report reference
           </label>
           <textarea
+            id="intake-description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={2}

@@ -31,7 +31,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     };
 
     const sizeStyles = {
-      sm: 'h-8 px-3 py-1 text-[11px] gap-1.5 rounded-lg shadow-hard-sm hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_#09090B] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none',
+      sm: 'h-8 px-3 py-1 text-xs gap-1.5 rounded-lg shadow-hard-sm hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_#09090B] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none',
       md: 'h-10 px-5 py-2 text-xs gap-2 rounded-xl shadow-hard hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-hard-sm active:translate-x-[4px] active:translate-y-[4px] active:shadow-none',
       lg: 'h-13 px-8 py-4 text-sm gap-2.5 rounded-xl shadow-hard-lg hover:translate-x-[4px] hover:translate-y-[4px] hover:shadow-hard active:translate-x-[8px] active:translate-y-[8px] active:shadow-none',
       icon: 'h-9 w-9 p-0 rounded-lg shadow-hard-sm hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none active:translate-x-[2px] active:translate-y-[2px]',

@@ -8,7 +8,7 @@ interface UrgentCasesListProps {
 }
 
 export function UrgentCasesList({ cases, onSelectCase }: UrgentCasesListProps) {
-  const urgentCases = cases
+  const allUrgentCases = cases
     .filter(
       (c) =>
         c.deadline_state === 'overdue' ||
@@ -24,13 +24,17 @@ export function UrgentCasesList({ cases, onSelectCase }: UrgentCasesListProps) {
       const diff = priority(b) - priority(a);
       if (diff !== 0) return diff;
       return (b.amount || 0) - (a.amount || 0);
-    })
-    .slice(0, 5);
+    });
 
-  if (urgentCases.length === 0) {
+  const totalUrgentCount = allUrgentCases.length;
+  const urgentCases = allUrgentCases.slice(0, 5);
+
+  if (totalUrgentCount === 0) {
     return (
       <div className="rounded-2xl border-2 border-[#09090B] bg-[#F8F4E8] shadow-hard p-4 sm:p-6">
-        <h2 className="text-sm font-bold uppercase tracking-wide text-[#09090B]">Needs attention</h2>
+        <h2 className="text-sm font-bold uppercase tracking-wide text-[#09090B]">
+          Needs attention (0)
+        </h2>
         <p className="text-sm text-[#52525B] mt-3">No urgent cases.</p>
       </div>
     );
@@ -39,9 +43,13 @@ export function UrgentCasesList({ cases, onSelectCase }: UrgentCasesListProps) {
   return (
     <div className="rounded-2xl border-2 border-[#09090B] bg-[#F8F4E8] shadow-hard p-4 sm:p-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-bold uppercase tracking-wide text-[#09090B]">Needs attention</h2>
+        <h2 className="text-sm font-bold uppercase tracking-wide text-[#09090B]">
+          Needs attention ({totalUrgentCount})
+        </h2>
         <span className="text-xs font-mono text-[#52525B]">
-          {urgentCases.length} {urgentCases.length === 1 ? 'case' : 'cases'}
+          {urgentCases.length < totalUrgentCount
+            ? `Top ${urgentCases.length} of ${totalUrgentCount}`
+            : `${totalUrgentCount} ${totalUrgentCount === 1 ? 'case' : 'cases'}`}
         </span>
       </div>
 
@@ -76,6 +84,9 @@ export function UrgentCasesList({ cases, onSelectCase }: UrgentCasesListProps) {
               ) : null}
               <span className="font-mono text-xs font-bold text-[#09090B]">
                 {formatCurrency(caseItem.amount || 0, 'JPY')}
+              </span>
+              <span className="font-mono text-xs text-[#52525B]">
+                {formatDate(caseItem.reported_date)}
               </span>
               {caseItem.deadline && (
                 <span className="font-mono text-xs text-[#52525B]">

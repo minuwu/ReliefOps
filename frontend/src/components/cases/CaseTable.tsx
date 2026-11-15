@@ -15,7 +15,7 @@ export function CaseTable({ cases, focusedIndex, onSelectCase }: CaseTableProps)
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="border-b border-[#09090B]/15 bg-[#EDE8D5]/60 text-xs font-bold uppercase tracking-wider text-[#52525B]">
+            <tr className="border-b border-[#09090B]/15 text-xs font-bold uppercase tracking-wide text-[#52525B]">
               <th scope="col" className="whitespace-nowrap py-3.5 px-4">Case reference</th>
               <th scope="col" className="whitespace-nowrap py-3.5 px-4">Bank</th>
               <th scope="col" className="whitespace-nowrap py-3.5 px-4">Victim</th>
@@ -101,7 +101,7 @@ export function CaseTable({ cases, focusedIndex, onSelectCase }: CaseTableProps)
                         )}
                         {caseItem.flags.shared_account_case_count > 0 && (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-[#FF334B]/20 text-[#FF334B] border border-[#FF334B]/40">
-                            Syndicate ({caseItem.flags.shared_account_case_count})
+                            Shared account ({caseItem.flags.shared_account_case_count})
                           </span>
                         )}
                       </div>

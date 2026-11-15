@@ -15,7 +15,7 @@ export function CaseStatStrip({
   overdueCount,
 }: CaseStatStripProps) {
   return (
-    <div className="rounded-2xl border-2 border-[#09090B] bg-[#F8F4E8] shadow-hard p-4 sm:p-5">
+    <div className="rounded-2xl border-2 border-[#09090B] bg-[#F8F4E8] shadow-hard p-4 sm:p-6">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-0 lg:divide-x divide-[#09090B]/15">
         {/* Total Claims Value */}
         <div className="lg:px-5 first:pl-0 flex items-center gap-3">

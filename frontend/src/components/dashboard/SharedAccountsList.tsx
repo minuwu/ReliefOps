@@ -39,7 +39,7 @@ export function SharedAccountsList({ alerts, onInspectCase }: SharedAccountsList
       <div className="divide-y divide-[#09090B]/10">
         {alerts.map((alert) => (
           <div
-            key={alert.account_number}
+            key={`${alert.bank_id}:${alert.account_number}`}
             className="py-3 first:pt-0 last:pb-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
           >
             <div className="space-y-1 min-w-0">
