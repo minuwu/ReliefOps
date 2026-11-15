@@ -257,7 +257,7 @@ Provides the showstopper feature for hackathon judging: uncovering organized cri
 **Fulfillment & Proof:**
 - **Branch / Commit**: `main` (Galib's detection part; commit in this card's history)
 - **Status / Notes**: Split agreed in the card: **AI (Galib), done:** `app/services/fraud_rings.detect_rings(cases, include_same_bank=False, frozen_accounts=...)` returns the response items above, plus `reasons` (plain-language why), `link` (`confirmed` / `possible` / `same_bank`) and `holder_names`. It matches accounts across formats (`98-7654-3210` = `9876543210`) and holder names across spellings (`GLOBAL ASSET TRUST` = `カ）グローバルアセットトラスト`). Same digits with different holder names is only `POSSIBLE_LINK`, never `CRITICAL_SYNDICATE`, so an innocent account isn't flagged. Pure function, no DB or model calls. **Backend (Asif / Anim), open:** load the cases the supervisor may see (`id, reference, bank_id, amount, account_number, account_holder_name, transfer_date`), call `detect_rings`, serve `GET`; the `freeze` POST (supervisor only, audited, a human action) and storing frozen accounts to pass back in.
-- **Verification Proof**: `cd backend && uv run pytest tests/ai/test_fraud_rings.py` → 17 passed (seed story: account `9876543210`, 3 cases, bank_a + bank_b, ¥3,700,000 → `CRITICAL_SYNDICATE`).
+- **Verification Proof**: `cd backend && uv run pytest tests/ai/test_fraud_rings.py` → 19 passed. On the real demo seed (`app.seed.all_cases()`): exactly one cross-bank ring, account `9876543210`, 3 cases at bank_a + bank_b, ¥4,485,000 → `CRITICAL_SYNDICATE` (test `test_the_real_demo_seed_has_one_critical_cross_bank_ring`).
 
 ---
 

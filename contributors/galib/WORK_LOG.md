@@ -24,7 +24,7 @@ Update after each work session. Newest entry first. Bangladesh time (UTC+6). Lin
 - Checked main: Asif already wired the case assistant (`victim_chat` calls `rag.embed(task="query")` and `rag.answer`, seed loads `kb_passages.json`) and moved the AI packages into `pyproject.toml`. No handoff message needed. `uv run pytest tests/ai tests/unit`: 146 passed.
 - Claimed XREQ-004 (`[IN_PROGRESS]`) with a split in the card: `backend/app/services/fraud_rings.py` (`detect_rings`) is done; endpoints and freeze stay with Backend.
 - Matching: account numbers across formats; holder names across spellings via a sound key (English ↔ katakana, company markers ignored). Same digits with different names → `POSSIBLE_LINK` only, so an innocent account holder isn't flagged critical. Every ring has plain-language `reasons`.
-- `tests/ai/test_fraud_rings.py`: 17 passed (seed: `9876543210`, 3 cases, bank_a + bank_b, ¥3,700,000 → `CRITICAL_SYNDICATE`).
+- `tests/ai/test_fraud_rings.py`: 17 passed at first; now 19, including a test on the real demo seed: `9876543210`, 3 cases, bank_a + bank_b, ¥4,485,000 → `CRITICAL_SYNDICATE` (the ¥3,700,000 first written here was test data, corrected).
 
 ### Next
 - Backend: `GET /api/analytics/fraud-rings` calling `detect_rings`, the freeze POST (supervisor, audited), and frozen-account storage.

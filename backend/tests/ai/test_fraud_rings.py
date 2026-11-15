@@ -13,7 +13,7 @@ def case(n: int, bank: str, account: str | None, holder: str | None, amount: int
             "account_number": account, "account_holder_name": holder, "transfer_date": day}
 
 
-SEED_STORY = [  # mirrors app/seed.py SHARED_ACCOUNTS
+SEED_STORY = [  # same accounts as app/seed.py SHARED_ACCOUNTS; amounts and dates made up here
     case(3, "bank_b", "9876543210", "GLOBAL ASSET TRUST", 1_450_000, "2026-11-02"),
     case(11, "bank_b", "9876543210", "GLOBAL ASSET TRUST", 800_000, "2026-11-05"),
     case(19, "bank_a", "9876543210", "GLOBAL ASSET TRUST", 1_450_000, "2026-11-10"),
@@ -106,3 +106,25 @@ def test_short_or_missing_account_numbers_are_ignored() -> None:
 def test_name_key_examples() -> None:
     assert fr.name_key("GLOBAL ASSET TRUST") == fr.name_key("グローバルアセットトラスト")
     assert fr.name_key("株式会社") == ""
+
+
+def test_the_real_demo_seed_has_one_critical_cross_bank_ring() -> None:
+    seed = pytest.importorskip("app.seed")
+    cases = [{"id": c.reference, "reference": c.reference, "bank_id": c.bank_id, "amount": c.amount,
+              "account_number": c.account_number, "account_holder_name": c.account_holder_name,
+              "transfer_date": c.transfer_date} for c in seed.all_cases()]
+
+    rings = fr.detect_rings(cases)
+
+    assert [(r["account_number"], r["threat_level"], r["case_count"], r["banks_involved"]) for r in rings] == [
+        ("9876543210", "CRITICAL_SYNDICATE", 3, ["bank_a", "bank_b"])]
+    assert rings[0]["total_amount"] == 4_485_000
+
+
+def test_day_spans_read_naturally() -> None:
+    one_day = fr.detect_rings([case(1, "bank_a", "2223334", "X Trading", day="2026-11-01"),
+                               case(2, "bank_b", "2223334", "X Trading", day="2026-11-02")])
+    same_day = fr.detect_rings([case(1, "bank_a", "2223335", "X Trading", day="2026-11-01"),
+                                case(2, "bank_b", "2223335", "X Trading", day="2026-11-01")])
+    assert "transfers within 1 day" in one_day[0]["reasons"]
+    assert "transfers on the same day" in same_day[0]["reasons"]

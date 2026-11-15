@@ -126,7 +126,8 @@ def _assess(account: str, cases: list[dict[str, Any]], *, name_conflict: bool,
     days = sorted(d for d in (_day(c.get("transfer_date")) for c in cases) if d)
     burst = len(days) >= 2 and (days[-1] - days[0]).days <= BURST_DAYS
     if burst:
-        reasons.append(f"transfers within {(days[-1] - days[0]).days} days")
+        span = (days[-1] - days[0]).days
+        reasons.append("transfers on the same day" if span == 0 else f"transfers within {span} day{'s' if span > 1 else ''}")
 
     if name_conflict or (len(banks) > 1 and not confirmed):
         level = "POSSIBLE_LINK"
