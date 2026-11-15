@@ -75,6 +75,34 @@ def app_engine(migrated: Config) -> Iterator[Engine]:
     engine.dispose()
 
 
+@pytest.fixture(scope="module")
+def app_db(migrated: Config) -> Iterator[Engine]:
+    """app/db.py's engine on the test database, for tests that call app code."""
+    from app import db
+
+    engine = db.init_engine(_test_url("TEST_DATABASE_URL"))
+    yield engine
+    db.dispose_engine()
+
+
+@pytest.fixture(scope="session")
+def callers(world: dict[str, str]) -> dict[str, object]:
+    """A StaticCaller per test account, keyed like ``world``."""
+    from uuid import UUID
+
+    from app.services.caller import StaticCaller
+
+    roles = {
+        "operator": ("operator", None), "supervisor": ("supervisor", None),
+        "viewer_a": ("bank_viewer", "bank_a"), "viewer_b": ("bank_viewer", "bank_b"),
+        "victim1": ("victim", None), "victim2": ("victim", None),
+    }
+    return {
+        key: StaticCaller(user_id=UUID(world[key]), name=key, role=role, bank_id=bank)
+        for key, (role, bank) in roles.items()
+    }
+
+
 @pytest.fixture
 def owner_tx(owner_engine: Engine) -> Iterator[Connection]:
     """A migrator connection in a system-scoped transaction that is always rolled back."""

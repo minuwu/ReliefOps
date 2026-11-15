@@ -4,6 +4,21 @@ Owner: Asif (`MdAsif-Hossain`) — Role: Backend / Services / Database — Branc
 
 Use this log to share progress, planned work, and dependencies with the team. Update it after each work session, keep the newest entry first, and use Bangladesh time (UTC+6). Link to relevant issues, commits, or pull requests when available.
 
+## 2026-11-15 (session 11) — my services, built before Anim's framework
+
+Decision (Asif): build all my business logic as **service functions with database tests** now. When Anim's framework lands, each endpoint is a thin router on top. None of Anim's files are touched. How the pieces fit together:
+- Services raise `ServiceError(status, code, message, details)` ([service_errors.py](../../backend/app/services/service_errors.py)); Anim's handler maps it to the envelope.
+- They take a `Caller` ([caller.py](../../backend/app/services/caller.py)), which his `Principal` satisfies.
+- `cases` is read and written through plain SQL ([case_sql.py](../../backend/app/services/case_sql.py)), so there's no second ORM mapping of his table.
+
+### Completed (each part: tests → commit → pull → push to `main`)
+- Test folder renamed `tests/rls` → `tests/database`: one shared, migrated test database for every database test.
+- **B1, foundation:**
+  - `ServiceError` and `Caller`.
+  - Contract types in [common.py](../../backend/app/models/common.py) (`Money` serializes to a JSON number).
+  - `case_sql`: the atomic version check (two parallel edits with the same version → exactly one wins), `CASE_CLOSED`, 404 for another bank's case, `403` when RLS refuses a write, the §3.3 missing-fields rule and the §3.1 stage deadlines.
+  - 168 tests pass.
+
 ## 2026-11-15 (session 10) — backend Phase 1 done
 
 ### Completed (each part tested, then pushed to `main`)
