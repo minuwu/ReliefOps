@@ -124,6 +124,41 @@ I read Asif's whole work log, [REMAINING_WORK.md](../asif/REMAINING_WORK.md), mi
   - [test_case_moves.py](../../backend/tests/api/test_case_moves.py): 9 tests, including **the full received → paid_out lifecycle**, `MISSING_REQUIRED_INFO` `[document]`, a skipped step, a back move without a note, money closures, **two concurrent transitions → one `200`, one `409`, one audit entry**, and every role. **535 tests pass.**
   - **XREQ-001 → `[RESOLVED]`** in AGENTS.md, with proof. Minhaz can switch the case screens off the mock.
 
+- **N12, staff accounts** ([services/staff.py](../../backend/app/services/staff.py), [routers/staff.py](../../backend/app/routers/staff.py)):
+  - `POST /api/invitations` (supervisor) → `201` `Invitation`, plus an email with a 72 h link `/accept-invitation?token=…`. `bank_id` is required for `bank_viewer` and refused for other roles (`422`). An email that already has an account or a pending invitation → `409 BAD_REQUEST` (the contract's code). An expired pending invitation is marked `expired` so the email can be invited again.
+  - `GET /api/invitations` lists newest first; the status reads `expired` after 72 h. `POST /api/invitations/{id}/revoke` works only on pending ones (`409 INVALID_STATUS_TRANSITION` `{from, to: "revoked", allowed: []}`; unknown → `404`).
+  - `POST /api/auth/accept-invitation` creates the account with the invited role and bank, email verified, and marks the invitation accepted in one transaction (single-use, `400 INVALID_TOKEN` after that).
+  - `GET /api/users` (operator, supervisor): active users, with a `role` filter; `include_inactive` works only for supervisors. `PATCH /api/users/{id}` `{is_active}` (supervisor): deactivating **ends every session** and blocks login (`401 INVALID_CREDENTIALS`); reactivating restores it. A supervisor can't deactivate themselves (`422`).
+  - Audited: `user.invited`, `user.invitation_revoked`, `user.joined`, `user.deactivated`.
+  - **Open (Asif, contract):** there's no `user.reactivated` audit action, so a reactivation is recorded as `user.deactivated` with `changes.is_active {from: false, to: true}` and the summary "reactivated". Add the action in a migration and the contract?
+  - [test_staff.py](../../backend/tests/api/test_staff.py): 8 tests, including **an invited bank_c viewer who, once joined, sees only bank_c cases**. Responses are validated against `openapi.yaml`. **545 tests pass.**
+
+- **N13, notes**: `POST /api/cases/{id}/notes` (operator, supervisor) → `201` `Note`, body 1–4000 characters. Notes are **the one write a closed case still accepts**, and a note doesn't change the case's version. Audited as `note.added`; the case detail lists notes newest first. [test_notes.py](../../backend/tests/api/test_notes.py): 3 tests. **548 tests pass.**
+- **Frontend check:** Minhaz's routes `/verify-email`, `/reset-password`, `/accept-invitation` and `/claim-case` read `?token=`, which **matches the links my emails send** (and Asif's claim link), so the email-link flows work end to end.
+
+- **N14, dashboard and alerts** ([services/dashboard.py](../../backend/app/services/dashboard.py)):
+  - `GET /api/dashboard/stats` (supervisor: all banks, or one with `bank_id`; bank_viewer: always their own bank, from RLS, with `bank_id` ignored and `workload: []`). Returns open, overdue, due-soon and unassigned counts, `avg_handling_days` (closed cases: `closed_at − reported_date`), pending AI reviews (total and low-confidence), `cases_by_status` (all 6 keys) and per-operator workload (every active operator, including idle ones).
+  - The **overdue and due-soon SQL is the case list's own filter**, so the tests check that each dashboard number equals the case-list total for the same filter.
+  - `GET /api/alerts/shared-accounts` (supervisor; `min_cases` 2–50): grouped by `(bank_id, account_number)`, most cases first, with total amount and the cases. **Never compares across banks** (that's XREQ-004 and still needs the team decision); the test checks that bank_a's single `9876543210` case doesn't join bank_b's ring.
+  - [test_dashboard.py](../../backend/tests/api/test_dashboard.py): 6 tests, validated against `openapi.yaml`. **554 tests pass.**
+
+- **N15, permission table** ([test_permissions.py](../../backend/tests/api/test_permissions.py), guide §8.5): API_SPEC §2 as data, one row per route, checked for operator, supervisor, viewer_b and victim1.
+  - An allowed role must pass the role check (write routes get an empty body, so `422` and nothing is written). A denied role gets exactly `403`, no token gets `401` on every protected route, and the 9 public routes need no token. The cross-bank `404` is checked too.
+  - **Guard:** a test fails if a mounted `/api/*` route is missing from the table, so a new route can't ship without its permission row. **When §2 changes, change this table first.**
+  - 91 checks. **645 tests pass.**
+
+- **N16, smoke script** ([scripts/smoke.sh](../../backend/scripts/smoke.sh), guide §8.8): `bash scripts/smoke.sh [BASE]` against a running, seeded server (or the Prism proxy on `:4011`). PASS/FAIL per line, non-zero exit on any failure.
+  - Covers health, banks, demo logins, victim3 → `EMAIL_NOT_VERIFIED`, `401`/`403`, **cross-bank 404 and the bank_b-only list**, and victim chat. A phone case goes create → `MISSING_REQUIRED_INFO` → edit (version bump) → `STALE_CASE` → `403` money closure → assign → note → withdrawn → closed read-only. Then the dashboards, alerts, sign-up (`422` with a role, `202` otherwise), logout → `401`, and, last, 5 wrong passwords → `429`.
+  - **Ran it against a real `fastapi run` server (uvicorn) on the seeded Docker database: 29/29 PASS.** The upload → AI extraction → review → Verified step is printed as `SKIP` until Asif's document routes are mounted.
+
+### Handoff: what's live now (all on `main`)
+- **Phase 1–3 of my list is done (N1–N16).** Live routes: health, banks, all of `/api/auth/*`, invitations, users, cases (list, get, create, edit, transition, assign, notes), dashboard and alerts, plus Asif's victim chat (mounted with real auth).
+- **Asif: your services can get routers now.** Use `from app.security import StaffUser, AnyStaffUser, VictimUser, SessionDep` and raise `ApiError`/`ServiceError` as you do (a `429` with `details.retry_after` gets `Retry-After` automatically). Add each router to `ROUTERS` in `main.py` **and a row to `tests/api/test_permissions.py`** (its guard test fails on an unlisted route).
+  - Still unrouted: documents upload/download, extract, get extraction, review, review queue, case history + CSV, audit logs, victim cases (report, list, get, patch), victim invite + claim.
+  - `tests/api/conftest.py` gives you `client`, `login_as(...)` and the seeded data; `tests/api/contract.py` `validate(body, "SchemaName")` checks a response against `openapi.yaml`.
+- **Open questions for Asif:** (1) `users.preferred_language` column, or drop the field from `SignupRequest`? (2) add a `user.reactivated` audit action? (3) a default `connect_timeout` in `db.init_engine`?
+- **Galib:** rotate the three AI keys in `backend/.env.example` (critical finding at the top).
+
 ### Local test database (for anyone on Windows without Postgres)
 ```bash
 docker run -d --name reliefops-pg -e POSTGRES_PASSWORD=postgres -p 127.0.0.1:55433:5432 pgvector/pgvector:pg16
@@ -139,8 +174,8 @@ cd backend && uv run pytest -q
 
 ### Next (in order, each: tests → commit → pull → push)
 - ~~N2~~ done.
-- ~~N3~~, ~~N4~~, ~~N5~~, ~~N6~~, ~~N7~~, ~~N8~~, ~~N9~~, ~~N10~~, ~~N11~~ done (Phase 2 complete; XREQ-001 resolved).
-- Next, Phase 3: N12 (invitations, accept, deactivate, users list), N13 (notes), N14 (dashboard, alerts), N15 (permission table), N16 (smoke script).
+- ~~N3~~, ~~N4~~, ~~N5~~, ~~N6~~, ~~N7~~, ~~N8~~, ~~N9~~, ~~N10~~, ~~N11~~ done (Phase 2 complete; XREQ-001 resolved). ~~N12~~, ~~N13~~, ~~N14~~, ~~N15~~, ~~N16~~ done (Phase 3 complete).
+- Next, Phase 4 (extras): N17 staff chat (`GET /api/cases/{id}/chat`, `POST …/chat/reply`) and N18 bluebooks (`/api/kb/documents` list, upload, publish, archive). Also: update my use-case diagram to v0.4.2, and answer XREQ-003's auth part.
 
 ### Blockers / handoff
 - **Galib:** rotate the AI keys (critical finding above).
