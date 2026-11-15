@@ -4,6 +4,24 @@ Owner: Asif (`MdAsif-Hossain`) — Role: Backend / Services / Database — Branc
 
 Use this log to share progress, planned work, and dependencies with the team. Update it after each work session, keep the newest entry first, and use Bangladesh time (UTC+6). Link to relevant issues, commits, or pull requests when available.
 
+## 2026-11-15 (session 13) — review of the Codex session's work
+
+Session 12 below was written by a parallel Codex session (A15 victim chat). Reviewed with the code read in full and the suite run repeatedly against pgvector 0.8.1 (enabled in both local databases as the documented admin step). The work is careful: bank filter before ranking, RLS on every table, no transaction during AI calls, archived guidance rechecked before citing, contract-validated HTTP tests.
+
+### Committed
+- `13c4b90`: Codex's uncommitted files (chat HTTP router with `Retry-After`, null-language check, overflow-safe vectors, HTTP tests, `BACKEND_HANDOFF.md`), committed with Asif's approval.
+
+### Fixed (each with tests)
+- `ee35b5b`, **redaction too broad:** the phone filter wiped dates, hotline numbers and the digits of case references, including from the assistant's **saved** answer. Saved answers now lose only the case's own identifiers; model inputs stay fully redacted.
+  - Same commit, **mixed clocks:** the rate-limit window used Python's clock against database timestamps, so `Retry-After` could reach 3601 s (the flaky HTTP 429 test). It now uses the database clock and is capped at 3600.
+- `96ae463`, **audit order:** `audit.record` (mine) stamped `at` with Python's clock, which ticks every ~15 ms on Windows, so quick invite → claim events could tie and come back out of order (the flaky claim test). It now uses `clock_timestamp()`.
+- `9b347cc`, **no circuit breaker in chat:** it only recorded "recently unavailable" and still called the provider, so every victim waited out the full timeout during an outage. It now uses the shared `CircuitBreaker` (3 failures → skip for 60 s → one trial). Busy slots don't count, and a trial that never reaches the AI is released.
+- `6461cdf`, migration `004_chat_writes`, **forged answers:** 003 let a victim's own session insert `role = 'assistant'` rows. Now victims insert questions only, and the server writes answers in the system scope. The trigger function's `search_path` is also pinned.
+
+### Result
+- 371 tests pass, in three consecutive full runs; lint clean; dev database migrated to `004_chat_writes`.
+- Dev dependencies the tests now need, for Anim's `pyproject.toml`: `fastapi`, `httpx`, `jsonschema`, `pyyaml`.
+
 ## 2026-11-15 (session 12) ? remaining tasks, part 3
 
 - Completed victim chat persistence, bounded AI calls, citation checks, offline fallback, escalation, feedback and concurrent hourly limits.
