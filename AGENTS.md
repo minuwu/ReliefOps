@@ -66,7 +66,7 @@ This file is:
 | `XREQ-004` | `P1 (High)` | Frontend (Minhaz) | Backend (Asif / Anim) / AI (Galib) | Cross-Bank Shared Accounts (`GET /api/alerts/shared-accounts`); freeze needs a team decision | `[IN_PROGRESS]` | 2026-11-15 20:10 (detection done, freeze not agreed) |
 | `XREQ-005` | `P1 (High)` | Frontend (Minhaz) | Backend (Anim / Asif) | All 48 v0.4.2 routes mounted; the 3 contract deviations closed (contract v0.4.3) | `[RESOLVED]` | 2026-11-15 22:15 (48/48 routes, v0.4.3) |
 | `XREQ-006` | `P0 (Blocker)` | Frontend (Minhaz) | Backend (Asif / Anim) / AI (Galib) | Deploy backend + database + AI to the cloud, post the public HTTPS API URL, allow the frontend origin (CORS) | `[IN_PROGRESS]` | 2026-11-15 22:15 (image + runbook ready, cloud steps left) |
-| `XREQ-007` | `P0 (Blocker)` | Frontend (Minhaz) | Backend (Asif / Anim) / AI (Galib) | Free always-on deploy: verify, then implement [docs/DEPLOY-FREE.md](docs/DEPLOY-FREE.md) (HF Spaces + Neon + Firebase), post `API_URL` | `[PENDING]` | 2026-11-15 23:30 |
+| `XREQ-007` | `P0 (Blocker)` | Frontend (Minhaz) | Backend (Asif / Anim) / AI (Galib) | Free always-on deploy: verify, then implement [docs/DEPLOY-FREE.md](docs/DEPLOY-FREE.md) (Northflank Sandbox service + Postgres, Firebase), post `API_URL` | `[PENDING]` | 2026-11-16 00:10 (revised: HF Spaces is paid now) |
 
 *(When adding a request: append a row above AND add a detailed card in 2.2. Never insert in the middle.)*
 
@@ -391,40 +391,41 @@ EMAIL_MODE: console | smtp
 - **From**: Frontend (Minhaz)
 - **To**: Backend (Asif / Anim) / AI (Galib)
 - **Status**: `[PENDING]`
-- **Created**: 2026-11-15 23:30 (UTC+6)
+- **Created**: 2026-11-15 23:30 (UTC+6), **revised** 2026-11-16 00:10
 - **Target Interface / Endpoint**: a public `https://` base URL serving `/api/*` (contract v0.4.3), free and awake during judging
 
-**Why:** XREQ-006 is stuck on Cloud Run. `--min-instances=1` and Cloud SQL need a paid billing account. The team's constraints are: free, no card, does not sleep when idle, fast. The new path is **Firebase Hosting (frontend, already live) + Hugging Face Spaces Docker (backend + AI, existing Dockerfile unchanged) + Neon (Postgres 16 + pgvector)**. Full runbook: [docs/DEPLOY-FREE.md](docs/DEPLOY-FREE.md).
+**Why:** XREQ-006 is stuck on Cloud Run. `--min-instances=1` and Cloud SQL need a paid billing account. The team's constraints are: free, no card, does not sleep, fast, simple. **Revised path:** Firebase Hosting (frontend, already live) + **Northflank Developer Sandbox** for everything else: one service built from the existing `backend/Dockerfile` (backend + AI), plus a Postgres addon with `pgvector` built in. One platform, always on, no card. Full runbook: [docs/DEPLOY-FREE.md](docs/DEPLOY-FREE.md).
+
+**The first version of this card (Hugging Face Spaces + Neon) is withdrawn.** HF now requires a paid plan to create Docker Spaces. If you already started on HF, stop.
 
 **Order (do not skip ahead):**
-1. **Follow and verify first (Phase A in the runbook).** Each owner runs their checks and ticks them in the reply block below:
-   - Backend (Asif / Anim): A1 HF free tier terms, A2 image builds, A3 image runs as uid 1000, A4 Neon pgvector + roles, A5 email choice.
-   - AI (Galib): A6 rotate the three AI keys, A7 free quotas cover a judging day, A8 OCR + extraction + RAG work in the built image with `AI_MODE=live`.
-   - If any check fails, write why here and stop. Minhaz picks the fallback (Cloud Run `--min-instances=0` + Neon, needs a card).
-2. **Then implement (Phase B):** Neon database and roles, migrate + seed from a laptop, HF Space with secrets, `backend/README.md` front matter (`sdk: docker`, `app_port: 8080`), `git subtree push --prefix backend ...`, live checks, keep-awake ping every 30 min.
+1. **Verify first (Phase A in the runbook, about 20 min).** Each owner ticks their checks in the reply block below.
+   - Backend (Asif / Anim): A1 Sandbox is no-card and always on; A2 the Postgres addon allows `CREATE EXTENSION vector` and `CREATE ROLE ... NOBYPASSRLS`; A3 the service can get at least 0.5 vCPU / 1 GB; A4 email choice.
+   - AI (Galib): A5 rotate the three AI keys; A6 free quotas cover a judging day; A7 OCR + extraction + RAG work in the built image with `AI_MODE=live`.
+   - If a check fails, the runbook names the fallback next to it (A2 fails: database on Neon; A1 fails: Cloud Run + Neon, needs a card). Write which one you used here.
+2. **Then implement (Phase B, all in the Northflank UI):** project, Postgres addon and roles, secret group, `api` service (Dockerfile, context `/backend`, port 8080, 1 instance, health check `/api/health`), `migrate` job (`alembic upgrade head && python -m app.seed`), live checks.
 3. **Then post the reply block.** Minhaz rebuilds the frontend against the URL and redeploys Firebase the same hour.
 
 **Rules:**
-- Secrets only in the Space's secret settings. Never in git, never in `.env.example`, never in a saved git remote URL.
-- Rotate the AI keys before the first deploy (old ones are in git history, `9018383`).
-- One Space, one container (in-memory rate limits). No pushes to the Space during judging.
+- Secrets live only in the Northflank secret group. Never in git, never in `.env.example`.
+- Rotate the AI keys before the first deploy (the old ones are in git history, `9018383`).
+- One instance only (in-memory rate limits). Turn auto-deploy off before judging.
 
 **Expected reply (fill in below):**
 ```text
-Phase A  A1 [ ] A2 [ ] A3 [ ] A4 [ ] A5 [ ] (backend)   A6 [ ] A7 [ ] A8 [ ] (AI)
-Notes on any failed check:
-API_URL=https://<hf-owner>-reliefops-api.hf.space      # no trailing slash, no /api suffix
+Phase A  A1 [ ] A2 [ ] A3 [ ] A4 [ ] (backend)   A5 [ ] A6 [ ] A7 [ ] (AI)
+Fallback used (if any):
+API_URL=https://<...>.code.run          # no trailing slash, no /api suffix
 CORS header for https://reliefops.web.app: yes/no
 DB migrated + seeded (seed line matches): yes/no
 /api/health db=ok ai=ok rag=ok: yes/no
 smoke.sh: __/39
 Live extraction + KB chat checked (Galib): yes/no
-Keep-awake monitor URL/provider:
 EMAIL_MODE: console | smtp
 ```
 
 **Fulfillment & Proof (filled by recipient on completion):**
-- **Branch / Commit**: `[commit hash for backend/README.md and any Dockerfile uid change]`
+- **Branch / Commit**: `[commit hash, if any repo change was needed]`
 - **Status / Notes**: `[Phase A results, then deploy notes]`
 - **Verification Proof**: `[curl /api/health output, CORS header line, smoke.sh result]`
 ---
