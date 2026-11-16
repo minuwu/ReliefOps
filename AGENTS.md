@@ -69,6 +69,8 @@ This file is:
 | `XREQ-005` | `P1 (High)` | Frontend (Minhaz) | Backend (Anim / Asif) | All 48 v0.4.2 routes mounted; the 3 contract deviations closed (contract v0.4.3) | `[RESOLVED]` | 2026-11-15 22:15 (48/48 routes, v0.4.3) |
 | `XREQ-006` | `P0 (Blocker)` | Frontend (Minhaz) | Backend (Asif / Anim) / AI (Galib) | Deploy backend + database + AI to the cloud, post the public HTTPS API URL, allow the frontend origin (CORS) | `[VERIFIED_AND_CLOSED]` | 2026-11-16 23:58 (closed through XREQ-007; API on Azure VM) |
 | `XREQ-007` | `P0 (Blocker)` | Frontend (Minhaz) | Backend (Asif / Anim) / AI (Galib) | Free always-on deploy: verify, then implement [docs/DEPLOY-FREE.md](docs/DEPLOY-FREE.md) (Azure for Students VM + Supabase + Firebase), post `API_URL` | `[VERIFIED_AND_CLOSED]` | 2026-11-16 23:58 (frontend on `https://reliefops.web.app` now calls `https://reliefops-api.japaneast.cloudapp.azure.com`, mock off, login verified) |
+| `XREQ-008` | `P0 (Blocker)` | Frontend (Minhaz) | Backend (Asif / Anim) | Real email delivery on the live API: new accounts get no verification mail (`EMAIL_MODE=console`) | `[PENDING]` | 2026-11-17 |
+| `XREQ-009` | `P0 (Blocker)` | Frontend (Minhaz) | Everyone (Asif / Anim / Galib / Minhaz) | Human smoke test of the live site with fresh accounts and real inboxes, no seed credentials (G-53) | `[PENDING]` | 2026-11-17 |
 
 *(When adding a request: append a row above AND add a detailed card in 2.2. Never insert in the middle.)*
 
@@ -495,6 +497,66 @@ EMAIL_MODE: console | smtp
     - **Minhaz:** build the frontend with `VITE_USE_MOCK=false VITE_API_URL=https://reliefops-api.japaneast.cloudapp.azure.com`, redeploy Firebase, then mark this card `[VERIFIED_AND_CLOSED]`.
     - **Galib:** run one live extraction and one KB chat question through the URL and tick the line above.
     - **Asif:** set the repo variable `API_URL` so the keepalive runs.
+---
+
+#### `[XREQ-008]` Real email delivery on the live API (new accounts get no verification mail)
+- **Priority**: `P0 (Blocker)`
+- **From**: Frontend (Minhaz)
+- **To**: Backend (Asif / Anim)
+- **Status**: `[PENDING]`
+- **Created**: 2026-11-17 (UTC+6)
+- **Target Interface / Endpoint**: `POST /api/auth/signup`, `POST /api/auth/resend-verification`, `POST /api/auth/forgot-password`, `POST /api/invitations`, `POST /api/cases/{case_id}/victim-invite` (every flow that sends a link)
+
+**Problem (found by a real person signing up, not by any test):** a brand-new victim signs up on `https://reliefops.web.app`, sees "check your email", and nothing ever arrives. The live API runs `EMAIL_MODE=console` (XREQ-007 choice A4), so every verification, reset and invitation link is only printed to the VM log. A real user cannot verify, cannot reset a password, and an invited staff member cannot join. Every test passed because they all used the pre-verified seed accounts.
+
+**Requirement Details:**
+1. Switch the VM to `EMAIL_MODE=smtp` with a free SMTP tier (for example Brevo or Resend free plans, or a Gmail account with an app password). Set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `EMAIL_FROM` as plain values and `SMTP_PASSWORD` **only** in `deploy/azure-vm/.env.prod` on the VM (never in git, never in this file).
+2. Use a sender address the provider has verified, so mail does not land in spam. Check the Gmail and Outlook spam folders once.
+3. Links must point at `FRONTEND_BASE_URL=https://reliefops.web.app` (`/verify-email`, `/reset-password`, `/accept-invitation`).
+4. If sending fails, the API should log the error without leaking the token, and sign-up should still answer `202` (no account enumeration).
+
+**Done when (proof in this card):** with an inbox you own (not `*@mail.test`): (a) sign up a new victim → the mail arrives within a minute → the link verifies → login works; (b) forgot password → mail → reset → login with the new password; (c) a supervisor invites a new staff address → mail → accept → login. Post the time each mail took to arrive.
+
+**Fulfillment & Proof (filled by recipient on completion):**
+- **Branch / Commit**: `[commit]`
+- **Status / Notes**: `[provider, sender address, any limits such as mails per day]`
+- **Verification Proof**: `[the three flows above, with times]`
+
+---
+
+#### `[XREQ-009]` Human smoke test of the live site: fresh accounts, real inboxes, no seed credentials
+- **Priority**: `P0 (Blocker)`
+- **From**: Frontend (Minhaz)
+- **To**: Everyone (Asif / Anim / Galib / Minhaz)
+- **Status**: `[PENDING]`
+- **Created**: 2026-11-17 (UTC+6)
+- **Target Interface / Endpoint**: `https://reliefops.web.app` (live mode) against `https://reliefops-api.japaneast.cloudapp.azure.com`
+
+**Why:** XREQ-008 was missed because every human and agent test signed in with the seed accounts (`*@mail.test`, `Demo@1234`), which are pre-verified and pre-filled. Those accounts let tests pass while a real first-time user is blocked at step one. More gaps like this are likely. From now on smoke tests follow G-53.
+
+**Rules (G-53):**
+- Use the live site, a normal browser window, and **a fresh account with an inbox you own**. Gmail aliases are fine: `yourname+smoke1@gmail.com`, `yourname+smoke2@gmail.com`.
+- **Never** use seed accounts, demo passwords, the account switcher or the Demo inbox for these runs.
+- Type your own data (names, amounts, account numbers, dates); do not copy seed values.
+- Do each scenario once on a laptop and once on a phone.
+- Agents (Claude, Antigravity) follow the same rules: no seeded credentials in any smoke spec.
+
+**Scenarios (each owner runs theirs; anyone can run more):**
+1. **Victim, first visit (Minhaz):** sign up → verification mail → verify → log in → report a scam with your own details → upload a photo or PDF of a receipt → ask the case chat a question → edit your phone number → log out → forgot password → reset by mail → log in with the new password. Also: sign up again with the same email, open a used or expired link, resend verification.
+2. **New staff member (Anim):** a supervisor invites a brand-new address as operator and another as bank viewer → each accepts from the mail → sets a password → logs in. The operator works the victim's case from scenario 1 through all six stages; the bank viewer sees only their bank.
+3. **Supervisor day (Asif):** review queue on a document a human uploaded in scenario 1, edit a wrong field, accept; publish a knowledge-base document; revoke the operator from scenario 2 and confirm they are signed out; read the audit log for the case.
+4. **AI on real input (Galib):** extraction on a document you made yourself (not a seed file), including a blurry photo and a Japanese-language receipt; the case chat on a question the knowledge base does not cover; the AI-offline path (what does a user see?).
+5. **Two people at once (any):** victim and staff in two browsers on the same case: chat both ways, a status change while the victim has the page open, a session that expires mid-task.
+
+**Report:** every problem as a numbered line in your `contributors/<name>/WORK_LOG.md` under `Human smoke YYYY-MM-DD`: steps, what happened, what a person would expect, severity (P0 blocked, P1 wrong or confusing, P2 polish). Open an XREQ for anything another team must fix. Reply in this card with "scenario N: pass / N problems".
+
+**Fulfillment & Proof (filled by each recipient):**
+- **Minhaz (1)**: `[ ]`
+- **Anim (2)**: `[ ]`
+- **Asif (3)**: `[ ]`
+- **Galib (4)**: `[ ]`
+- **Anyone (5)**: `[ ]`
+
 ---
 
 ### 2.3 Blank XREQ Template (copy & paste)

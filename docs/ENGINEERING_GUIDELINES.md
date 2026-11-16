@@ -101,6 +101,7 @@ Review shrinks to looking at **verification artifacts**. Spend most of your effo
 - [ ] **G-50 Track quality over time.** Revert rate, flaky-test count, lint-exception count and coverage are tracked (a simple table in `docs/` updated at each release). Goal: revert rate stays low (the reference team holds about 0.5%) while volume rises.
 - [ ] **G-51 Fuzz and smoke before release.** Before each release, run `backend/scripts/smoke.sh` and the Playwright suite against the deployed build; every bug found becomes a failing test first, then a fix.
 - [ ] **G-52 Agents extend this file, not around it.** When an agent finds a recurring mistake, it proposes a new `G-xx` item together with the check that enforces it (G-01), in the same PR.
+- [ ] **G-53 Smoke test like a first-time user.** Human and agent smoke tests run on the live site with a fresh account and an inbox the tester owns (Gmail `+alias` is fine). Never seed accounts, demo passwords, the account switcher or the Demo inbox: they are pre-verified and pre-filled, so tests pass while real users are blocked (XREQ-008: no verification mail went out and nobody noticed). Every flow that sends mail is proven by receiving the mail.
 
 ---
 
@@ -108,7 +109,7 @@ Review shrinks to looking at **verification artifacts**. Spend most of your effo
 
 | Priority | Meaning | Examples |
 | :--- | :--- | :--- |
-| **P0 (fix now)** | Security, data isolation, demo-breaking, contract-breaking | G-27, G-33, G-37, G-39, G-40, G-32 |
+| **P0 (fix now)** | Security, data isolation, demo-breaking, contract-breaking | G-27, G-33, G-37, G-39, G-40, G-32, G-53 |
 | **P1 (this sprint)** | Missing enforcement that lets slop in; missing verification of critical flows | G-09, G-10, G-11, G-12, G-21, G-23, G-24 |
 | **P2 (soon)** | Hygiene, structure, docs drift | G-02, G-05, G-06, G-15, G-20, G-29, G-43 |
 | **P3 (nice to have)** | Metrics, polish, advanced verification | G-25, G-28, G-44, G-50 |
