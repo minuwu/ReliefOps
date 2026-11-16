@@ -50,7 +50,9 @@ describe('reviewApi module', () => {
     const sampleId = Object.keys(db.extractions)[0];
     const ext = db.extractions[sampleId];
     ext.status = 'pending_review';
-    const caseItem = db.cases.find((c) => c.id === ext.case_id)!;
+    const caseItem = db.cases.find((c) => c.id === ext.case_id);
+    expect(caseItem).toBeDefined();
+    if (!caseItem) throw new Error('caseItem fixture not found');
     caseItem.status = 'verified';
 
     const payload: ReviewPayload = {
@@ -70,7 +72,9 @@ describe('reviewApi module', () => {
     expect(res.data.status).toBe('accepted');
     expect(res.data.review_note).toBe('Verified from official ATM slip');
 
-    const updatedCase = db.cases.find((c) => c.id === caseItem.id)!;
+    const updatedCase = db.cases.find((c) => c.id === caseItem.id);
+    expect(updatedCase).toBeDefined();
+    if (!updatedCase) throw new Error('updatedCase fixture not found');
     expect(updatedCase.amount).toBe(2500000);
     expect(updatedCase.account_number).toBe('9988776655');
     expect(updatedCase.flags.ai_review_pending).toBe(false);
@@ -82,7 +86,9 @@ describe('reviewApi module', () => {
     const sampleId = Object.keys(db.extractions)[0];
     const ext = db.extractions[sampleId];
     ext.status = 'pending_review';
-    const caseItem = db.cases.find((c) => c.id === ext.case_id)!;
+    const caseItem = db.cases.find((c) => c.id === ext.case_id);
+    expect(caseItem).toBeDefined();
+    if (!caseItem) throw new Error('caseItem fixture not found');
 
     const missingNotePayload: ReviewPayload = {
       decision: 'reject',
@@ -109,7 +115,9 @@ describe('reviewApi module', () => {
   it('rejects reviewing an extraction that has already been reviewed', async () => {
     const sampleId = Object.keys(db.extractions)[0];
     db.extractions[sampleId].status = 'accepted';
-    const caseItem = db.cases.find((c) => c.id === db.extractions[sampleId].case_id)!;
+    const caseItem = db.cases.find((c) => c.id === db.extractions[sampleId].case_id);
+    expect(caseItem).toBeDefined();
+    if (!caseItem) throw new Error('caseItem fixture not found');
 
     const payload: ReviewPayload = {
       decision: 'accept',
@@ -124,7 +132,9 @@ describe('reviewApi module', () => {
   it('rejects review when case version is stale', async () => {
     const sampleId = Object.keys(db.extractions)[0];
     db.extractions[sampleId].status = 'pending_review';
-    const caseItem = db.cases.find((c) => c.id === db.extractions[sampleId].case_id)!;
+    const caseItem = db.cases.find((c) => c.id === db.extractions[sampleId].case_id);
+    expect(caseItem).toBeDefined();
+    if (!caseItem) throw new Error('caseItem fixture not found');
 
     const stalePayload: ReviewPayload = {
       decision: 'accept',

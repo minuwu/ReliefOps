@@ -6,6 +6,54 @@ import { DEMO_USERS } from '@/services/mockData';
 import { api } from '@/services/api';
 import type { Case, Note } from '@/types/api';
 
+function makeCase(overrides: Partial<Case> = {}): Case {
+  return {
+    id: 'case-test-42',
+    reference: 'RFR-2026-00042',
+    bank_id: 'bank_b',
+    bank_name: 'Birch Regional Bank',
+    victim_name: 'Rina Example',
+    amount: 250000,
+    currency: 'JPY',
+    scam_type: 'impersonation',
+    status: 'received',
+    deadline: null,
+    deadline_state: 'on_track',
+    assigned_operator: null,
+    reported_date: '2026-11-01',
+    updated_at: '2026-11-11T14:20:00Z',
+    flags: {
+      missing_fields: [],
+      ai_review_pending: false,
+      shared_account_case_count: 0,
+      victim_question_pending: false,
+      possible_duplicate: false,
+    },
+    victim: {
+      name: 'Rina Example',
+      phone: null,
+      email: null,
+      address: null,
+      preferred_language: 'ja',
+    },
+    transfer_date: null,
+    account_number: null,
+    account_holder_name: null,
+    description: null,
+    channel: 'web_form',
+    closure_reason: null,
+    version: 1,
+    payout_amount: null,
+    created_at: '2026-11-01T09:15:00Z',
+    closed_at: null,
+    allowed_transitions: ['verified'],
+    allowed_closure_reasons: ['withdrawn', 'rejected'],
+    documents: [],
+    notes: [],
+    ...overrides,
+  };
+}
+
 describe('useCaseStore extra coverage', () => {
   beforeEach(() => {
     useAuthStore.setState({
@@ -47,16 +95,16 @@ describe('useCaseStore extra coverage', () => {
   });
 
   it('transitions case using existing selected case version', async () => {
-    const existingCase = {
+    const existingCase = makeCase({
       id: 'case-sel-1',
       version: 5,
       status: 'received',
-    } as Case;
-    const transitionedCase = {
+    });
+    const transitionedCase = makeCase({
       ...existingCase,
       version: 6,
       status: 'verified',
-    } as Case;
+    });
     useCaseStore.setState({ selectedCase: existingCase });
 
     const getCaseSpy = vi.spyOn(api, 'getCaseById');
@@ -88,16 +136,16 @@ describe('useCaseStore extra coverage', () => {
 
   it('transitions case by fetching version when selectedCase is absent or mismatched', async () => {
     useCaseStore.setState({ selectedCase: null });
-    const fetchedCase = {
+    const fetchedCase = makeCase({
       id: 'case-unloaded-1',
       version: 9,
       status: 'verified',
-    } as Case;
-    const transitionedCase = {
+    });
+    const transitionedCase = makeCase({
       ...fetchedCase,
       version: 10,
       status: 'account_check',
-    } as Case;
+    });
 
     const getCaseSpy = vi.spyOn(api, 'getCaseById').mockResolvedValueOnce({
       success: true,
@@ -129,7 +177,7 @@ describe('useCaseStore extra coverage', () => {
 
   it('rethrows unexpected error on transition failure', async () => {
     useCaseStore.setState({
-      selectedCase: { id: 'case-err', version: 1 } as Case,
+      selectedCase: makeCase({ id: 'case-err', version: 1 }),
     });
     vi.spyOn(api, 'transitionCase').mockRejectedValueOnce(new Error('Gateway timeout'));
 

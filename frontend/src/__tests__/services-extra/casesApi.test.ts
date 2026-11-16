@@ -3,7 +3,8 @@ import { casesApi } from '@/services/casesApi';
 import { db, outbox } from '@/services/mockStore';
 import { DEMO_CASES, DEMO_USERS } from '@/services/mockData';
 import { clearSession, storeSession } from '@/services/http';
-import type { CaseCreate, TransitionPayload } from '@/types/api';
+import type { TransitionPayload } from '@/types/api';
+import type { CaseCreate } from '@/services/casesApi';
 
 describe('casesApi module', () => {
   beforeEach(() => {
@@ -51,13 +52,17 @@ describe('casesApi module', () => {
   });
 
   it('enforces tenant privacy for bank viewers', async () => {
-    const bankBViewer = DEMO_USERS.find((u) => u.role === 'bank_viewer' && u.bank_id === 'bank_b')!;
+    const bankBViewer = DEMO_USERS.find((u) => u.role === 'bank_viewer' && u.bank_id === 'bank_b');
+    expect(bankBViewer).toBeDefined();
+    if (!bankBViewer) throw new Error('bankBViewer not found');
     storeSession('token-viewer-b', bankBViewer);
 
     const listRes = await casesApi.getCases();
     expect(listRes.data.items.every((c) => c.bank_id === 'bank_b')).toBe(true);
 
-    const bankACase = db.cases.find((c) => c.bank_id === 'bank_a')!;
+    const bankACase = db.cases.find((c) => c.bank_id === 'bank_a');
+    expect(bankACase).toBeDefined();
+    if (!bankACase) throw new Error('bankACase not found');
     await expect(casesApi.getCaseById(bankACase.id)).rejects.toMatchObject({
       code: 'RESOURCE_NOT_FOUND',
     });
@@ -100,7 +105,9 @@ describe('casesApi module', () => {
   });
 
   it('transitions case to next valid stage and records transition note', async () => {
-    const receivedCase = db.cases.find((c) => c.status === 'received')!;
+    const receivedCase = db.cases.find((c) => c.status === 'received');
+    expect(receivedCase).toBeDefined();
+    if (!receivedCase) throw new Error('receivedCase not found');
     const transitionPayload: TransitionPayload = {
       to_status: 'verified',
       expected_version: receivedCase.version,
@@ -115,7 +122,9 @@ describe('casesApi module', () => {
   });
 
   it('rejects invalid status transitions', async () => {
-    const receivedCase = db.cases.find((c) => c.status === 'received')!;
+    const receivedCase = db.cases.find((c) => c.status === 'received');
+    expect(receivedCase).toBeDefined();
+    if (!receivedCase) throw new Error('receivedCase not found');
     const invalidPayload: TransitionPayload = {
       to_status: 'payout_review',
       expected_version: receivedCase.version,
@@ -140,7 +149,9 @@ describe('casesApi module', () => {
   });
 
   it('validates required fields when closing a case', async () => {
-    const targetCase = db.cases.find((c) => c.status !== 'closed')!;
+    const targetCase = db.cases.find((c) => c.status !== 'closed');
+    expect(targetCase).toBeDefined();
+    if (!targetCase) throw new Error('targetCase not found');
     const missingClosureReason: TransitionPayload = {
       to_status: 'closed',
       expected_version: targetCase.version,
@@ -183,7 +194,9 @@ describe('casesApi module', () => {
   });
 
   it('invites victim by sending mock claim mail if victim has an email', async () => {
-    const targetCase = db.cases.find((c) => !!c.victim.email)!;
+    const targetCase = db.cases.find((c) => !!c.victim.email);
+    expect(targetCase).toBeDefined();
+    if (!targetCase) throw new Error('targetCase not found');
 
     const res = await casesApi.inviteVictim(targetCase.id);
 

@@ -7,6 +7,96 @@ import { api } from '@/services/api';
 import { apiError } from '@/services/http';
 import type { Extraction, ReviewQueueItem, Case } from '@/types/api';
 
+function makeCase(overrides: Partial<Case> = {}): Case {
+  return {
+    id: 'case-test-42',
+    reference: 'RFR-2026-00042',
+    bank_id: 'bank_b',
+    bank_name: 'Birch Regional Bank',
+    victim_name: 'Rina Example',
+    amount: 250000,
+    currency: 'JPY',
+    scam_type: 'impersonation',
+    status: 'received',
+    deadline: null,
+    deadline_state: 'on_track',
+    assigned_operator: null,
+    reported_date: '2026-11-01',
+    updated_at: '2026-11-11T14:20:00Z',
+    flags: {
+      missing_fields: [],
+      ai_review_pending: false,
+      shared_account_case_count: 0,
+      victim_question_pending: false,
+      possible_duplicate: false,
+    },
+    victim: {
+      name: 'Rina Example',
+      phone: null,
+      email: null,
+      address: null,
+      preferred_language: 'ja',
+    },
+    transfer_date: null,
+    account_number: null,
+    account_holder_name: null,
+    description: null,
+    channel: 'web_form',
+    closure_reason: null,
+    version: 1,
+    payout_amount: null,
+    created_at: '2026-11-01T09:15:00Z',
+    closed_at: null,
+    allowed_transitions: ['verified'],
+    allowed_closure_reasons: ['withdrawn', 'rejected'],
+    documents: [],
+    notes: [],
+    ...overrides,
+  };
+}
+
+function makeExtraction(overrides: Partial<Extraction> = {}): Extraction {
+  return {
+    id: 'ext-completed-1',
+    document_id: 'doc-1',
+    case_id: 'c0000000-0000-4000-8000-000000000042',
+    case_reference: 'RFR-2026-00042',
+    bank_id: 'bank_b',
+    status: 'pending_review',
+    source: 'llm',
+    model: 'gemini-1.5-flash',
+    prompt_version: '1.0',
+    overall_confidence: 0.95,
+    review_lane: 'standard',
+    fields: [],
+    missing_fields: [],
+    error: null,
+    created_at: '2026-11-15T10:00:00Z',
+    reviewed_by: null,
+    reviewed_at: null,
+    review_note: null,
+    ...overrides,
+  };
+}
+
+function makeReviewQueueItem(overrides: Partial<ReviewQueueItem> = {}): ReviewQueueItem {
+  return {
+    extraction_id: 'ext-in-queue',
+    case_id: 'case-from-queue',
+    case_reference: 'RFR-2026-00099',
+    bank_id: 'bank_b',
+    bank_name: 'Birch Regional Bank',
+    document_id: 'doc-queue-1',
+    document_filename: 'voucher.jpg',
+    source: 'llm',
+    overall_confidence: 0.72,
+    review_lane: 'low_confidence',
+    assigned_operator: null,
+    created_at: '2026-11-15T12:00:00Z',
+    ...overrides,
+  };
+}
+
 describe('useReviewQueueStore extra coverage', () => {
   beforeEach(() => {
     useAuthStore.setState({
@@ -36,21 +126,13 @@ describe('useReviewQueueStore extra coverage', () => {
   });
 
   it('sets notice when extraction has already been accepted or rejected', async () => {
-    const processedExtraction: Extraction = {
+    const processedExtraction = makeExtraction({
       id: 'ext-completed-1',
-      case_id: 'c0000000-0000-4000-8000-000000000042',
-      document_id: 'doc-1',
       status: 'accepted',
-      fields: {},
-      raw_ocr_text: 'sample text',
-      overall_confidence: 0.95,
-      review_lane: 'standard',
-      source: 'gemini_flash',
-      created_at: '2026-11-15T10:00:00Z',
       reviewed_at: '2026-11-15T11:00:00Z',
       reviewed_by: { id: 'u1', name: 'Operator' },
       review_note: 'Approved',
-    };
+    });
     vi.spyOn(api, 'getExtraction').mockResolvedValueOnce({
       success: true,
       data: processedExtraction,
@@ -131,15 +213,15 @@ describe('useReviewQueueStore extra coverage', () => {
   });
 
   it('approves extraction with approved fields and updates case', async () => {
-    const mockCase = {
+    const mockCase = makeCase({
       id: 'case-test-42',
       version: 2,
-    } as Case;
+    });
     useReviewQueueStore.setState({
-      activeExtraction: {
+      activeExtraction: makeExtraction({
         id: 'ext-to-accept',
         case_id: 'case-test-42',
-      } as Extraction,
+      }),
     });
     vi.spyOn(api, 'getCaseById').mockResolvedValueOnce({
       success: true,
@@ -148,7 +230,7 @@ describe('useReviewQueueStore extra coverage', () => {
     });
     const reviewSpy = vi.spyOn(api, 'reviewExtraction').mockResolvedValueOnce({
       success: true,
-      data: {} as Extraction,
+      data: makeExtraction({ id: 'ext-to-accept', status: 'accepted' }),
       message: 'OK',
     });
     const queueSpy = vi.spyOn(api, 'getReviewQueue').mockResolvedValueOnce({
@@ -174,15 +256,15 @@ describe('useReviewQueueStore extra coverage', () => {
   });
 
   it('rejects extraction with explanatory note and displays rejection toast', async () => {
-    const mockCase = {
+    const mockCase = makeCase({
       id: 'case-test-42',
       version: 3,
-    } as Case;
+    });
     useReviewQueueStore.setState({
-      activeExtraction: {
+      activeExtraction: makeExtraction({
         id: 'ext-to-reject',
         case_id: 'case-test-42',
-      } as Extraction,
+      }),
     });
     vi.spyOn(api, 'getCaseById').mockResolvedValueOnce({
       success: true,
@@ -191,7 +273,7 @@ describe('useReviewQueueStore extra coverage', () => {
     });
     const reviewSpy = vi.spyOn(api, 'reviewExtraction').mockResolvedValueOnce({
       success: true,
-      data: {} as Extraction,
+      data: makeExtraction({ id: 'ext-to-reject', status: 'rejected' }),
       message: 'OK',
     });
     vi.spyOn(api, 'getReviewQueue').mockResolvedValueOnce({
@@ -217,28 +299,27 @@ describe('useReviewQueueStore extra coverage', () => {
   });
 
   it('resolves case id from queue when activeExtraction is null', async () => {
-    const mockQueueItem: ReviewQueueItem = {
+    const mockQueueItem = makeReviewQueueItem({
       extraction_id: 'ext-in-queue',
       case_id: 'case-from-queue',
       case_reference: 'RFR-2026-00099',
       document_filename: 'voucher.jpg',
       overall_confidence: 0.72,
       review_lane: 'low_confidence',
-      fields: {},
       created_at: '2026-11-15T12:00:00Z',
-    };
+    });
     useReviewQueueStore.setState({
       queue: [mockQueueItem],
       activeExtraction: null,
     });
     const caseSpy = vi.spyOn(api, 'getCaseById').mockResolvedValueOnce({
       success: true,
-      data: { id: 'case-from-queue', version: 1 } as Case,
+      data: makeCase({ id: 'case-from-queue', version: 1 }),
       message: 'OK',
     });
     vi.spyOn(api, 'reviewExtraction').mockResolvedValueOnce({
       success: true,
-      data: {} as Extraction,
+      data: makeExtraction({ id: 'ext-in-queue', status: 'accepted' }),
       message: 'OK',
     });
     vi.spyOn(api, 'getReviewQueue').mockResolvedValueOnce({
@@ -255,14 +336,14 @@ describe('useReviewQueueStore extra coverage', () => {
 
   it('handles STALE_CASE error when reviewing an extraction', async () => {
     useReviewQueueStore.setState({
-      activeExtraction: {
+      activeExtraction: makeExtraction({
         id: 'ext-stale',
         case_id: 'case-stale',
-      } as Extraction,
+      }),
     });
     vi.spyOn(api, 'getCaseById').mockResolvedValueOnce({
       success: true,
-      data: { id: 'case-stale', version: 1 } as Case,
+      data: makeCase({ id: 'case-stale', version: 1 }),
       message: 'OK',
     });
     vi.spyOn(api, 'reviewExtraction').mockRejectedValueOnce(
@@ -283,14 +364,14 @@ describe('useReviewQueueStore extra coverage', () => {
 
   it('rethrows unexpected error on review submission', async () => {
     useReviewQueueStore.setState({
-      activeExtraction: {
+      activeExtraction: makeExtraction({
         id: 'ext-fatal',
         case_id: 'case-fatal',
-      } as Extraction,
+      }),
     });
     vi.spyOn(api, 'getCaseById').mockResolvedValueOnce({
       success: true,
-      data: { id: 'case-fatal', version: 1 } as Case,
+      data: makeCase({ id: 'case-fatal', version: 1 }),
       message: 'OK',
     });
     vi.spyOn(api, 'reviewExtraction').mockRejectedValueOnce(new Error('Fatal database disk failure'));

@@ -81,8 +81,11 @@ describe('mockStore module', () => {
   });
 
   it('prevents bank viewer from accessing other banks cases in findVisibleCase', () => {
-    const bankACase = db.cases.find((c) => c.bank_id === 'bank_a')!;
-    const bankBViewer = DEMO_USERS.find((u) => u.role === 'bank_viewer' && u.bank_id === 'bank_b')!;
+    const bankACase = db.cases.find((c) => c.bank_id === 'bank_a');
+    const bankBViewer = DEMO_USERS.find((u) => u.role === 'bank_viewer' && u.bank_id === 'bank_b');
+    expect(bankACase).toBeDefined();
+    expect(bankBViewer).toBeDefined();
+    if (!bankACase || !bankBViewer) throw new Error('Missing fixtures');
     storeSession('token-viewer-b', bankBViewer);
 
     expect(() => findVisibleCase(bankACase.id)).toThrowError();
@@ -137,7 +140,9 @@ describe('mockStore module', () => {
     const victim = DEMO_VICTIMS[0];
     storeSession('token-victim', victim);
     const ownedRef = db.victimCases[victim.email][0];
-    const targetCase = db.cases.find((c) => c.reference === ownedRef)!;
+    const targetCase = db.cases.find((c) => c.reference === ownedRef);
+    expect(targetCase).toBeDefined();
+    if (!targetCase) throw new Error('targetCase fixture not found');
 
     const found = findOwnCase(targetCase.id);
     expect(found.id).toBe(targetCase.id);
@@ -149,7 +154,9 @@ describe('mockStore module', () => {
   it('throws RESOURCE_NOT_FOUND when victim tries to access unowned case in findOwnCase', () => {
     const victim = DEMO_VICTIMS[0];
     storeSession('token-victim', victim);
-    const unownedCase = db.cases.find((c) => !db.victimCases[victim.email]?.includes(c.reference))!;
+    const unownedCase = db.cases.find((c) => !db.victimCases[victim.email]?.includes(c.reference));
+    expect(unownedCase).toBeDefined();
+    if (!unownedCase) throw new Error('unownedCase fixture not found');
 
     expect(() => findOwnCase(unownedCase.id)).toThrowError();
   });

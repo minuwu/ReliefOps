@@ -129,7 +129,9 @@ describe('authApi module', () => {
       password: 'SecurePassword123!',
       name: 'Verify Test',
     });
-    const mail = outbox.mails.find((m) => m.to === 'verifytest@test.jp' && m.kind === 'verify-email')!;
+    const mail = outbox.mails.find((m) => m.to === 'verifytest@test.jp' && m.kind === 'verify-email');
+    expect(mail).toBeDefined();
+    if (!mail) throw new Error('Expected verification email to be sent');
 
     const verifyRes = await authApi.verifyEmail(mail.token);
 
@@ -170,7 +172,9 @@ describe('authApi module', () => {
   it('resets password successfully when given a valid token', async () => {
     const operator = DEMO_USERS[0];
     await authApi.forgotPassword(operator.email);
-    const mail = outbox.mails.find((m) => m.to === operator.email && m.kind === 'reset-password')!;
+    const mail = outbox.mails.find((m) => m.to === operator.email && m.kind === 'reset-password');
+    expect(mail).toBeDefined();
+    if (!mail) throw new Error('Expected reset-password email');
 
     const res = await authApi.resetPassword(mail.token, 'BrandNewPassword123!');
 
@@ -187,14 +191,16 @@ describe('authApi module', () => {
   });
 
   it('accepts staff invitation and initializes account credentials', async () => {
-    const inviteRes = await adminApi.createInvitation({
+    await adminApi.createInvitation({
       email: 'newoperator2@test.jp',
       name: 'Operator Two',
       role: 'operator',
     });
     const mail = outbox.mails.find(
       (m) => m.to === 'newoperator2@test.jp' && m.kind === 'accept-invitation'
-    )!;
+    );
+    expect(mail).toBeDefined();
+    if (!mail) throw new Error('Expected accept-invitation email');
 
     const acceptRes = await authApi.acceptInvitation(mail.token, 'OperatorPassword123!');
 
@@ -208,14 +214,16 @@ describe('authApi module', () => {
   });
 
   it('rejects accepting an already accepted or revoked invitation', async () => {
-    const inviteRes = await adminApi.createInvitation({
+    await adminApi.createInvitation({
       email: 'alreadyused@test.jp',
       name: 'Used Test',
       role: 'operator',
     });
     const mail = outbox.mails.find(
       (m) => m.to === 'alreadyused@test.jp' && m.kind === 'accept-invitation'
-    )!;
+    );
+    expect(mail).toBeDefined();
+    if (!mail) throw new Error('Expected accept-invitation email');
     await authApi.acceptInvitation(mail.token, 'ValidPassword123!');
 
     await expect(authApi.acceptInvitation(mail.token, 'AnotherPassword123!')).rejects.toMatchObject({

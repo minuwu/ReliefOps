@@ -67,11 +67,11 @@ describe('documentsApi module', () => {
     const targetCase = db.cases[0];
     const file = new File(['receipt data'], 'furikomi_receipt.pdf', { type: 'application/pdf' });
 
-    const res = await documentsApi.uploadDocument(targetCase.id, file, 'furikomi_receipt');
+    const res = await documentsApi.uploadDocument(targetCase.id, file, 'transfer_receipt');
 
     expect(res.success).toBe(true);
     expect(res.data.filename).toBe('furikomi_receipt.pdf');
-    expect(res.data.doc_type).toBe('furikomi_receipt');
+    expect(res.data.doc_type).toBe('transfer_receipt');
 
     const updatedCase = db.cases.find((c) => c.id === targetCase.id);
     expect(updatedCase?.documents.some((d) => d.id === res.data.id)).toBe(true);
@@ -79,12 +79,15 @@ describe('documentsApi module', () => {
   });
 
   it('rejects document upload if authenticated user is a bank viewer', async () => {
-    const targetCase = db.cases.find((c) => c.bank_id === 'bank_b')!;
-    const bankViewer = DEMO_USERS.find((u) => u.role === 'bank_viewer')!;
+    const targetCase = db.cases.find((c) => c.bank_id === 'bank_b');
+    const bankViewer = DEMO_USERS.find((u) => u.role === 'bank_viewer');
+    expect(targetCase).toBeDefined();
+    expect(bankViewer).toBeDefined();
+    if (!targetCase || !bankViewer) throw new Error('Missing fixtures');
     storeSession('token-viewer', bankViewer);
     const file = new File(['test'], 'test.pdf', { type: 'application/pdf' });
 
-    await expect(documentsApi.uploadDocument(targetCase.id, file, 'furikomi_receipt')).rejects.toMatchObject({
+    await expect(documentsApi.uploadDocument(targetCase.id, file, 'transfer_receipt')).rejects.toMatchObject({
       code: 'FORBIDDEN',
     });
   });
@@ -94,7 +97,7 @@ describe('documentsApi module', () => {
     closedCase.status = 'closed';
     const file = new File(['test'], 'closed_case_doc.pdf', { type: 'application/pdf' });
 
-    await expect(documentsApi.uploadDocument(closedCase.id, file, 'furikomi_receipt')).rejects.toMatchObject({
+    await expect(documentsApi.uploadDocument(closedCase.id, file, 'transfer_receipt')).rejects.toMatchObject({
       code: 'CASE_CLOSED',
     });
   });
@@ -102,7 +105,7 @@ describe('documentsApi module', () => {
   it('downloads an existing uploaded document', async () => {
     const targetCase = db.cases[0];
     const file = new File(['dummy binary receipt'], 'transfer_slip.png', { type: 'image/png' });
-    const uploaded = await documentsApi.uploadDocument(targetCase.id, file, 'furikomi_receipt');
+    const uploaded = await documentsApi.uploadDocument(targetCase.id, file, 'transfer_receipt');
 
     const downloadRes = await documentsApi.downloadDocument(uploaded.data.id);
 
@@ -119,7 +122,7 @@ describe('documentsApi module', () => {
           id: 'doc-pre-seeded-unique',
           case_id: 'brand-new-case-with-preseeded-doc',
           filename: 'pre_seeded.pdf',
-          doc_type: 'furikomi_receipt' as const,
+          doc_type: 'transfer_receipt' as const,
           mime_type: 'application/pdf',
           size_bytes: 1234,
           uploaded_by: { id: 'usr-1', name: 'User' },
@@ -137,11 +140,15 @@ describe('documentsApi module', () => {
   });
 
   it('prevents bank viewer from downloading document belonging to another bank', async () => {
-    const bankACase = db.cases.find((c) => c.bank_id === 'bank_a')!;
+    const bankACase = db.cases.find((c) => c.bank_id === 'bank_a');
+    expect(bankACase).toBeDefined();
+    if (!bankACase) throw new Error('bankACase not found');
     const file = new File(['secret bank a doc'], 'bank_a_doc.pdf', { type: 'application/pdf' });
-    const uploaded = await documentsApi.uploadDocument(bankACase.id, file, 'furikomi_receipt');
+    const uploaded = await documentsApi.uploadDocument(bankACase.id, file, 'transfer_receipt');
 
-    const bankBViewer = DEMO_USERS.find((u) => u.role === 'bank_viewer' && u.bank_id === 'bank_b')!;
+    const bankBViewer = DEMO_USERS.find((u) => u.role === 'bank_viewer' && u.bank_id === 'bank_b');
+    expect(bankBViewer).toBeDefined();
+    if (!bankBViewer) throw new Error('bankBViewer not found');
     storeSession('token-viewer-b', bankBViewer);
 
     await expect(documentsApi.downloadDocument(uploaded.data.id)).rejects.toMatchObject({
@@ -158,7 +165,7 @@ describe('documentsApi module', () => {
   it('triggers AI extraction for an uploaded document and enqueues review item', async () => {
     const targetCase = db.cases[0];
     const file = new File(['ocr slip content'], 'voucher.pdf', { type: 'application/pdf' });
-    const uploaded = await documentsApi.uploadDocument(targetCase.id, file, 'furikomi_receipt');
+    const uploaded = await documentsApi.uploadDocument(targetCase.id, file, 'transfer_receipt');
 
     const extractRes = await documentsApi.extractDocument(uploaded.data.id);
 
@@ -172,7 +179,7 @@ describe('documentsApi module', () => {
   it('supersedes previous pending extraction when a new extraction is run on the same document', async () => {
     const targetCase = db.cases[0];
     const file = new File(['ocr slip content'], 'voucher_v2.pdf', { type: 'application/pdf' });
-    const uploaded = await documentsApi.uploadDocument(targetCase.id, file, 'furikomi_receipt');
+    const uploaded = await documentsApi.uploadDocument(targetCase.id, file, 'transfer_receipt');
 
     const firstExtract = await documentsApi.extractDocument(uploaded.data.id);
     const secondExtract = await documentsApi.extractDocument(uploaded.data.id);
@@ -185,11 +192,15 @@ describe('documentsApi module', () => {
   });
 
   it('rejects AI extraction execution when caller is a bank viewer', async () => {
-    const targetCase = db.cases.find((c) => c.bank_id === 'bank_b')!;
+    const targetCase = db.cases.find((c) => c.bank_id === 'bank_b');
+    expect(targetCase).toBeDefined();
+    if (!targetCase) throw new Error('targetCase not found');
     const file = new File(['test'], 'atm_slip.pdf', { type: 'application/pdf' });
-    const uploaded = await documentsApi.uploadDocument(targetCase.id, file, 'furikomi_receipt');
+    const uploaded = await documentsApi.uploadDocument(targetCase.id, file, 'transfer_receipt');
 
-    const bankViewer = DEMO_USERS.find((u) => u.role === 'bank_viewer')!;
+    const bankViewer = DEMO_USERS.find((u) => u.role === 'bank_viewer');
+    expect(bankViewer).toBeDefined();
+    if (!bankViewer) throw new Error('bankViewer not found');
     storeSession('token-viewer', bankViewer);
 
     await expect(documentsApi.extractDocument(uploaded.data.id)).rejects.toMatchObject({
@@ -212,7 +223,7 @@ describe('documentsApi module', () => {
         return new Response(
           JSON.stringify({
             success: true,
-            data: { id: 'doc-live-1', filename: 'live.pdf', doc_type: 'furikomi_receipt' },
+            data: { id: 'doc-live-1', filename: 'live.pdf', doc_type: 'transfer_receipt' },
           }),
           { status: 200, headers: { 'Content-Type': 'application/json' } }
         );
@@ -251,7 +262,7 @@ describe('documentsApi module', () => {
     expect(listRes.data.length).toBe(1);
 
     const testFile = new File(['content'], 'live.pdf', { type: 'application/pdf' });
-    const uploadRes = await liveDocs.documentsApi.uploadDocument('c-123', testFile, 'furikomi_receipt');
+    const uploadRes = await liveDocs.documentsApi.uploadDocument('c-123', testFile, 'transfer_receipt');
     expect(uploadRes.data.id).toBe('doc-live-1');
 
     const downloadRes = await liveDocs.documentsApi.downloadDocument('doc-1');

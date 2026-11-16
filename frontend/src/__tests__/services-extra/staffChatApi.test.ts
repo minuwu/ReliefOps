@@ -48,8 +48,11 @@ describe('staffChatApi module', () => {
   });
 
   it('rejects reply when caller is a bank viewer', async () => {
-    const targetCase = db.cases.find((c) => c.bank_id === 'bank_b')!;
-    const bankViewer = DEMO_USERS.find((u) => u.role === 'bank_viewer')!;
+    const targetCase = db.cases.find((c) => c.bank_id === 'bank_b');
+    const bankViewer = DEMO_USERS.find((u) => u.role === 'bank_viewer');
+    expect(targetCase).toBeDefined();
+    expect(bankViewer).toBeDefined();
+    if (!targetCase || !bankViewer) throw new Error('Missing fixtures');
     storeSession('token-viewer', bankViewer);
 
     await expect(
@@ -78,7 +81,9 @@ describe('staffChatApi module', () => {
     expect(thread.victim_question_pending).toBe(false);
     expect(thread.messages.some((m) => m.id === res.data.id)).toBe(true);
 
-    const updatedCase = db.cases.find((c) => c.id === targetCase.id)!;
+    const updatedCase = db.cases.find((c) => c.id === targetCase.id);
+    expect(updatedCase).toBeDefined();
+    if (!updatedCase) throw new Error('updatedCase fixture not found');
     expect(updatedCase.flags.victim_question_pending).toBe(false);
 
     const chatAudit = db.auditLogs.find(

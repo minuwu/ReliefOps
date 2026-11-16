@@ -4,6 +4,28 @@ import { db } from '@/services/mockStore';
 import { DEMO_KB_DOCUMENTS, DEMO_USERS } from '@/services/mockData';
 import { clearSession, storeSession } from '@/services/http';
 
+function invalidInput<T>(val: unknown): T {
+  return val as T;
+}
+
+function getSupervisor() {
+  const supervisor = DEMO_USERS.find((u) => u.role === 'supervisor');
+  if (!supervisor) throw new Error('Supervisor fixture not found');
+  return supervisor;
+}
+
+function getOperator() {
+  const operator = DEMO_USERS.find((u) => u.role === 'operator');
+  if (!operator) throw new Error('Operator fixture not found');
+  return operator;
+}
+
+function getBankViewer(bankId: string) {
+  const viewer = DEMO_USERS.find((u) => u.role === 'bank_viewer' && u.bank_id === bankId);
+  if (!viewer) throw new Error(`Bank viewer fixture for ${bankId} not found`);
+  return viewer;
+}
+
 describe('kbApi module', () => {
   beforeEach(() => {
     localStorage.clear();
@@ -28,7 +50,7 @@ describe('kbApi module', () => {
   });
 
   it('restricts bank viewer to viewing only their own bank documents', async () => {
-    const bankBViewer = DEMO_USERS.find((u) => u.role === 'bank_viewer' && u.bank_id === 'bank_b')!;
+    const bankBViewer = getBankViewer('bank_b');
     storeSession('token-viewer-b', bankBViewer);
 
     const res = await kbApi.list();
@@ -95,7 +117,7 @@ describe('kbApi module', () => {
         bank_id: 'bank_b',
         title: 'Title',
         version: '1.0',
-        language: 'fr' as unknown as 'ja',
+        language: invalidInput<'ja'>('fr'),
       })
     ).rejects.toMatchObject({
       code: 'VALIDATION_ERROR',
@@ -103,7 +125,7 @@ describe('kbApi module', () => {
   });
 
   it('parses FormData payload correctly on upload', async () => {
-    const supervisor = DEMO_USERS.find((u) => u.role === 'supervisor')!;
+    const supervisor = getSupervisor();
     storeSession('token-supervisor', supervisor);
     const validFile = new File(['guidance content'], 'bluebook.txt', { type: 'text/plain' });
 
@@ -124,7 +146,7 @@ describe('kbApi module', () => {
   });
 
   it('rejects upload when user is not a supervisor', async () => {
-    const operator = DEMO_USERS.find((u) => u.role === 'operator')!;
+    const operator = getOperator();
     storeSession('token-operator', operator);
     const validFile = new File(['content'], 'doc.pdf', { type: 'application/pdf' });
 
@@ -142,7 +164,7 @@ describe('kbApi module', () => {
   });
 
   it('uploads bluebook document successfully by supervisor', async () => {
-    const supervisor = DEMO_USERS.find((u) => u.role === 'supervisor')!;
+    const supervisor = getSupervisor();
     storeSession('token-supervisor', supervisor);
     const file = new File(['bluebook content'], 'sop.pdf', { type: 'application/pdf' });
 
@@ -162,7 +184,7 @@ describe('kbApi module', () => {
   });
 
   it('publishes a ready document and supersedes older version with same title', async () => {
-    const supervisor = DEMO_USERS.find((u) => u.role === 'supervisor')!;
+    const supervisor = getSupervisor();
     storeSession('token-supervisor', supervisor);
 
     const oldDoc = {
@@ -199,21 +221,23 @@ describe('kbApi module', () => {
   });
 
   it('rejects publishing non-ready or non-existent document', async () => {
-    const supervisor = DEMO_USERS.find((u) => u.role === 'supervisor')!;
+    const supervisor = getSupervisor();
     storeSession('token-supervisor', supervisor);
 
     await expect(kbApi.publish('missing-kb-id')).rejects.toMatchObject({
       code: 'RESOURCE_NOT_FOUND',
     });
 
-    const publishedDoc = db.kbDocuments.find((d) => d.status === 'published')!;
+    const publishedDoc = db.kbDocuments.find((d) => d.status === 'published');
+    expect(publishedDoc).toBeDefined();
+    if (!publishedDoc) throw new Error('Published doc fixture not found');
     await expect(kbApi.publish(publishedDoc.id)).rejects.toMatchObject({
       code: 'INVALID_STATUS_TRANSITION',
     });
   });
 
   it('archives a document successfully by supervisor', async () => {
-    const supervisor = DEMO_USERS.find((u) => u.role === 'supervisor')!;
+    const supervisor = getSupervisor();
     storeSession('token-supervisor', supervisor);
     const targetDoc = db.kbDocuments[0];
 
@@ -227,7 +251,7 @@ describe('kbApi module', () => {
   });
 
   it('rejects archiving non-existent document', async () => {
-    const supervisor = DEMO_USERS.find((u) => u.role === 'supervisor')!;
+    const supervisor = getSupervisor();
     storeSession('token-supervisor', supervisor);
 
     await expect(kbApi.archive('missing-kb-id')).rejects.toMatchObject({

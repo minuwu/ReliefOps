@@ -5,6 +5,14 @@ import { DEMO_CASES, DEMO_CHAT_THREADS, DEMO_USERS, DEMO_VICTIMS, DEMO_VICTIM_CA
 import { clearSession, storeSession } from '@/services/http';
 import type { VictimReport, VictimCaseUpdate } from '@/types/api';
 
+function getOwnedCase(victimEmail: string) {
+  const ownedRef = db.victimCases[victimEmail]?.[0];
+  if (!ownedRef) throw new Error(`No owned cases for victim ${victimEmail}`);
+  const ownedCase = db.cases.find((c) => c.reference === ownedRef);
+  if (!ownedCase) throw new Error(`Owned case ${ownedRef} not found in db.cases`);
+  return { ownedRef, ownedCase };
+}
+
 describe('victimApi module', () => {
   beforeEach(() => {
     localStorage.clear();
@@ -48,6 +56,7 @@ describe('victimApi module', () => {
       account_number: '1234567890',
       scam_type: 'impersonation',
       description: 'Scam report',
+      consent: true,
     };
 
     await expect(victimApi.reportCase(report)).rejects.toMatchObject({
@@ -68,6 +77,7 @@ describe('victimApi module', () => {
       account_number: '9876543210',
       scam_type: 'investment',
       description: 'Crypto scam investment transfer',
+      consent: true,
     };
 
     const res = await victimApi.reportCase(report);
@@ -84,8 +94,7 @@ describe('victimApi module', () => {
   it('retrieves single case details belonging to victim', async () => {
     const verifiedVictim = DEMO_VICTIMS[0];
     storeSession('token-verified', verifiedVictim);
-    const ownedRef = db.victimCases[verifiedVictim.email][0];
-    const ownedCase = db.cases.find((c) => c.reference === ownedRef)!;
+    const { ownedRef, ownedCase } = getOwnedCase(verifiedVictim.email);
 
     const res = await victimApi.getMyCase(ownedCase.id);
 
@@ -106,8 +115,7 @@ describe('victimApi module', () => {
   it('updates case details within permitted editable fields', async () => {
     const verifiedVictim = DEMO_VICTIMS[0];
     storeSession('token-verified', verifiedVictim);
-    const ownedRef = db.victimCases[verifiedVictim.email][0];
-    const ownedCase = db.cases.find((c) => c.reference === ownedRef)!;
+    const { ownedCase } = getOwnedCase(verifiedVictim.email);
     ownedCase.status = 'received';
 
     const update: VictimCaseUpdate = {
@@ -129,8 +137,7 @@ describe('victimApi module', () => {
   it('rejects case update when case version is stale', async () => {
     const verifiedVictim = DEMO_VICTIMS[0];
     storeSession('token-verified', verifiedVictim);
-    const ownedRef = db.victimCases[verifiedVictim.email][0];
-    const ownedCase = db.cases.find((c) => c.reference === ownedRef)!;
+    const { ownedCase } = getOwnedCase(verifiedVictim.email);
 
     const staleUpdate: VictimCaseUpdate = {
       expected_version: ownedCase.version + 99,
@@ -145,8 +152,7 @@ describe('victimApi module', () => {
   it('rejects editing locked fields on advanced status case', async () => {
     const verifiedVictim = DEMO_VICTIMS[0];
     storeSession('token-verified', verifiedVictim);
-    const ownedRef = db.victimCases[verifiedVictim.email][0];
-    const ownedCase = db.cases.find((c) => c.reference === ownedRef)!;
+    const { ownedCase } = getOwnedCase(verifiedVictim.email);
     ownedCase.status = 'verified';
 
     const lockedUpdate: VictimCaseUpdate = {
@@ -162,7 +168,9 @@ describe('victimApi module', () => {
   it('claims a case using an invitation token', async () => {
     const verifiedVictim = DEMO_VICTIMS[0];
     storeSession('token-verified', verifiedVictim);
-    const targetCase = db.cases.find((c) => !db.victimCases[verifiedVictim.email]?.includes(c.reference))!;
+    const targetCase = db.cases.find((c) => !db.victimCases[verifiedVictim.email]?.includes(c.reference));
+    expect(targetCase).toBeDefined();
+    if (!targetCase) throw new Error('targetCase fixture not found');
     outbox.mails.push({
       to: verifiedVictim.email,
       kind: 'claim-case',
@@ -199,8 +207,7 @@ describe('victimApi module', () => {
   it('retrieves victim chat thread and asks assistant questions', async () => {
     const verifiedVictim = DEMO_VICTIMS[0];
     storeSession('token-verified', verifiedVictim);
-    const ownedRef = db.victimCases[verifiedVictim.email][0];
-    const ownedCase = db.cases.find((c) => c.reference === ownedRef)!;
+    const { ownedRef, ownedCase } = getOwnedCase(verifiedVictim.email);
 
     const threadRes = await victimApi.getChat(ownedCase.id);
     expect(threadRes.success).toBe(true);
@@ -215,8 +222,7 @@ describe('victimApi module', () => {
   it('rejects asking empty question to assistant', async () => {
     const verifiedVictim = DEMO_VICTIMS[0];
     storeSession('token-verified', verifiedVictim);
-    const ownedRef = db.victimCases[verifiedVictim.email][0];
-    const ownedCase = db.cases.find((c) => c.reference === ownedRef)!;
+    const { ownedCase } = getOwnedCase(verifiedVictim.email);
 
     await expect(victimApi.askAssistant(ownedCase.id, '    ')).rejects.toMatchObject({
       code: 'VALIDATION_ERROR',
@@ -226,8 +232,7 @@ describe('victimApi module', () => {
   it('rates an assistant answer as helpful or not helpful', async () => {
     const verifiedVictim = DEMO_VICTIMS[0];
     storeSession('token-verified', verifiedVictim);
-    const ownedRef = db.victimCases[verifiedVictim.email][0];
-    const ownedCase = db.cases.find((c) => c.reference === ownedRef)!;
+    const { ownedCase } = getOwnedCase(verifiedVictim.email);
 
     const askRes = await victimApi.askAssistant(ownedCase.id, 'How long does review take?');
     const answerId = askRes.data.answer.id;
