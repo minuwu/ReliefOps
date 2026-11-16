@@ -71,6 +71,7 @@ This file is:
 | `XREQ-007` | `P0 (Blocker)` | Frontend (Minhaz) | Backend (Asif / Anim) / AI (Galib) | Free always-on deploy: verify, then implement [docs/DEPLOY-FREE.md](docs/DEPLOY-FREE.md) (Azure for Students VM + Supabase + Firebase), post `API_URL` | `[VERIFIED_AND_CLOSED]` | 2026-11-16 23:58 (frontend on `https://reliefops.web.app` now calls `https://reliefops-api.japaneast.cloudapp.azure.com`, mock off, login verified) |
 | `XREQ-008` | `P0 (Blocker)` | Frontend (Minhaz) | Backend (Asif / Anim) | Real email delivery on the live API: new accounts get no verification mail (`EMAIL_MODE=console`) | `[PENDING]` | 2026-11-17 |
 | `XREQ-009` | `P0 (Blocker)` | Frontend (Minhaz) | Everyone (Asif / Anim / Galib / Minhaz) | Human smoke test of the live site with fresh accounts and real inboxes, no seed credentials (G-53) | `[PENDING]` | 2026-11-17 |
+| `XREQ-010` | `P1 (High)` | Frontend (Minhaz) | Backend (Asif) | Master accounts for every role on the live API, shared privately; never used for testing | `[PENDING]` | 2026-11-17 |
 
 *(When adding a request: append a row above AND add a detailed card in 2.2. Never insert in the middle.)*
 
@@ -556,6 +557,35 @@ EMAIL_MODE: console | smtp
 - **Asif (3)**: `[ ]`
 - **Galib (4)**: `[ ]`
 - **Anyone (5)**: `[ ]`
+
+---
+
+#### `[XREQ-010]` Master accounts for every role on the live API (shared privately, never used for testing)
+- **Priority**: `P1 (High)`
+- **From**: Frontend (Minhaz)
+- **To**: Backend (Asif)
+- **Status**: `[PENDING]`
+- **Created**: 2026-11-17 (UTC+6)
+- **Target Interface / Endpoint**: live API `https://reliefops-api.japaneast.cloudapp.azure.com` (accounts in the production database)
+
+**Request:** create one master account per role on the live database, each with its own strong, unique password (not `Demo@1234`, not reused):
+1. Supervisor (can invite staff and review)
+2. Operator
+3. Bank viewer, one per bank used in the demo (for example `bank_a`, `bank_b`)
+4. Victim (verified)
+
+**How to share (security):** send the email + password list to Minhaz **privately** (password manager share or a direct message). **Never** put a password in this file, a commit, a WORK_LOG, a screenshot or a chat channel others can read. In this card, post only the list of addresses and roles.
+
+**What they are for:** administration and recovery only, e.g. a supervisor to send the first staff invitations in XREQ-009 scenario 2, or to fix data during the demo.
+
+**What they are NOT for:** testing. Under G-53, no smoke test (human or agent) signs in with a master account or a seed account. Test personas are always fresh sign-ups or fresh invitations to an inbox the tester owns. A master account may only *start* a flow (send an invitation); the test then continues as the invited new user.
+
+**Also check (security):** the seed accounts (`*@mail.test`, password `Demo@1234`) are printed on the public login page and in the docs. If they exist on the production database, anyone can sign in as a supervisor. Disable them or change their passwords on production, and confirm here.
+
+**Fulfillment & Proof (filled by recipient on completion):**
+- **Branch / Commit**: `[none needed, or commit if a seed script changed]`
+- **Status / Notes**: `[addresses + roles only; "credentials sent privately to Minhaz on <date>"]`
+- **Verification Proof**: `[each master account can log in; seed accounts on prod disabled or rotated]`
 
 ---
 
