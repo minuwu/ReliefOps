@@ -67,8 +67,8 @@ This file is:
 | `XREQ-003` | `P1 (High)` | Frontend (Minhaz) | Backend (Anim / Asif) | Victim accounts, case reports & 6-Stage Status Tracker (`POST /api/victim/cases`) | `[RESOLVED]` | 2026-11-15 22:15 (victim accounts + routes live) |
 | `XREQ-004` | `P1 (High)` | Frontend (Minhaz) | Backend (Asif / Anim) / AI (Galib) | Cross-Bank Shared Accounts (`GET /api/alerts/shared-accounts`); freeze needs a team decision | `[IN_PROGRESS]` | 2026-11-15 20:10 (detection done, freeze not agreed) |
 | `XREQ-005` | `P1 (High)` | Frontend (Minhaz) | Backend (Anim / Asif) | All 48 v0.4.2 routes mounted; the 3 contract deviations closed (contract v0.4.3) | `[RESOLVED]` | 2026-11-15 22:15 (48/48 routes, v0.4.3) |
-| `XREQ-006` | `P0 (Blocker)` | Frontend (Minhaz) | Backend (Asif / Anim) / AI (Galib) | Deploy backend + database + AI to the cloud, post the public HTTPS API URL, allow the frontend origin (CORS) | `[IN_PROGRESS]` | 2026-11-15 22:15 (image + runbook ready, cloud steps left) |
-| `XREQ-007` | `P0 (Blocker)` | Frontend (Minhaz) | Backend (Asif / Anim) / AI (Galib) | Free always-on deploy: verify, then implement [docs/DEPLOY-FREE.md](docs/DEPLOY-FREE.md) (Azure for Students VM + Supabase + Firebase), post `API_URL` | `[RESOLVED]` | 2026-11-16 23:50 (live: `https://reliefops-api.japaneast.cloudapp.azure.com`, smoke 39/39; Minhaz: switch the frontend, then verify) |
+| `XREQ-006` | `P0 (Blocker)` | Frontend (Minhaz) | Backend (Asif / Anim) / AI (Galib) | Deploy backend + database + AI to the cloud, post the public HTTPS API URL, allow the frontend origin (CORS) | `[VERIFIED_AND_CLOSED]` | 2026-11-16 23:58 (closed through XREQ-007; API on Azure VM) |
+| `XREQ-007` | `P0 (Blocker)` | Frontend (Minhaz) | Backend (Asif / Anim) / AI (Galib) | Free always-on deploy: verify, then implement [docs/DEPLOY-FREE.md](docs/DEPLOY-FREE.md) (Azure for Students VM + Supabase + Firebase), post `API_URL` | `[VERIFIED_AND_CLOSED]` | 2026-11-16 23:58 (frontend on `https://reliefops.web.app` now calls `https://reliefops-api.japaneast.cloudapp.azure.com`, mock off, login verified) |
 
 *(When adding a request: append a row above AND add a detailed card in 2.2. Never insert in the middle.)*
 
@@ -328,7 +328,7 @@ The frontend is now checking the history and victim case routes against the cont
 - **Priority**: `P0 (Blocker)`
 - **From**: Frontend (Minhaz)
 - **To**: Backend (Asif / Anim) / AI (Galib)
-- **Status**: `[IN_PROGRESS]`
+- **Status**: `[VERIFIED_AND_CLOSED]`
 - **Created**: 2026-11-15 15:05 (UTC+6)
 - **Target Interface / Endpoint**: a public `https://` base URL serving `/api/*` (contract v0.4.2)
 
@@ -392,7 +392,7 @@ EMAIL_MODE: console | smtp
 - **Priority**: `P0 (Blocker)`
 - **From**: Frontend (Minhaz)
 - **To**: Backend (Asif / Anim) / AI (Galib)
-- **Status**: `[RESOLVED]`
+- **Status**: `[VERIFIED_AND_CLOSED]`
 - **Created**: 2026-11-15 23:30 (UTC+6), **revised** 2026-11-16 00:40 (plan re-verified: budget, DB access, job source fixed), **deployed** 2026-11-16 23:50 on Azure (see "Live deploy" at the end of this card)
 - **Target Interface / Endpoint**: a public `https://` base URL serving `/api/*` (contract v0.4.3), free and awake during judging
 
