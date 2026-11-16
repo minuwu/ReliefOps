@@ -17,6 +17,7 @@ Welcome to the documentation hub for **BJET-Hackathon**. All architectural plans
 | **[graphify-out/](../graphify-out/)** | Local knowledge graph (`graph.html`, `graph.json`, untracked) — query with `graphify query` | AI Agents & Developers |
 | **[HACKATHON_PRESETUP.md](../HACKATHON_PRESETUP.md)** | Architecture options, stack recommendation, contract-first guide | Entire Team |
 | **[docs/SKILLS.md](SKILLS.md)** | Mandatory agent skill packs: routing table, catalog, how to add | AI Agents & Developers |
+| **[docs/ENGINEERING_GUIDELINES.md](ENGINEERING_GUIDELINES.md)** | Mandatory quality checklist (G-01…G-52) for frontend, backend and AI: deterministic checks over prose, no slop, verification evidence | Everyone, every PR |
 | **[docs/API_SPEC.md](../docs/API_SPEC.md)** | Shared API contract ledger, data models & endpoints | Frontend & Backend |
 | └── [openapi.yaml](../docs/openapi.yaml) | Machine-readable contract (OpenAPI 3.1); runs as a mock API at `localhost:4010` with no backend | Frontend, Backend & AI |
 | **[docs/plans/](../docs/plans/)** | Architecture plans, RFCs, and agent design artifacts | Product & Architecture |

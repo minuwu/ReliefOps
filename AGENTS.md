@@ -8,6 +8,7 @@
 >   - **1B. Skill Discovery & Activation**: Check `.claude/skills/` (see Section 3.3 and [docs/SKILLS.md](docs/SKILLS.md)), find missing skills (`npx skills find "<topic>"`), and activate process skills (`superpowers`). Skills are mandatory.
 >   - **1C. Web Search for Standards**: Run `search_web` to inspect official docs, modern API standards, and library best practices rather than relying on unverified assumptions.
 > - **STEP 2** — For any question about this codebase, query the knowledge graph first: `graphify query "<question>"` (see Section 3.4).
+> - **STEP 3 — Quality Bar (MANDATORY)** — Every change must satisfy [docs/ENGINEERING_GUIDELINES.md](docs/ENGINEERING_GUIDELINES.md) (checklist `G-01`…`G-52`, frontend + backend + AI). Turn every correction into a deterministic check, not another prose rule; keep the codebase free of slop; attach verification evidence. Walk the boxes for the areas you touched before any PR or `[RESOLVED]` (see Section 3.6).
 >
 > Cross-functional dependencies ALWAYS take precedence over isolated feature implementation.
 
@@ -22,6 +23,7 @@
    - [3.3 Step 1: Mandatory Skills](#33-step-1--load-the-matching-skill-mandatory)
    - [3.4 Step 2: Knowledge Graph (graphify)](#34-step-2--query-the-knowledge-graph-first)
    - [3.5 Git Rules for Agents](#35-git-rules-for-agents)
+   - [3.6 Quality Bar: Engineering Guidelines](#36-quality-bar--engineering-guidelines)
 4. [Per-Team Instructions & Contracts](#4-per-team-instructions--contracts)
 5. [Per-Contributor Registry & Instructions](#5-per-contributor-registry--instructions)
 6. [File Management & Maintenance Manual](#6-file-management--maintenance-manual)
@@ -587,6 +589,16 @@ Rules:
 - **Commit messages**: Conventional Commits (`feat:`, `fix:`, `docs:`, `chore(xreq):`). No AI/tool attribution trailers.
 - **Sync**: the pre-push hook ([`.githooks/pre-push`](.githooks/pre-push)) fetches and merges `origin/main` before every push. It is enabled by `scripts/setup.sh` / `scripts/setup.ps1`. Commit or stash before pushing — the hook merges and will refuse a dirty tree.
 - **Secrets**: never commit `.env`. Keep `.env.example` current in `frontend/` and `backend/`.
+
+### 3.6 Quality Bar — Engineering Guidelines
+
+[docs/ENGINEERING_GUIDELINES.md](docs/ENGINEERING_GUIDELINES.md) is the project-wide quality checklist (items `G-01`…`G-52`). It applies to frontend, backend and AI code, and to docs and process.
+
+1. **Before a PR or marking an `XREQ` `[RESOLVED]`:** walk the checklist for the areas you touched. Any box you cannot tick gets a one-line reason in the PR body or the XREQ proof block.
+2. **Corrections become checks.** When you correct an agent or a teammate, add a lint rule, type, test or architecture rule (G-01). Edit prose rules only when no check can express it.
+3. **Reviews start with evidence** (tests, screenshots, curl proof), then code (G-21).
+4. **Found a recurring mistake?** Propose a new `G-xx` item with the check that enforces it, in the same PR (G-52).
+5. Audit reports cite items by ID, `file:line`, priority (P0–P3, see the guide's priority table) and a fix.
 
 ---
 
