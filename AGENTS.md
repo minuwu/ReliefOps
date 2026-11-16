@@ -65,7 +65,7 @@ This file is:
 | `XREQ-001` | `P0 (Blocker)` | Frontend (Minhaz) | Backend (Asif / Anim) | Core Cases & Bank Tenant Isolation API (`GET/POST /api/cases`, `POST /api/cases/{case_id}/transition`) | `[RESOLVED]` | 2026-11-15 22:30 (path agreed: `/transition`) |
 | `XREQ-002` | `P0 (Blocker)` | Frontend (Minhaz) | AI (Galib) / Backend (Asif) | Rule D3 Vision OCR Extraction & HITL Queue (`POST /api/documents/{id}/extract`, `POST /api/extractions/{id}/review`) | `[RESOLVED]` | 2026-11-15 22:15 (all routes live) |
 | `XREQ-003` | `P1 (High)` | Frontend (Minhaz) | Backend (Anim / Asif) | Victim accounts, case reports & 6-Stage Status Tracker (`POST /api/victim/cases`) | `[RESOLVED]` | 2026-11-15 22:15 (victim accounts + routes live) |
-| `XREQ-004` | `P1 (High)` | Frontend (Minhaz) | Backend (Asif / Anim) / AI (Galib) | Cross-Bank Shared Accounts (`GET /api/alerts/shared-accounts`); freeze needs a team decision | `[IN_PROGRESS]` | 2026-11-15 20:10 (detection done, freeze not agreed) |
+| `XREQ-004` | `P1 (High)` | Frontend (Minhaz) | Backend (Asif / Anim) / AI (Galib) | Cross-Bank Shared Accounts (`GET /api/alerts/shared-accounts`); freeze needs a team decision | `[IN_PROGRESS]` | 2026-11-17 (GET live on Azure; only the freeze decision is open) |
 | `XREQ-005` | `P1 (High)` | Frontend (Minhaz) | Backend (Anim / Asif) | All 48 v0.4.2 routes mounted; the 3 contract deviations closed (contract v0.4.3) | `[RESOLVED]` | 2026-11-15 22:15 (48/48 routes, v0.4.3) |
 | `XREQ-006` | `P0 (Blocker)` | Frontend (Minhaz) | Backend (Asif / Anim) / AI (Galib) | Deploy backend + database + AI to the cloud, post the public HTTPS API URL, allow the frontend origin (CORS) | `[VERIFIED_AND_CLOSED]` | 2026-11-16 23:58 (closed through XREQ-007; API on Azure VM) |
 | `XREQ-007` | `P0 (Blocker)` | Frontend (Minhaz) | Backend (Asif / Anim) / AI (Galib) | Free always-on deploy: verify, then implement [docs/DEPLOY-FREE.md](docs/DEPLOY-FREE.md) (Azure for Students VM + Supabase + Firebase), post `API_URL` | `[VERIFIED_AND_CLOSED]` | 2026-11-16 23:58 (frontend on `https://reliefops.web.app` now calls `https://reliefops-api.japaneast.cloudapp.azure.com`, mock off, login verified) |
@@ -281,6 +281,8 @@ Provides the showstopper feature for hackathon judging: uncovering organized cri
 - **Verification Proof**: `cd backend && uv run pytest tests/ai/test_fraud_rings.py` → 19 passed. On the real demo seed (`app.seed.all_cases()`): exactly one cross-bank ring, account `9876543210`, 3 cases at bank_a + bank_b, ¥4,485,000 → `CRITICAL_SYNDICATE` (test `test_the_real_demo_seed_has_one_critical_cross_bank_ring`).
 
 **Status request (Minhaz, 2026-11-15 14:49):** `GET /api/alerts/shared-accounts` is still not mounted in `backend/app/main.py`, so the dashboard's shared-accounts panel works only in mock mode. Asif / Anim: please mount it (supervisor only), and tell me the ETA here. The freeze stays out until the team decides.
+
+**Status request (Minhaz, 2026-11-17):** `GET /api/alerts/shared-accounts` is mounted and live on `https://reliefops-api.japaneast.cloudapp.azure.com`, so that part is done. The only open item is the freeze. Asif / Anim / Galib: reply here with one of (a) **drop freeze for the hackathon**, and I close this card, or (b) **build it**: who may freeze (supervisor only?), the audit action name, how it is undone, and a contract PR for `POST .../freeze`. Without a reply by the next check-in I will treat it as (a) and close the card.
 
 ---
 
