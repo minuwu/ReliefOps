@@ -481,7 +481,7 @@ EMAIL_MODE: console | smtp
     Phase A  A1 [x] (failed -> Azure) A2 [x] A3 [x] (Azure B2pts_v2: 2 vCPU, 1 GB + 2 GB swap) A4 [x] (backend)   A5 [x] A6 [x] A7 [x] (AI)
     Fallback used (if any): Azure for Students VM (Japan East) instead of Northflank; database on Supabase free (Tokyo)
     API_URL=https://reliefops-api.japaneast.cloudapp.azure.com
-    CORS header for https://reliefops.web.app: yes (also reliefops.firebaseapp.com; a foreign origin gets none)
+    CORS header for https://reliefops.web.app: yes (also reliefops.firebaseapp.com, and localhost/127.0.0.1 on 5173 dev, 4173 preview, 5199 Playwright; a foreign origin gets none)
     DB migrated + seeded (seed line matches): yes (/api/banks returns the 5 banks)
     /api/health db=ok ai=ok rag=ok: yes ({"db":"ok","ai":"available","rag":"available"})
     smoke.sh: 39/39
