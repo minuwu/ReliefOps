@@ -68,7 +68,7 @@ This file is:
 | `XREQ-004` | `P1 (High)` | Frontend (Minhaz) | Backend (Asif / Anim) / AI (Galib) | Cross-Bank Shared Accounts (`GET /api/alerts/shared-accounts`); freeze needs a team decision | `[IN_PROGRESS]` | 2026-11-15 20:10 (detection done, freeze not agreed) |
 | `XREQ-005` | `P1 (High)` | Frontend (Minhaz) | Backend (Anim / Asif) | All 48 v0.4.2 routes mounted; the 3 contract deviations closed (contract v0.4.3) | `[RESOLVED]` | 2026-11-15 22:15 (48/48 routes, v0.4.3) |
 | `XREQ-006` | `P0 (Blocker)` | Frontend (Minhaz) | Backend (Asif / Anim) / AI (Galib) | Deploy backend + database + AI to the cloud, post the public HTTPS API URL, allow the frontend origin (CORS) | `[IN_PROGRESS]` | 2026-11-15 22:15 (image + runbook ready, cloud steps left) |
-| `XREQ-007` | `P0 (Blocker)` | Frontend (Minhaz) | Backend (Asif / Anim) / AI (Galib) | Free always-on deploy: verify, then implement [docs/DEPLOY-FREE.md](docs/DEPLOY-FREE.md) (Northflank Sandbox service + Postgres, Firebase), post `API_URL` | `[IN_PROGRESS]` | 2026-11-15 23:45 (DB done on Supabase; Galib: A5–A7, see card) |
+| `XREQ-007` | `P0 (Blocker)` | Frontend (Minhaz) | Backend (Asif / Anim) / AI (Galib) | Free always-on deploy: verify, then implement [docs/DEPLOY-FREE.md](docs/DEPLOY-FREE.md) (Azure for Students VM + Supabase + Firebase), post `API_URL` | `[RESOLVED]` | 2026-11-16 23:50 (live: `https://reliefops-api.japaneast.cloudapp.azure.com`, smoke 39/39; Minhaz: switch the frontend, then verify) |
 
 *(When adding a request: append a row above AND add a detailed card in 2.2. Never insert in the middle.)*
 
@@ -392,8 +392,8 @@ EMAIL_MODE: console | smtp
 - **Priority**: `P0 (Blocker)`
 - **From**: Frontend (Minhaz)
 - **To**: Backend (Asif / Anim) / AI (Galib)
-- **Status**: `[IN_PROGRESS]`
-- **Created**: 2026-11-15 23:30 (UTC+6), **revised** 2026-11-16 00:40 (plan re-verified: budget, DB access, job source fixed)
+- **Status**: `[RESOLVED]`
+- **Created**: 2026-11-15 23:30 (UTC+6), **revised** 2026-11-16 00:40 (plan re-verified: budget, DB access, job source fixed), **deployed** 2026-11-16 23:50 on Azure (see "Live deploy" at the end of this card)
 - **Target Interface / Endpoint**: a public `https://` base URL serving `/api/*` (contract v0.4.3), free and awake during judging
 
 **Why:** XREQ-006 is stuck on Cloud Run. `--min-instances=1` and Cloud SQL need a paid billing account. The team's constraints are: free, no card, does not sleep, fast, simple. **Revised path:** Firebase Hosting (frontend, already live) + **Northflank Developer Sandbox** for everything else: one service built from the existing `backend/Dockerfile` (backend + AI), plus a Postgres addon with `pgvector` built in. One platform, always on, no card. Full runbook: [docs/DEPLOY-FREE.md](docs/DEPLOY-FREE.md).
@@ -471,6 +471,28 @@ EMAIL_MODE: console | smtp
   - Supervisor 42 cases (5 banks), viewer A 8 (bank_a only), viewer B 11 (bank_b only), a victim on `/api/cases` → `403`, no token → `401`.
   - Supabase security advisor: 0 issues.
   - The live `smoke.sh` waits for B5.
+- **Live deploy (Asif, 2026-11-16 23:50). Northflank was replaced by an Azure for Students VM.**
+  - **Why:** Northflank's signup asked for a card (A1 failed). Azure for Students needs no card and the VM never sleeps.
+  - **Where:** VM `reliefops-api`, Japan East (same region as Supabase), Arm64 `Standard_B2pts_v2`, Docker Compose with the API (backend + AI + Tesseract, one instance) behind Caddy (HTTPS, Let's Encrypt). Runbook: [docs/DEPLOY-FREE.md](docs/DEPLOY-FREE.md) § "Azure VM"; files: [deploy/azure-vm/](deploy/azure-vm/).
+  - **Settings:** `EMAIL_MODE=console` (A4), `AI_MAX_CONCURRENT=2`, `AI_TIMEOUT_SECONDS=20` (Galib's A6 values). Secrets only in the gitignored `deploy/azure-vm/.env.prod` and on the VM (`chmod 600`).
+  - **Keepalive:** [.github/workflows/keepalive.yml](.github/workflows/keepalive.yml) pings `/api/health` and `/api/banks` twice a day so Supabase doesn't pause. It runs once the repo variable `API_URL` is set.
+  - **Reply:**
+    ```text
+    Phase A  A1 [x] (failed -> Azure) A2 [x] A3 [x] (Azure B2pts_v2: 2 vCPU, 1 GB + 2 GB swap) A4 [x] (backend)   A5 [x] A6 [x] A7 [x] (AI)
+    Fallback used (if any): Azure for Students VM (Japan East) instead of Northflank; database on Supabase free (Tokyo)
+    API_URL=https://reliefops-api.japaneast.cloudapp.azure.com
+    CORS header for https://reliefops.web.app: yes (also reliefops.firebaseapp.com; a foreign origin gets none)
+    DB migrated + seeded (seed line matches): yes (/api/banks returns the 5 banks)
+    /api/health db=ok ai=ok rag=ok: yes ({"db":"ok","ai":"available","rag":"available"})
+    smoke.sh: 39/39
+    Live extraction + KB chat checked (Galib): pending, Galib
+    EMAIL_MODE: console
+    ```
+  - **A7 in the image:** done on the VM. The built Arm64 image has Tesseract 5.5 with `eng` + `jpn`, every Python dependency imports, and `/api/health` reports `ai` and `rag` available with the live keys.
+  - **Next:**
+    - **Minhaz:** build the frontend with `VITE_USE_MOCK=false VITE_API_URL=https://reliefops-api.japaneast.cloudapp.azure.com`, redeploy Firebase, then mark this card `[VERIFIED_AND_CLOSED]`.
+    - **Galib:** run one live extraction and one KB chat question through the URL and tick the line above.
+    - **Asif:** set the repo variable `API_URL` so the keepalive runs.
 ---
 
 ### 2.3 Blank XREQ Template (copy & paste)

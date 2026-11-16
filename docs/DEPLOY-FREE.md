@@ -2,6 +2,40 @@
 
 Goal: API live for judging at **zero cost**, **no card**, **no sleep**, on **one platform**. This replaces the Cloud Run + Cloud SQL path in [DEPLOY.md](DEPLOY.md) (`--min-instances=1` and Cloud SQL need a paid billing account). The role SQL, env vars, smoke test and email decision in DEPLOY.md still apply.
 
+> **Revised 2026-11-16 (Asif): the API runs on an Azure for Students VM, not Northflank.** Northflank's signup asked for a card despite "No card needed" on its pricing page (check A1 failed). Everything below the "Azure VM" section is kept for reference only.
+
+## Azure VM (live path)
+
+| Part | Where | Cost | Sleeps? |
+|---|---|---|---|
+| Frontend | Firebase Hosting, `https://reliefops.web.app` | Free | Never |
+| Backend + AI (one container, Tesseract inside) | Azure VM `reliefops-api`, **Japan East**, `Standard_B2pts_v2` (2 vCPU Arm64, 1 GB RAM + 2 GB swap), Ubuntu 24.04, behind Caddy | Free: 750 VM hours/month for 12 months on Azure for Students ($100 credit, no card, expires 2027-11-16). The public IP and disk may draw a little of the credit | Never (no auto-shutdown) |
+| Database | Supabase free, Tokyo (unchanged, see "Database: Supabase") | Free | Kept awake by [.github/workflows/keepalive.yml](../.github/workflows/keepalive.yml) |
+
+- **API URL:** `https://reliefops-api.japaneast.cloudapp.azure.com`. HTTPS from Let's Encrypt via Caddy, renewed automatically.
+- **The AI needs no other host.** Extraction and chat call Gemini, Groq and OpenRouter over HTTPS; embeddings are Gemini's API; only Tesseract runs locally, inside the image.
+- **Why these choices:**
+  - Japan East is in the subscription's allowed regions and in the same region as Supabase.
+  - `B2ats_v2` and `B1s` (the other two free sizes) had no capacity in Japan East on 2026-11-16; `B2pts_v2` did. The image builds on Arm64 unchanged.
+- **Files:** [deploy/azure-vm/](../deploy/azure-vm/). `compose.yml` (api + Caddy, log caps), `Caddyfile`, `env.prod.example`, `deploy.sh`.
+- **Secrets:** `deploy/azure-vm/.env.prod` on the deployer's laptop (gitignored by `.env.*`), copied to `/opt/reliefops/.env.prod` on the VM with `chmod 600`. Same keys as `env.prod.example`.
+
+**Redeploy** (from the repo root, after `git pull`; deploys `origin/main` by default):
+```bash
+bash deploy/azure-vm/deploy.sh reliefops-api.japaneast.cloudapp.azure.com
+```
+It needs the SSH key `~/.ssh/reliefops_azure` (Asif has it; to add a teammate, append their public key to `~azureuser/.ssh/authorized_keys` on the VM). A rebuild takes about 4 minutes on this VM.
+
+**Operate:**
+```bash
+ssh -i ~/.ssh/reliefops_azure azureuser@reliefops-api.japaneast.cloudapp.azure.com
+cd /opt/reliefops
+sudo docker compose ps                  # both containers Up
+sudo docker compose logs --tail 80 api  # app logs
+sudo docker compose restart api         # after editing .env.prod on the VM
+```
+Azure resources live in resource group `reliefops`. Deleting that group removes everything.
+
 > **Revised 2026-11-15.** The first version of this file used Hugging Face Spaces. That no longer works: HF now requires a paid plan (PRO / Team) to create Docker Spaces ([HF docs](https://huggingface.co/docs/hub/en/spaces-overview)). Do not use it.
 
 ## The stack
