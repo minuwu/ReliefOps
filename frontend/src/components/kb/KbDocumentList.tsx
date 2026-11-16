@@ -3,7 +3,8 @@ import { Filter } from 'lucide-react';
 import type { Bank, KbDocument, KbDocumentStatus } from '@/types/api';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { panelClass, formatDate } from './kbFormat';
+import { panelClass } from './kbFormat';
+import { formatDate } from '@/lib/utils';
 
 const STATUS_VARIANTS: Record<KbDocumentStatus, 'success' | 'info' | 'warning' | 'secondary' | 'destructive'> = {
   published: 'success',

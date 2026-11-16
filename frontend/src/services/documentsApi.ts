@@ -66,7 +66,8 @@ function parseContentDisposition(header: string | null): string | null {
   if (utf8?.[1]) {
     try {
       return decodeURIComponent(utf8[1].trim().replace(/^["']|["']$/g, ''));
-    } catch {
+    } catch (err) {
+      void err;
       return utf8[1].trim().replace(/^["']|["']$/g, '');
     }
   }
@@ -312,19 +313,15 @@ async function liveDownloadDoc(docId: string): Promise<{ blob: Blob; filename: s
   const headers = new Headers();
   if (token) headers.set('Authorization', `Bearer ${token}`);
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
-
   let res: Response;
   try {
     res = await fetch(`${API_BASE_URL}/api/documents/${docId}/file`, {
       headers,
-      signal: controller.signal,
+      signal: AbortSignal.timeout(DEFAULT_TIMEOUT_MS),
     });
-  } catch {
+  } catch (err) {
+    void err;
     throw apiError('NETWORK_ERROR', 'Could not reach the server. Check your connection.');
-  } finally {
-    clearTimeout(timer);
   }
 
   if (!res.ok) {
@@ -335,7 +332,8 @@ async function liveDownloadDoc(docId: string): Promise<{ blob: Blob; filename: s
     try {
       const json = (await res.json()) as { error?: ApiErrorDetail };
       err = json.error ?? apiError(`HTTP_ERROR_${res.status}`, res.statusText || 'Download failed');
-    } catch {
+    } catch (parseErr) {
+      void parseErr;
       err = apiError(`HTTP_ERROR_${res.status}`, res.statusText || 'Download failed');
     }
     throw err;

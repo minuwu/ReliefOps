@@ -84,12 +84,30 @@ export type AuditAction =
   | 'ai.review_accepted'
   | 'ai.review_rejected'
   | 'export.generated'
-  | 'case.access_code_issued'
   | 'chat.escalated'
   | 'chat.staff_replied'
   | 'kb.document_uploaded'
   | 'kb.document_published'
-  | 'kb.document_archived';
+  | 'kb.document_archived'
+  | 'auth.logout'
+  | 'auth.signup'
+  | 'auth.email_verified'
+  | 'auth.password_reset'
+  | 'user.invited'
+  | 'user.invitation_revoked'
+  | 'user.joined'
+  | 'user.deactivated'
+  | 'user.reactivated'
+  | 'case.victim_invited'
+  | 'case.claimed';
+
+export type ActorType = 'user' | 'public' | 'victim' | 'system' | 'ai';
+
+export type ExtractionErrorReason =
+  | 'timeout'
+  | 'ai_unavailable'
+  | 'unreadable_document'
+  | 'invalid_ai_output';
 
 export type ChatRole = 'victim' | 'assistant' | 'staff';
 
@@ -298,7 +316,7 @@ export interface Extraction {
   fields: ExtractedField[];
   missing_fields: ExtractableField[];
   error: {
-    reason: 'timeout' | 'ai_unavailable' | 'unreadable_document' | 'invalid_ai_output';
+    reason: ExtractionErrorReason;
     message: string;
   } | null;
   created_at: string;
@@ -326,7 +344,7 @@ export interface AuditEntry {
   id: string;
   at: string;
   actor: {
-    type: 'user' | 'public' | 'victim' | 'system' | 'ai';
+    type: ActorType;
     id: string | null;
     name: string;
     role: Role | null;

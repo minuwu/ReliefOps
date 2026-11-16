@@ -1,12 +1,13 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ShieldCheck } from 'lucide-react';
-import type { Bank, BankId, Language, ScamType, VictimEditableField, VictimReport } from '@/types/api';
+import type { BankId, Language, ScamType, VictimEditableField, VictimReport } from '@/types/api';
 import { api } from '@/services/api';
 import { victimApi } from '@/services/victimApi';
 import { errorMessage, fieldErrors } from '@/services/http';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useToastStore } from '@/store/useToastStore';
+import { useAsyncResource } from '@/lib/hooks/useAsyncResource';
 import { FormNotice } from '@/components/auth/AuthCard';
 import { Button } from '@/components/ui/Button';
 import {
@@ -60,7 +61,13 @@ export function ReportCasePage() {
   const user = useAuthStore((s) => s.user);
   const pushToast = useToastStore((s) => s.push);
   const navigate = useNavigate();
-  const [banks, setBanks] = useState<Bank[]>([]);
+
+  const { data: banksData, error: banksError } = useAsyncResource('banks', async () => {
+    const res = await api.getBanks();
+    return res.data;
+  });
+  const banks = banksData ?? [];
+
   const [bankId, setBankId] = useState<BankId | ''>('');
   const [values, setValues] = useState<CaseFormValues>(() => ({
     ...emptyValues(),
@@ -71,13 +78,6 @@ export function ReportCasePage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  useEffect(() => {
-    api
-      .getBanks()
-      .then((res) => setBanks(res.data))
-      .catch((err) => setFormError(errorMessage(err, 'Could not load the list of banks.')));
-  }, []);
 
   const handleChange = (key: VictimEditableField, value: string) => setValues((v) => ({ ...v, [key]: value }));
 
@@ -121,6 +121,12 @@ export function ReportCasePage() {
       </header>
 
       <form onSubmit={handleSubmit} className="space-y-6" noValidate>
+        {banksError ? (
+          <FormNotice tone="error">
+            {errorMessage(banksError, 'Could not load the list of banks.')}
+          </FormNotice>
+        ) : null}
+
         <Section title="Your bank" hint="The bank account you sent the money from.">
           <div className="space-y-1.5 font-['Space_Grotesk',sans-serif]">
             <label htmlFor="report-bank" className="block text-xs font-bold uppercase tracking-wider text-[#09090B]">
@@ -172,7 +178,7 @@ export function ReportCasePage() {
         {formError && <FormNotice tone="error">{formError}</FormNotice>}
 
         <Button type="submit" variant="primary" size="lg" isLoading={isSubmitting} className="w-full gap-2">
-          <ShieldCheck className="w-4 h-4" /> SEND REPORT
+          <ShieldCheck className="w-4 h-4" aria-hidden="true" /> SEND REPORT
         </Button>
       </form>
     </div>

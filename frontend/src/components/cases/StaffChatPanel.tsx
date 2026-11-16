@@ -1,219 +1,17 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
-import {
-  AlertTriangle,
-  Bot,
-  Lock,
-  MessageSquare,
-  RotateCw,
-  Send,
-  ShieldCheck,
-  UserRound,
-} from 'lucide-react';
-import type { ChatMessage, ChatThread, Citation } from '@/types/api';
+import { useCallback, useRef, useState, type FormEvent } from 'react';
+import { MessageSquare, RotateCw } from 'lucide-react';
+import type { ChatMessage, ChatThread } from '@/types/api';
 import { staffChatApi } from '@/services/staffChatApi';
 import { errorMessage } from '@/services/http';
 import { useToastStore } from '@/store/useToastStore';
+import { useAsyncResource } from '@/lib/hooks/useAsyncResource';
+import { useTimeout } from '@/lib/hooks/useTimers';
 import { FormNotice } from '@/components/auth/AuthCard';
 import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
-import { cn, formatDateTime } from '@/lib/utils';
-
-const MAX_REPLY_CHARS = 4000;
-
-function scrollContainerToBottom(el: HTMLElement, smooth = true) {
-  const prefersReduced =
-    typeof window !== 'undefined' &&
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (!smooth || prefersReduced) {
-    el.scrollTop = el.scrollHeight;
-  } else {
-    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
-    setTimeout(() => {
-      el.scrollTop = el.scrollHeight;
-    }, 300);
-  }
-}
-
-function CitationsList({ citations }: { citations: Citation[] }) {
-  if (!citations || citations.length === 0) return null;
-  return (
-    <ul className="mt-2 space-y-1.5" aria-label="Cited Sources">
-      {citations.map((c, idx) => (
-        <li
-          key={`${c.document_id}-${c.section ?? ''}-${c.page ?? ''}-${idx}`}
-          className="rounded-lg border border-[#09090B]/15 bg-[#F8F4E8] p-2 text-xs"
-        >
-          <div className="flex flex-wrap items-center justify-between gap-1 font-bold text-[#09090B]">
-            <span>
-              {c.document_title} · v{c.version}
-            </span>
-            {(c.section || c.page !== null) && (
-              <span className="text-xs font-mono text-[#52525B]">
-                {c.section && `Sec: ${c.section}`}
-                {c.section && c.page !== null && ' · '}
-                {c.page !== null && `p.${c.page}`}
-              </span>
-            )}
-          </div>
-          <p className="mt-1 italic text-[#52525B]">“{c.quote}”</p>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function MessageBubble({ message }: { message: ChatMessage }) {
-  const isVictim = message.role === 'victim';
-  const isStaff = message.role === 'staff';
-
-  return (
-    <li className={`flex ${isVictim ? 'justify-start' : 'justify-end'}`}>
-      <div
-        className={cn(
-          'max-w-[85%] rounded-xl border border-[#09090B]/20 p-3 text-xs',
-          isVictim && 'bg-[#EDE8D5] text-[#09090B]',
-          isStaff && 'bg-[#D2E823]/30 text-[#09090B] border-[#09090B]/30',
-          !isVictim && !isStaff && 'bg-[#FFFFFF] text-[#09090B]'
-        )}
-      >
-        <div
-          className={cn(
-            'mb-1 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider',
-            isVictim ? 'justify-start text-[#52525B]' : 'justify-end text-[#09090B]'
-          )}
-        >
-          {isVictim && <UserRound className="h-3.5 w-3.5 text-[#09090B]" aria-hidden="true" />}
-          {isStaff && <ShieldCheck className="h-3.5 w-3.5 text-[#09090B]" aria-hidden="true" />}
-          {!isVictim && !isStaff && <Bot className="h-3.5 w-3.5 text-[#09090B]" aria-hidden="true" />}
-
-          <span>
-            {isVictim
-              ? 'Victim'
-              : isStaff
-                ? `Staff${message.author?.name ? ` (${message.author.name})` : ''}`
-                : 'Assistant'}
-          </span>
-          <span>·</span>
-          <span className="font-mono font-normal">{formatDateTime(message.created_at)}</span>
-        </div>
-
-        {message.needs_staff && (
-          <span className="mb-1.5 inline-block rounded bg-[#FF334B] px-1.5 py-0.5 text-xs font-bold text-[#09090B]">
-            Escalated to staff
-          </span>
-        )}
-
-        <p className="whitespace-pre-wrap break-words font-medium">{message.body}</p>
-        <CitationsList citations={message.citations} />
-      </div>
-    </li>
-  );
-}
-
-function PendingBanner() {
-  return (
-    <div
-      role="status"
-      className="flex items-center justify-between gap-3 rounded-xl border border-[#FF334B]/40 bg-[#FF334B]/15 p-3 text-[#09090B]"
-    >
-      <div className="flex items-center gap-2.5">
-        <AlertTriangle className="h-4 w-4 shrink-0 text-[#FF334B]" aria-hidden="true" />
-        <div>
-          <p className="text-xs font-bold uppercase tracking-wide">
-            Victim response pending
-          </p>
-          <p className="text-xs text-[#52525B]">
-            This thread has a question requiring human staff attention.
-          </p>
-        </div>
-      </div>
-      <Badge variant="destructive" className="shrink-0 text-xs">
-        Action required
-      </Badge>
-    </div>
-  );
-}
-
-function ReadOnlyNotice() {
-  return (
-    <div className="flex items-center gap-2 rounded-xl border border-[#09090B]/15 bg-[#EDE8D5]/40 p-3 text-xs text-[#52525B]">
-      <Lock className="h-4 w-4 shrink-0 text-[#52525B]" aria-hidden="true" />
-      <span>Read-only view. Only operators and supervisors can post replies to victims.</span>
-    </div>
-  );
-}
-
-interface ReplyFormProps {
-  replyText: string;
-  isSending: boolean;
-  sendError: string | null;
-  textareaRef: React.RefObject<HTMLTextAreaElement>;
-  onTextChange: (text: string) => void;
-  onSubmit: (e: FormEvent) => void;
-}
-
-function StaffReplyForm({
-  replyText,
-  isSending,
-  sendError,
-  textareaRef,
-  onTextChange,
-  onSubmit,
-}: ReplyFormProps) {
-  const isTooLong = replyText.length > MAX_REPLY_CHARS;
-  const isDisabled = !replyText.trim() || isTooLong || isSending;
-
-  return (
-    <form onSubmit={onSubmit} className="space-y-2.5 border-t border-[#09090B]/15 pt-3">
-      <div className="flex items-center justify-between">
-        <label
-          htmlFor="staff-chat-reply-textarea"
-          className="text-xs font-bold uppercase tracking-wide text-[#09090B]"
-        >
-          Send staff reply
-        </label>
-        <span
-          className={cn(
-            'font-mono text-xs',
-            isTooLong ? 'font-bold text-[#FF334B]' : 'text-[#52525B]'
-          )}
-        >
-          {replyText.length}/{MAX_REPLY_CHARS}
-        </span>
-      </div>
-
-      <textarea
-        ref={textareaRef}
-        id="staff-chat-reply-textarea"
-        rows={3}
-        maxLength={MAX_REPLY_CHARS}
-        value={replyText}
-        onChange={(e) => onTextChange(e.target.value)}
-        placeholder="Type reply to victim..."
-        disabled={isSending}
-        className="w-full rounded-xl border border-[#09090B]/20 bg-[#F8F4E8] p-3 text-xs font-medium focus:outline-none focus:border-[#09090B]"
-      />
-
-      {sendError && <FormNotice tone="error">{sendError}</FormNotice>}
-
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-xs text-[#52525B]">
-          Visible to victim immediately. Clears pending flag and records audit log.
-        </p>
-        <Button
-          type="submit"
-          variant="primary"
-          size="sm"
-          isLoading={isSending}
-          disabled={isDisabled}
-          className="shrink-0 gap-1.5"
-        >
-          <Send className="h-3.5 w-3.5" aria-hidden="true" /> Send reply
-        </Button>
-      </div>
-    </form>
-  );
-}
+import { cn } from '@/lib/utils';
+import { MessageBubble } from './staffchat/MessageBubble';
+import { StaffReplyForm } from './staffchat/StaffReplyForm';
+import { PendingBanner, ReadOnlyNotice } from './staffchat/ChatNotices';
 
 export function StaffChatPanel({
   caseId,
@@ -222,14 +20,22 @@ export function StaffChatPanel({
   caseId: string;
   canReply: boolean;
 }) {
+  return <StaffChatPanelContent key={caseId} caseId={caseId} canReply={canReply} />;
+}
+
+function StaffChatPanelContent({
+  caseId,
+  canReply,
+}: {
+  caseId: string;
+  canReply: boolean;
+}) {
   const pushToast = useToastStore((s) => s.push);
-  const [thread, setThread] = useState<ChatThread | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  const [localMessages, setLocalMessages] = useState<ChatMessage[]>([]);
+  const [focusNonce, setFocusNonce] = useState(0);
 
   const listRef = useRef<HTMLUListElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -238,67 +44,74 @@ export function StaffChatPanel({
   const userJustSentRef = useRef(false);
   const prevCountRef = useRef(0);
 
-  const handleScroll = () => {
-    const el = listRef.current;
-    if (!el) return;
+  const {
+    data: fetchedThread,
+    error: loadErr,
+    loading: isLoading,
+    reload,
+  } = useAsyncResource<ChatThread>(
+    caseId ? `staff-chat-${caseId}` : null,
+    useCallback(async () => {
+      const res = await staffChatApi.getThread(caseId);
+      return res.data;
+    }, [caseId])
+  );
+
+  const loadError = loadErr
+    ? errorMessage(loadErr, 'Could not load chat conversation.')
+    : null;
+
+  useTimeout(
+    () => {
+      textareaRef.current?.focus({ preventScroll: true });
+    },
+    focusNonce > 0 ? 50 : null,
+    focusNonce
+  );
+
+  const thread = fetchedThread
+    ? {
+        ...fetchedThread,
+        messages: (() => {
+          const map = new Map<string, ChatMessage>();
+          for (const m of fetchedThread.messages) {
+            map.set(m.id, m);
+          }
+          for (const m of localMessages) {
+            map.set(m.id, m);
+          }
+          return Array.from(map.values());
+        })(),
+      }
+    : null;
+
+  const messageCount = thread?.messages.length ?? 0;
+
+  const handleScroll = (e: React.UIEvent<HTMLUListElement>) => {
+    const el = e.currentTarget;
     const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
     isNearBottomRef.current = distanceFromBottom <= 80;
   };
 
-  useEffect(() => {
-    isInitialLoadRef.current = true;
-    prevCountRef.current = 0;
-  }, [caseId]);
-
-  const loadThread = useCallback(
-    async (isRefresh = false) => {
-      if (isRefresh) {
-        setIsRefreshing(true);
-      } else {
-        setIsLoading(true);
-      }
-      setLoadError(null);
-      try {
-        const res = await staffChatApi.getThread(caseId);
-        setThread(res.data);
-      } catch (err) {
-        setLoadError(errorMessage(err, 'Could not load chat conversation.'));
-      } finally {
-        setIsLoading(false);
-        setIsRefreshing(false);
-      }
-    },
-    [caseId]
-  );
-
-  useEffect(() => {
-    loadThread();
-  }, [loadThread]);
-
-  useEffect(() => {
-    const el = listRef.current;
-    const messagesCount = thread?.messages.length ?? 0;
-    if (!el || isLoading || messagesCount === 0) return;
-
-    const frameId = requestAnimationFrame(() => {
-      const container = listRef.current;
-      if (!container) return;
-      if (isInitialLoadRef.current) {
-        isInitialLoadRef.current = false;
-        scrollContainerToBottom(container, false);
-        isNearBottomRef.current = true;
-      } else if (userJustSentRef.current) {
-        userJustSentRef.current = false;
-        scrollContainerToBottom(container, true);
-        isNearBottomRef.current = true;
-      } else if (messagesCount > prevCountRef.current && isNearBottomRef.current) {
-        scrollContainerToBottom(container, true);
-      }
-      prevCountRef.current = messagesCount;
-    });
-
-    return () => cancelAnimationFrame(frameId);
-  }, [thread?.messages.length, isLoading]);
+  const bottomAnchorRef = (node: HTMLLIElement | null) => {
+    if (!node) return;
+    const currentCount = messageCount;
+    const countChanged = currentCount !== prevCountRef.current;
+    if (
+      isInitialLoadRef.current ||
+      userJustSentRef.current ||
+      (countChanged && isNearBottomRef.current)
+    ) {
+      const prefersReduced =
+        typeof window !== 'undefined' &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const smooth = !isInitialLoadRef.current && !prefersReduced;
+      node.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'end' });
+      isInitialLoadRef.current = false;
+      userJustSentRef.current = false;
+    }
+    prevCountRef.current = currentCount;
+  };
 
   const handleSendReply = async (e: FormEvent) => {
     e.preventDefault();
@@ -310,9 +123,10 @@ export function StaffChatPanel({
     let success = false;
     try {
       userJustSentRef.current = true;
-      await staffChatApi.reply(caseId, text);
+      const res = await staffChatApi.reply(caseId, text);
+      setLocalMessages((prev) => [...prev, res.data]);
       setReplyText('');
-      await loadThread(true);
+      reload();
       success = true;
     } catch (err) {
       userJustSentRef.current = false;
@@ -322,12 +136,12 @@ export function StaffChatPanel({
     } finally {
       setIsSending(false);
       if (success) {
-        setTimeout(() => {
-          textareaRef.current?.focus({ preventScroll: true });
-        }, 50);
+        setFocusNonce((n) => n + 1);
       }
     }
   };
+
+  const isRefreshing = isLoading && Boolean(fetchedThread);
 
   return (
     <div className="space-y-4 font-['Space_Grotesk',sans-serif]">
@@ -340,8 +154,8 @@ export function StaffChatPanel({
           type="button"
           variant="outline"
           size="sm"
-          onClick={() => loadThread(true)}
-          disabled={isLoading || isRefreshing || isSending}
+          onClick={() => reload()}
+          disabled={isLoading || isSending}
           className="gap-1.5"
           aria-label="Refresh conversation"
         >
@@ -358,7 +172,7 @@ export function StaffChatPanel({
         </div>
       )}
 
-      {isLoading && (
+      {isLoading && !fetchedThread && (
         <p className="py-6 text-center text-xs text-[#52525B]">
           Loading conversation…
         </p>
@@ -367,7 +181,7 @@ export function StaffChatPanel({
       {loadError && (
         <div className="space-y-3">
           <FormNotice tone="error">{loadError}</FormNotice>
-          <Button type="button" variant="outline" size="sm" onClick={() => loadThread(false)}>
+          <Button type="button" variant="outline" size="sm" onClick={() => reload()}>
             Retry loading
           </Button>
         </div>
@@ -379,7 +193,7 @@ export function StaffChatPanel({
         </p>
       )}
 
-      {!isLoading && !loadError && thread && thread.messages.length > 0 && (
+      {!loadError && thread && thread.messages.length > 0 && (
         <ul
           ref={listRef}
           onScroll={handleScroll}
@@ -389,6 +203,12 @@ export function StaffChatPanel({
           {thread.messages.map((m) => (
             <MessageBubble key={m.id} message={m} />
           ))}
+          <li
+            key={`bottom-anchor-${thread.messages.length}`}
+            ref={bottomAnchorRef}
+            aria-hidden="true"
+            className="h-0 w-0 p-0 m-0 list-none pointer-events-none"
+          />
         </ul>
       )}
 

@@ -1,50 +1,39 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { Bank, KbDocument, KbDocumentStatus } from '@/types/api';
 import { api } from '@/services/api';
 import { kbApi } from '@/services/kbApi';
 import { errorMessage } from '@/services/http';
+import { useAsyncResource } from '@/lib/hooks/useAsyncResource';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useToastStore } from '@/store/useToastStore';
+import { Button } from '@/components/ui/Button';
 import { KbUploadPanel } from '@/components/kb/KbUploadPanel';
 import { KbDocumentList } from '@/components/kb/KbDocumentList';
 
-function useKbBanks() {
-  const [banks, setBanks] = useState<Bank[]>([]);
-
-  useEffect(() => {
-    // Read-only import of api.listBanks() from @/services/api with fallback to getBanks
-    const apiWithList = api as unknown as { listBanks?: () => Promise<{ data: Bank[] }> };
-    const loadBanks = typeof apiWithList.listBanks === 'function' ? apiWithList.listBanks() : api.getBanks();
-    loadBanks
-      .then((res) => setBanks(res.data))
-      .catch(() => setBanks([]));
-  }, []);
-
+function useKbBanks(): Bank[] {
+  const { data: banks = [] } = useAsyncResource('kb:banks', async () => {
+    const res = await api.getBanks();
+    return res.data;
+  });
   return banks;
 }
 
 function useKbDocuments(bankFilter: string, statusFilter: KbDocumentStatus | '') {
-  const [documents, setDocuments] = useState<KbDocument[] | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
-
-  const loadDocuments = useCallback(() => {
-    setIsLoading(true);
-    setLoadError(null);
+  const {
+    data: documents = null,
+    loading: isLoading,
+    error,
+    reload: loadDocuments,
+  } = useAsyncResource(`kb:docs:${bankFilter}:${statusFilter}`, async () => {
     const params: { bank_id?: string; status?: KbDocumentStatus } = {};
     if (bankFilter) params.bank_id = bankFilter;
     if (statusFilter) params.status = statusFilter;
 
-    kbApi
-      .list(params)
-      .then((res) => setDocuments(res.data))
-      .catch((err) => setLoadError(errorMessage(err, 'Could not load bluebook documents.')))
-      .finally(() => setIsLoading(false));
-  }, [bankFilter, statusFilter]);
+    const res = await kbApi.list(params);
+    return res.data;
+  });
 
-  useEffect(() => {
-    loadDocuments();
-  }, [loadDocuments]);
+  const loadError = error ? errorMessage(error, 'Could not load bluebook documents.') : null;
 
   return { documents, isLoading, loadError, loadDocuments };
 }
@@ -103,8 +92,20 @@ export function KnowledgeBasePage() {
       </header>
 
       {loadError && (
-        <div role="alert" className="rounded-xl border border-[#FF334B]/30 bg-[#FF334B]/10 p-4 text-xs font-bold text-[#FF334B]">
-          {loadError}
+        <div
+          role="alert"
+          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-[#FF334B]/30 bg-[#FF334B]/10 p-4 text-xs font-bold text-[#FF334B]"
+        >
+          <span>{loadError}</span>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={loadDocuments}
+            className="self-start sm:self-auto shrink-0"
+          >
+            Retry
+          </Button>
         </div>
       )}
 

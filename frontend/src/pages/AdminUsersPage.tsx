@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { MailPlus } from 'lucide-react';
 import type { Bank, BankId, Invitation, StaffRole, User } from '@/types/api';
 import { api } from '@/services/api';
 import { errorMessage, fieldErrors } from '@/services/http';
+import { useAsyncResource } from '@/lib/hooks/useAsyncResource';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useToastStore } from '@/store/useToastStore';
 import { FormNotice } from '@/components/auth/AuthCard';
@@ -163,40 +164,45 @@ function ConfirmButton({ label, confirmLabel, onConfirm }: { label: string; conf
 export function AdminUsersPage() {
   const me = useAuthStore((s) => s.user);
   const pushToast = useToastStore((s) => s.push);
-  const [users, setUsers] = useState<User[] | null>(null);
-  const [invitations, setInvitations] = useState<Invitation[]>([]);
-  const [banks, setBanks] = useState<Bank[]>([]);
   const [showInactive, setShowInactive] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
 
-  const loadUsers = useCallback(() => {
-    api
-      .getUsers({ include_inactive: showInactive })
-      .then((res) => setUsers(res.data))
-      .catch((err) => {
-        setUsers([]);
-        setLoadError(errorMessage(err, 'Could not load the team.'));
-      });
-  }, [showInactive]);
+  const {
+    data: users,
+    loading: usersLoading,
+    error: usersError,
+    reload: reloadUsers,
+  } = useAsyncResource(`admin:users:${showInactive}`, async () => {
+    const res = await api.getUsers({ include_inactive: showInactive });
+    return res.data;
+  });
 
-  useEffect(() => {
-    loadUsers();
-  }, [loadUsers]);
+  const { data: banks = [] } = useAsyncResource('admin:banks', async () => {
+    const res = await api.getBanks();
+    return res.data;
+  });
 
-  useEffect(() => {
-    api.getBanks().then((res) => setBanks(res.data)).catch(() => setBanks([]));
-    api
-      .getInvitations()
-      .then((res) => setInvitations(res.data))
-      .catch((err) => setLoadError(errorMessage(err, 'Could not load invitations.')));
-  }, []);
+  const {
+    data: invitations = [],
+    loading: invitesLoading,
+    error: invitesError,
+    reload: reloadInvitations,
+  } = useAsyncResource('admin:invitations', async () => {
+    const res = await api.getInvitations();
+    return res.data;
+  });
+
+  const loadError = usersError
+    ? errorMessage(usersError, 'Could not load the team.')
+    : invitesError
+      ? errorMessage(invitesError, 'Could not load invitations.')
+      : null;
 
   const bankName = (id: string | null) => (id ? banks.find((b) => b.id === id)?.name ?? id : 'Operations center');
 
   const revoke = async (invite: Invitation) => {
     try {
-      const res = await api.revokeInvitation(invite.id);
-      setInvitations((list) => list.map((i) => (i.id === invite.id ? res.data : i)));
+      await api.revokeInvitation(invite.id);
+      reloadInvitations();
       pushToast(`Invitation for ${invite.email} revoked.`, 'success');
     } catch (err) {
       pushToast(errorMessage(err, 'Could not revoke the invitation.'), 'error');
@@ -207,7 +213,7 @@ export function AdminUsersPage() {
     try {
       await api.setUserActive(user.id, isActive);
       pushToast(`${user.name} ${isActive ? 'can log in again' : 'is deactivated and logged out'}.`, 'success');
-      loadUsers();
+      reloadUsers();
     } catch (err) {
       pushToast(errorMessage(err, 'Could not change the account.'), 'error');
     }
@@ -220,7 +226,22 @@ export function AdminUsersPage() {
         <p className="text-sm text-[#52525B] mt-1">Staff accounts and invitations.</p>
       </header>
 
-      {loadError && <FormNotice tone="error">{loadError}</FormNotice>}
+      {loadError && (
+        <div className="space-y-2">
+          <FormNotice tone="error">{loadError}</FormNotice>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              reloadUsers();
+              reloadInvitations();
+            }}
+          >
+            Retry
+          </Button>
+        </div>
+      )}
 
       <section className={panelClass} aria-labelledby="invite-heading">
         <h2 id="invite-heading" className="text-sm font-bold uppercase tracking-wide text-[#09090B]">
@@ -229,14 +250,16 @@ export function AdminUsersPage() {
         <p className="text-sm text-[#52525B]">
           Staff accounts are created only by invitation. Bank viewers see only their own bank's cases.
         </p>
-        <InviteForm banks={banks} onInvited={(invite) => setInvitations((list) => [invite, ...list])} />
+        <InviteForm banks={banks} onInvited={() => reloadInvitations()} />
       </section>
 
       <section className={panelClass} aria-labelledby="invites-heading">
         <h2 id="invites-heading" className="text-sm font-bold uppercase tracking-wide text-[#09090B]">
           Invitations
         </h2>
-        {invitations.length === 0 ? (
+        {invitesLoading && invitations.length === 0 ? (
+          <p className="text-sm text-[#52525B]">Loading invitations…</p>
+        ) : invitations.length === 0 ? (
           <p className="text-sm text-[#52525B]">No invitations pending.</p>
         ) : (
           <ul className="divide-y divide-[#09090B]/10">
@@ -285,9 +308,9 @@ export function AdminUsersPage() {
             Show deactivated
           </label>
         </div>
-        {!users ? (
+        {usersLoading && !users ? (
           <p className="text-sm text-[#52525B]">Loading staff accounts…</p>
-        ) : users.length === 0 ? (
+        ) : !users || users.length === 0 ? (
           <p className="text-sm text-[#52525B]">No staff accounts found.</p>
         ) : (
           <ul className="divide-y divide-[#09090B]/10">

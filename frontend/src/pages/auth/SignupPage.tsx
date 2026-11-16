@@ -136,7 +136,7 @@ export function SignupPage() {
         {formError && <FormNotice tone="error">{formError}</FormNotice>}
 
         <Button type="submit" variant="primary" size="lg" isLoading={isSubmitting} className="w-full gap-2">
-          <UserPlus className="w-4 h-4" /> CREATE ACCOUNT
+          <UserPlus className="w-4 h-4" aria-hidden="true" /> CREATE ACCOUNT
         </Button>
       </form>
     </AuthCard>

@@ -85,20 +85,16 @@ async function fetchLiveCsv(caseId: string): Promise<CsvDownloadResult> {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
-
   let response: Response;
   try {
     response = await fetch(`${API_BASE_URL}/api/cases/${encodeURIComponent(caseId)}/history?format=csv`, {
       method: 'GET',
       headers,
-      signal: controller.signal,
+      signal: AbortSignal.timeout(DEFAULT_TIMEOUT_MS),
     });
-  } catch {
+  } catch (err) {
+    void err;
     throw apiError('NETWORK_ERROR', 'Could not reach the server. Check your connection.');
-  } finally {
-    clearTimeout(timer);
   }
 
   if (!response.ok) {
@@ -110,7 +106,8 @@ async function fetchLiveCsv(caseId: string): Promise<CsvDownloadResult> {
       const text = await response.text();
       const parsed = text ? (JSON.parse(text) as { error?: ApiErrorDetail }) : null;
       errorDetail = parsed?.error ?? apiError(`HTTP_ERROR_${response.status}`, response.statusText || 'Export failed');
-    } catch {
+    } catch (parseErr) {
+      void parseErr;
       errorDetail = apiError(`HTTP_ERROR_${response.status}`, response.statusText || 'Export failed');
     }
     throw errorDetail;
@@ -187,9 +184,7 @@ export const historyApi = {
       const blob = new Blob([csvText], { type: 'text/csv;charset=utf-8;' });
       const filename = `case-${caseItem.reference || caseId}-history.csv`;
 
-      return await new Promise<CsvDownloadResult>((resolve) => {
-        setTimeout(() => resolve({ blob, filename }), 120);
-      });
+      return { blob, filename };
     } catch (err) {
       if (isApiError(err)) return mockFailure(err);
       throw err;

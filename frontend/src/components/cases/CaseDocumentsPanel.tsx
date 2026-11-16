@@ -1,10 +1,12 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { AlertCircle, Clock, Download, FileText, Loader2, RefreshCw, Sparkles, Upload } from 'lucide-react';
 import type { DocumentMeta, DocumentType } from '@/types/api';
 import { documentsApi, validateDocumentFile } from '@/services/documentsApi';
 import { errorMessage } from '@/services/http';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useToastStore } from '@/store/useToastStore';
+import { useAsyncResource } from '@/lib/hooks/useAsyncResource';
+import { formatDateTime } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 
@@ -31,18 +33,6 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function formatDate(iso: string): string {
-  try {
-    return new Date(iso).toLocaleString(undefined, {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  } catch {
-    return iso;
-  }
-}
 
 function ExtractionBadge({ extraction }: { extraction: DocumentMeta['latest_extraction'] }) {
   if (!extraction) return <Badge variant="secondary">No OCR</Badge>;
@@ -90,7 +80,7 @@ function DocumentRow({ doc, canWrite, isBusy, isDownloading, isExtracting, onDow
 
       <div className="flex flex-wrap items-center justify-between gap-2 pt-1.5 border-t border-[#09090B]/10">
         <span className="text-xs font-mono text-[#52525B]">
-          By {doc.uploaded_by.name} • {formatDate(doc.uploaded_at)}
+          By {doc.uploaded_by.name} • {formatDateTime(doc.uploaded_at)}
         </span>
         <div className="flex items-center gap-2">
           <Button
@@ -124,7 +114,7 @@ function DocumentRow({ doc, canWrite, isBusy, isDownloading, isExtracting, onDow
   );
 }
 
-function useFileUpload(caseId: string, onUploaded: () => Promise<void>) {
+function useFileUpload(caseId: string, onUploaded: () => Promise<void> | void) {
   const pushToast = useToastStore((s) => s.push);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -167,7 +157,7 @@ function useFileUpload(caseId: string, onUploaded: () => Promise<void>) {
   return { selectedFile, docType, setDocType, uploadError, isUploading, fileInputRef, onFileChange, onSubmit };
 }
 
-function UploadForm({ caseId, isBusy, onUploaded }: { caseId: string; isBusy: boolean; onUploaded: () => Promise<void> }) {
+function UploadForm({ caseId, isBusy, onUploaded }: { caseId: string; isBusy: boolean; onUploaded: () => Promise<void> | void }) {
   const { selectedFile, docType, setDocType, uploadError, isUploading, fileInputRef, onFileChange, onSubmit } =
     useFileUpload(caseId, onUploaded);
 
@@ -248,30 +238,21 @@ export function CaseDocumentsPanel({ caseId, onExtractionReady }: CaseDocumentsP
   const pushToast = useToastStore((s) => s.push);
   const canWrite = user?.role === 'operator' || user?.role === 'supervisor';
 
-  const [docs, setDocs] = useState<DocumentMeta[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [extractingId, setExtractingId] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
+  const {
+    data: docs = [],
+    loading: isLoading,
+    error: rawError,
+    reload: loadDocuments,
+  } = useAsyncResource(caseId ? `case-docs-${caseId}` : null, async () => {
+    const res = await documentsApi.listCaseDocuments(caseId);
+    return res.data;
+  });
+
+  const loadError = rawError ? errorMessage(rawError, 'Failed to load case documents.') : null;
   const isBusy = isLoading || extractingId !== null || downloadingId !== null;
-
-  const loadDocuments = useCallback(async () => {
-    setIsLoading(true);
-    setLoadError(null);
-    try {
-      const res = await documentsApi.listCaseDocuments(caseId);
-      setDocs(res.data);
-    } catch (err) {
-      setLoadError(errorMessage(err, 'Failed to load case documents.'));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [caseId]);
-
-  useEffect(() => {
-    void loadDocuments();
-  }, [loadDocuments]);
 
   const handleDownload = async (doc: DocumentMeta) => {
     setDownloadingId(doc.id);
@@ -298,7 +279,7 @@ export function CaseDocumentsPanel({ caseId, onExtractionReady }: CaseDocumentsP
     try {
       const res = await documentsApi.extractDocument(doc.id);
       pushToast('AI extraction complete. Ready for human review.', 'success');
-      await loadDocuments();
+      loadDocuments();
       onExtractionReady?.(res.data.id);
     } catch (err) {
       pushToast(errorMessage(err, 'AI extraction failed.'), 'error');

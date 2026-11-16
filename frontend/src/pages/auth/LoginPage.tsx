@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { LogIn } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useToastStore } from '@/store/useToastStore';
 import { authApi } from '@/services/authApi';
 import { USE_MOCK, errorMessage } from '@/services/http';
 import { DEMO_PASSWORD, DEMO_USERS, DEMO_VICTIMS } from '@/services/mockData';
@@ -30,8 +31,9 @@ export function LoginPage() {
     try {
       const signedIn = await login(email.trim(), password);
       navigate(next ?? homeFor(signedIn.role), { replace: true });
-    } catch {
-      // The store holds the message and code; the form shows them below.
+    } catch (err) {
+      const message = errorMessage(err, 'Login failed. Please check your credentials.');
+      useToastStore.getState().push(message, 'error');
     }
   };
 
@@ -96,7 +98,7 @@ export function LoginPage() {
         {notice && <FormNotice tone="info">{notice}</FormNotice>}
 
         <Button type="submit" variant="primary" size="lg" isLoading={isLoading} className="w-full gap-2">
-          <LogIn className="w-4 h-4" /> LOG IN
+          <LogIn className="w-4 h-4" aria-hidden="true" /> LOG IN
         </Button>
       </form>
 

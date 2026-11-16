@@ -1,14 +1,16 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import type { MissingField, VictimCase, VictimEditableField } from '@/types/api';
 import { victimApi } from '@/services/victimApi';
 import { errorMessage } from '@/services/http';
+import { useAsyncResource } from '@/lib/hooks/useAsyncResource';
 import { FormNotice } from '@/components/auth/AuthCard';
 import { StageTracker } from '@/components/portal/StageTracker';
 import { CaseEditForm } from '@/components/portal/CaseEditForm';
 import { CaseChat } from '@/components/portal/CaseChat';
 import { CONTACT_FIELDS, FIELD_META, REPORT_FIELDS, toFormValues } from '@/components/portal/CaseFields';
-import { CLOSURE_LABEL, LANGUAGE_LABEL, SCAM_LABEL, formatYen } from '@/lib/caseStages';
+import { CLOSURE_LABEL, LANGUAGE_LABEL, SCAM_LABEL } from '@/lib/caseStages';
+import { formatCurrency } from '@/lib/utils';
 import { PATHS } from '@/routes/paths';
 
 const MISSING_LABEL: Record<MissingField, string> = {
@@ -23,7 +25,7 @@ const MISSING_LABEL: Record<MissingField, string> = {
 function displayValue(c: VictimCase, key: VictimEditableField): string {
   const raw = toFormValues(c)[key];
   if (!raw) return '—';
-  if (key === 'amount') return formatYen(c.amount, c.currency);
+  if (key === 'amount') return formatCurrency(c.amount, c.currency);
   if (key === 'scam_type' && c.scam_type) return SCAM_LABEL[c.scam_type];
   if (key === 'victim.preferred_language') return LANGUAGE_LABEL[c.victim.preferred_language];
   return raw;
@@ -52,25 +54,30 @@ const panelClass = 'rounded-2xl border-2 border-[#09090B] bg-[#F8F4E8] p-4 sm:p-
 
 export function PortalCasePage() {
   const { caseId = '' } = useParams();
-  const [caseItem, setCaseItem] = useState<VictimCase | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { data: initialCase, error, reload } = useAsyncResource(
+    caseId ? `victim-case:${caseId}` : null,
+    async () => {
+      const res = await victimApi.getMyCase(caseId);
+      return res.data;
+    },
+  );
+  const [updatedCase, setUpdatedCase] = useState<VictimCase | null>(null);
 
-  const load = useCallback(() => {
-    setError(null);
-    return victimApi
-      .getMyCase(caseId)
-      .then((res) => setCaseItem(res.data))
-      .catch((err) => setError(errorMessage(err, 'Could not load this case.')));
-  }, [caseId]);
+  const caseItem = updatedCase && updatedCase.id === caseId ? updatedCase : (initialCase ?? null);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  const handleSaved = useCallback((updated: VictimCase) => {
+    setUpdatedCase(updated);
+  }, []);
+
+  const handleReload = useCallback(() => {
+    setUpdatedCase(null);
+    reload();
+  }, [reload]);
 
   if (error) {
     return (
       <div className="max-w-xl mx-auto px-4 py-16 space-y-4 text-center">
-        <FormNotice tone="error">{error}</FormNotice>
+        <FormNotice tone="error">{errorMessage(error, 'Could not load this case.')}</FormNotice>
         <Link to={PATHS.portal} className="text-sm font-bold underline underline-offset-4">
           Back to my cases
         </Link>
@@ -123,7 +130,7 @@ export function PortalCasePage() {
           {caseItem.editable_fields.length > 0 ? (
             <>
               <p className="text-xs text-[#52525B]">You can change the fields below. Other details are locked at this stage.</p>
-              <CaseEditForm key={caseItem.version} caseItem={caseItem} onSaved={setCaseItem} onReload={load} />
+              <CaseEditForm key={caseItem.version} caseItem={caseItem} onSaved={handleSaved} onReload={handleReload} />
             </>
           ) : (
             <p className="text-xs text-[#52525B]">This case is closed, so details can no longer be changed online.</p>

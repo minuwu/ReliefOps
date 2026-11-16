@@ -6,6 +6,7 @@ export interface Toast {
   id: number;
   message: string;
   tone: ToastTone;
+  durationMs: number;
 }
 
 let nextId = 1;
@@ -27,15 +28,11 @@ export const useToastStore = create<ToastState>((set, get) => ({
       return;
     }
     const id = nextId++;
-    // Max 3 visible (keep the newest up to 3)
-    const nextToasts = [...current, { id, message, tone }].slice(-3);
-    set({ toasts: nextToasts });
-
     // Success auto-dismiss 4s, errors 8s (or until dismissed), info 4s
     const durationMs = tone === 'error' ? 8000 : 4000;
-    setTimeout(() => {
-      get().dismiss(id);
-    }, durationMs);
+    // Max 3 visible (keep the newest up to 3)
+    const nextToasts = [...current, { id, message, tone, durationMs }].slice(-3);
+    set({ toasts: nextToasts });
   },
   dismiss: (id) => set({ toasts: get().toasts.filter((t) => t.id !== id) }),
 }));

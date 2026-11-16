@@ -22,42 +22,53 @@ const MOCK_LATENCY_MS = 120;
 const TOKEN_KEY = 'reliefops_auth_token';
 const USER_KEY = 'reliefops_auth_user';
 
+let memoryToken: string | null = null;
+let memoryUser: User | null = null;
+
 /* ---------------------------------------------------------------------------
  * Session storage. Wrapped in try/catch: storage can throw in private windows.
  * ------------------------------------------------------------------------- */
 
 export function getAuthToken(): string | null {
   try {
-    return localStorage.getItem(TOKEN_KEY);
-  } catch {
-    return null;
+    return localStorage.getItem(TOKEN_KEY) ?? memoryToken;
+  } catch (err) {
+    void err;
+    return memoryToken;
   }
 }
 
 export function getStoredUser(): User | null {
   try {
     const json = localStorage.getItem(USER_KEY);
-    return json ? (JSON.parse(json) as User) : null;
-  } catch {
-    return null;
+    return json ? (JSON.parse(json) as User) : memoryUser;
+  } catch (err) {
+    void err;
+    return memoryUser;
   }
 }
 
 export function storeSession(token: string, user: User): void {
+  memoryToken = token;
+  memoryUser = user;
   try {
     localStorage.setItem(TOKEN_KEY, token);
     localStorage.setItem(USER_KEY, JSON.stringify(user));
-  } catch {
-    /* storage unavailable: session lives in memory only */
+  } catch (err) {
+    // Storage unavailable (quota exceeded or private window): in-memory fallback is retained
+    void err;
   }
 }
 
 export function clearSession(): void {
+  memoryToken = null;
+  memoryUser = null;
   try {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
-  } catch {
-    /* nothing to clear */
+  } catch (err) {
+    // Storage unavailable: in-memory state is already cleared
+    void err;
   }
 }
 
@@ -139,7 +150,8 @@ function parseJson(text: string): unknown {
   if (!text) return null;
   try {
     return JSON.parse(text);
-  } catch {
+  } catch (err) {
+    void err;
     return null;
   }
 }
@@ -165,7 +177,8 @@ export async function request<T>(
       headers: buildHeaders(options),
       signal: controller.signal,
     });
-  } catch {
+  } catch (err) {
+    void err;
     throw apiError('NETWORK_ERROR', 'Could not reach the server. Check your connection.');
   } finally {
     clearTimeout(timer);
@@ -174,8 +187,9 @@ export async function request<T>(
   let rawText = '';
   try {
     rawText = await response.text();
-  } catch {
-    /* ignore read failure; rawText remains empty */
+  } catch (err) {
+    void err;
+    rawText = '';
   }
 
   const parsed = parseJson(rawText) as
@@ -250,4 +264,25 @@ export function mockFailure(error: ApiErrorDetail): Promise<never> {
   return new Promise((_, reject) => {
     setTimeout(() => reject(error), MOCK_LATENCY_MS);
   });
+}
+
+export function send<T>(endpoint: string, method: string, body?: unknown): Promise<ApiResponse<T>> {
+  return request<T>(endpoint, {
+    method,
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+}
+
+export function buildQuery(params: object): string {
+  const q = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') q.set(key, String(value));
+  });
+  const s = q.toString();
+  return s ? `?${s}` : '';
+}
+
+/** Mock calls throw synchronously; turn that into a rejection like a network call. */
+export async function mocked<T>(fn: () => T, message = 'ok'): Promise<ApiResponse<T>> {
+  return mockEnvelope(fn(), message);
 }

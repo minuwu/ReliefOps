@@ -42,8 +42,16 @@ export function CaseTable({ cases, focusedIndex, onSelectCase }: CaseTableProps)
                 return (
                   <tr
                     key={caseItem.id}
+                    tabIndex={0}
+                    role="button"
                     onClick={() => onSelectCase(caseItem, idx)}
-                    className={`hover:bg-[#EDE8D5]/80 transition-colors cursor-pointer group ${
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onSelectCase(caseItem, idx);
+                      }
+                    }}
+                    className={`hover:bg-[#EDE8D5]/80 transition-colors cursor-pointer group focus:outline-none focus:ring-2 focus:ring-[#09090B] focus:ring-inset focus-visible:ring-2 focus-visible:ring-[#09090B] focus-visible:ring-inset ${
                       isFocused ? 'bg-[#D2E823]/25' : ''
                     }`}
                   >

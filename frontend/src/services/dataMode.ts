@@ -18,7 +18,8 @@ const ENV_API_URL = (import.meta.env.VITE_API_URL ?? '').trim();
 function readStorage(key: string): string | null {
   try {
     return localStorage.getItem(key);
-  } catch {
+  } catch (err) {
+    void err;
     return null;
   }
 }
@@ -26,8 +27,8 @@ function readStorage(key: string): string | null {
 function writeStorage(key: string, value: string): void {
   try {
     localStorage.setItem(key, value);
-  } catch {
-    /* storage unavailable: the choice lasts until the reload only */
+  } catch (err) {
+    void err;
   }
 }
 
@@ -64,21 +65,18 @@ export type HealthCheck = { ok: true; ai: string } | { ok: false; reason: string
 
 /** Calls GET {base}/api/health (no auth) to confirm the API is reachable from this page. */
 export async function checkApiHealth(baseUrl: string): Promise<HealthCheck> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), HEALTH_TIMEOUT_MS);
   try {
-    const res = await fetch(`${baseUrl}/api/health`, { signal: controller.signal });
+    const res = await fetch(`${baseUrl}/api/health`, { signal: AbortSignal.timeout(HEALTH_TIMEOUT_MS) });
     if (!res.ok) return { ok: false, reason: `The server answered ${res.status}.` };
     const json = (await res.json()) as { success?: boolean; data?: { ai?: string } };
     if (!json.success) return { ok: false, reason: 'The server did not return a ReliefOps health response.' };
     return { ok: true, ai: json.data?.ai ?? 'unknown' };
-  } catch {
+  } catch (err) {
+    void err;
     return {
       ok: false,
       reason: 'We could not reach that URL. Check the address, and that the server allows this site (CORS).',
     };
-  } finally {
-    clearTimeout(timer);
   }
 }
 

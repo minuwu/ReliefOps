@@ -1,12 +1,13 @@
-import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Check, FilePlus2 } from 'lucide-react';
 import type { VictimCase } from '@/types/api';
 import { victimApi } from '@/services/victimApi';
 import { errorMessage } from '@/services/http';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useAsyncResource } from '@/lib/hooks/useAsyncResource';
 import { FormNotice } from '@/components/auth/AuthCard';
-import { CLOSURE_LABEL, STAGE_LABEL, STAGE_ORDER, formatYen, stageIndex } from '@/lib/caseStages';
+import { CLOSURE_LABEL, STAGE_LABEL, STAGE_ORDER, stageIndex } from '@/lib/caseStages';
+import { formatCurrency } from '@/lib/utils';
 import { PATHS } from '@/routes/paths';
 
 const ctaClass =
@@ -27,7 +28,7 @@ function CaseCard({ item }: { item: VictimCase }) {
             <p className="text-xs font-mono font-bold uppercase text-[#52525B]">{item.bank_name}</p>
             <p className="text-base font-mono font-bold text-[#09090B]">{item.reference}</p>
           </div>
-          <p className="text-sm font-bold text-[#09090B]">{formatYen(item.amount, item.currency)}</p>
+          <p className="text-sm font-bold text-[#09090B]">{formatCurrency(item.amount, item.currency)}</p>
         </div>
         <div className="space-y-2">
           <ol className="grid grid-cols-6 gap-1.5" aria-label={stepLabel}>
@@ -68,19 +69,10 @@ function CaseCard({ item }: { item: VictimCase }) {
 
 export function PortalHomePage() {
   const name = useAuthStore((s) => s.user?.name);
-  const [cases, setCases] = useState<VictimCase[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let isActive = true;
-    victimApi
-      .getMyCases()
-      .then((res) => isActive && setCases(res.data))
-      .catch((err) => isActive && setError(errorMessage(err, 'Could not load your cases.')));
-    return () => {
-      isActive = false;
-    };
-  }, []);
+  const { data: cases, error, loading } = useAsyncResource('my-cases', async () => {
+    const res = await victimApi.getMyCases();
+    return res.data;
+  });
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
@@ -99,8 +91,8 @@ export function PortalHomePage() {
         </Link>
       </header>
 
-      {error && <FormNotice tone="error">{error}</FormNotice>}
-      {!cases && !error && <p className="text-sm font-medium text-[#52525B]">Loading your cases…</p>}
+      {error ? <FormNotice tone="error">{errorMessage(error, 'Could not load your cases.')}</FormNotice> : null}
+      {loading && !cases && !error ? <p className="text-sm font-medium text-[#52525B]">Loading your cases…</p> : null}
 
       {cases && cases.length === 0 && (
         <section className="rounded-2xl border-2 border-dashed border-[#09090B] p-8 text-center space-y-3 bg-[#F8F4E8]">

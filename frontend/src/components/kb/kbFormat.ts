@@ -2,16 +2,3 @@ export const panelClass = 'rounded-2xl border-2 border-[#09090B] bg-[#F8F4E8] p-
 export const selectClass =
   'h-10 w-full rounded-xl border border-[#09090B]/30 bg-[#F8F4E8] px-3 text-sm font-medium focus:border-[#09090B] focus:outline-none';
 export const labelClass = 'block text-xs font-bold uppercase tracking-wider text-[#09090B]';
-
-export function formatDate(iso: string | null): string {
-  if (!iso) return '—';
-  try {
-    return new Date(iso).toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  } catch {
-    return iso;
-  }
-}

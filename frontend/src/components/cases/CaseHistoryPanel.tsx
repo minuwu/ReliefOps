@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   AlertTriangle,
   ChevronLeft,
@@ -12,6 +12,7 @@ import type { AuditEntry } from '@/types/api';
 import { historyApi } from '@/services/historyApi';
 import { errorMessage } from '@/services/http';
 import { useToastStore } from '@/store/useToastStore';
+import { useAsyncResource } from '@/lib/hooks/useAsyncResource';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 
@@ -58,37 +59,28 @@ interface CaseHistoryPanelProps {
 
 export function CaseHistoryPanel({ caseId }: CaseHistoryPanelProps) {
   const pushToast = useToastStore((s) => s.push);
-  const [history, setHistory] = useState<AuditEntry[]>([]);
   const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  const fetchHistory = useCallback(
-    async (targetPage: number) => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const res = await historyApi.getCaseHistory(caseId, {
-          page: targetPage,
-          page_size: PAGE_SIZE,
-        });
-        setHistory(res.data.items);
-        setPage(res.data.page);
-        setTotal(res.data.total);
-      } catch (err) {
-        setError(errorMessage(err, 'Failed to load case history.'));
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [caseId]
+  const {
+    data: historyData,
+    loading: isLoading,
+    error: rawError,
+    reload: refetchHistory,
+  } = useAsyncResource(
+    caseId ? `case-history-${caseId}-${page}` : null,
+    async () => {
+      const res = await historyApi.getCaseHistory(caseId, {
+        page,
+        page_size: PAGE_SIZE,
+      });
+      return res.data;
+    }
   );
 
-  useEffect(() => {
-    void fetchHistory(1);
-  }, [fetchHistory]);
+  const history: AuditEntry[] = historyData?.items ?? [];
+  const total = historyData?.total ?? 0;
+  const error = rawError ? errorMessage(rawError, 'Failed to load case history.') : null;
 
   const handleExportCsv = async () => {
     setIsExporting(true);
@@ -157,7 +149,7 @@ export function CaseHistoryPanel({ caseId }: CaseHistoryPanelProps) {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => void fetchHistory(page)}
+            onClick={() => refetchHistory()}
           >
             Retry
           </Button>
@@ -238,7 +230,7 @@ export function CaseHistoryPanel({ caseId }: CaseHistoryPanelProps) {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => void fetchHistory(page - 1)}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page <= 1 || isLoading}
               aria-label="Previous page"
             >
@@ -251,7 +243,7 @@ export function CaseHistoryPanel({ caseId }: CaseHistoryPanelProps) {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => void fetchHistory(page + 1)}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page >= totalPages || isLoading}
               aria-label="Next page"
             >

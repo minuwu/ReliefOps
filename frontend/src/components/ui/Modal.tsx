@@ -1,6 +1,7 @@
-import React, { useEffect, useId, useRef } from 'react';
+import React, { useCallback, useId, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { X } from 'lucide-react';
+import { useWindowEvent } from '@/lib/hooks/useEventListener';
 
 interface ModalProps {
   isOpen: boolean;
@@ -34,43 +35,58 @@ export function Modal({
   maxWidth = 'lg',
 }: ModalProps) {
   const titleId = useId();
-  const dialogRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
   const previousActiveElementRef = useRef<HTMLElement | null>(null);
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
 
-  useEffect(() => {
-    if (!isOpen) return;
+  const setDialogRef = useCallback((node: HTMLDivElement | null) => {
+    if (node) {
+      dialogRef.current = node;
+      previousActiveElementRef.current = (document.activeElement as HTMLElement) || null;
+      openModals.push(node);
+      document.body.style.overflow = 'hidden';
 
-    previousActiveElementRef.current = (document.activeElement as HTMLElement) || null;
-
-    const dialogEl = dialogRef.current;
-    if (!dialogEl) return;
-
-    openModals.push(dialogEl);
-    document.body.style.overflow = 'hidden';
-
-    const focusInitial = () => {
-      if (!dialogEl.isConnected) return;
-      const focusables = getFocusableElements(dialogEl);
+      const focusables = getFocusableElements(node);
       if (focusables.length > 0) {
         focusables[0].focus();
       } else {
-        dialogEl.focus();
+        node.focus();
       }
-    };
+    } else {
+      const dialogEl = dialogRef.current;
+      if (dialogEl) {
+        const idx = openModals.indexOf(dialogEl);
+        if (idx !== -1) {
+          openModals.splice(idx, 1);
+        }
+        if (openModals.length === 0) {
+          document.body.style.overflow = 'unset';
+        }
+        dialogRef.current = null;
+      }
+      const prevEl = previousActiveElementRef.current;
+      if (prevEl && prevEl.isConnected && typeof prevEl.focus === 'function') {
+        try {
+          prevEl.focus();
+        } catch (error) {
+          void error;
+        }
+      }
+      previousActiveElementRef.current = null;
+    }
+  }, []);
 
-    focusInitial();
-    const animFrame = requestAnimationFrame(focusInitial);
-
-    const handleKeyDown = (e: KeyboardEvent) => {
+  useWindowEvent(
+    'keydown',
+    (e) => {
+      const dialogEl = dialogRef.current;
+      if (!dialogEl) return;
       const isTopmost = openModals[openModals.length - 1] === dialogEl;
       if (!isTopmost) return;
 
       if (e.key === 'Escape') {
         e.preventDefault();
         e.stopPropagation();
-        onCloseRef.current();
+        onClose();
         return;
       }
 
@@ -109,42 +125,9 @@ export function Modal({
           }
         }
       }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      cancelAnimationFrame(animFrame);
-      window.removeEventListener('keydown', handleKeyDown);
-
-      const idx = openModals.indexOf(dialogEl);
-      if (idx !== -1) {
-        openModals.splice(idx, 1);
-      }
-
-      if (openModals.length === 0) {
-        document.body.style.overflow = 'unset';
-      }
-
-      const prevEl = previousActiveElementRef.current;
-      if (prevEl && prevEl.isConnected && typeof prevEl.focus === 'function') {
-        try {
-          prevEl.focus();
-        } catch {
-          /* ignore */
-        }
-        requestAnimationFrame(() => {
-          if (prevEl.isConnected && document.activeElement !== prevEl) {
-            try {
-              prevEl.focus();
-            } catch {
-              /* ignore */
-            }
-          }
-        });
-      }
-    };
-  }, [isOpen]);
+    },
+    isOpen,
+  );
 
   if (!isOpen) return null;
 
@@ -167,7 +150,7 @@ export function Modal({
         aria-hidden="true"
       />
       <div
-        ref={dialogRef}
+        ref={setDialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? titleId : undefined}

@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { api } from '@/services/api';
 import { errorMessage } from '@/services/http';
+import { useAsyncResource } from '@/lib/hooks/useAsyncResource';
 import { AuditEntry } from '@/types/api';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -18,34 +19,26 @@ const ACTION_FILTERS: { label: string; value: string }[] = [
 ];
 
 export function AuditLogsPage() {
-  const [logs, setLogs] = useState<AuditEntry[]>([]);
-  const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [actionFilter, setActionFilter] = useState<string>('all');
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
 
-  async function loadLogs() {
-    setIsLoading(true);
-    setLoadError(null);
-    try {
-      const res = await api.getAuditLogs({
-        page,
-        page_size: PAGE_SIZE,
-        action: actionFilter === 'all' ? undefined : (actionFilter as AuditEntry['action']),
-      });
-      setLogs(res.data.items);
-      setTotal(res.data.total);
-    } catch (err) {
-      setLoadError(errorMessage(err, 'We could not load the audit logs. Check your connection and try again.'));
-    } finally {
-      setIsLoading(false);
-    }
-  }
+  const {
+    data,
+    loading: isLoading,
+    error,
+    reload: loadLogs,
+  } = useAsyncResource(`audit-logs:${page}:${actionFilter}`, async () => {
+    const res = await api.getAuditLogs({
+      page,
+      page_size: PAGE_SIZE,
+      action: actionFilter === 'all' ? undefined : (actionFilter as AuditEntry['action']),
+    });
+    return res.data;
+  });
 
-  useEffect(() => {
-    loadLogs();
-  }, [page, actionFilter]);
+  const logs = data?.items ?? [];
+  const total = data?.total ?? 0;
+  const loadError = error ? errorMessage(error, 'We could not load the audit logs. Check your connection and try again.') : null;
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -172,7 +165,7 @@ export function AuditLogsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#09090B]/10 font-medium">
-              {isLoading ? (
+              {isLoading && !data ? (
                 <tr>
                   <td colSpan={6} className="py-12 text-center text-sm text-[#52525B]">
                     Loading audit log…

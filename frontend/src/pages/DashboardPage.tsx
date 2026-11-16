@@ -1,7 +1,8 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/services/api';
 import { errorMessage } from '@/services/http';
+import { useAsyncResource } from '@/lib/hooks/useAsyncResource';
 import { DashboardStats, SharedAccountAlert, CaseSummary, DeadlineState, CaseStatus } from '@/types/api';
 import { useCaseStore } from '@/store/useCaseStore';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -16,10 +17,6 @@ import { SharedAccountsList } from '@/components/dashboard/SharedAccountsList';
 
 export function DashboardPage() {
   const navigate = useNavigate();
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [alerts, setAlerts] = useState<SharedAccountAlert[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [isIntakeOpen, setIsIntakeOpen] = useState(false);
 
   const { cases, fetchCases, setFilters } = useCaseStore();
@@ -27,31 +24,32 @@ export function DashboardPage() {
   // Shared-account alerts are supervisor-only; bank viewers read stats but cannot create cases.
   const isSupervisor = role === 'supervisor';
 
-  const loadData = useCallback(async () => {
-    setIsLoading(true);
-    setLoadError(null);
-    try {
-      const alertsPromise = isSupervisor
-        ? api.getSharedAccountAlerts().catch(() => ({ data: [] as SharedAccountAlert[] }))
-        : Promise.resolve({ data: [] as SharedAccountAlert[] });
+  const {
+    data,
+    loading: isLoading,
+    error,
+    reload: loadData,
+  } = useAsyncResource(`dashboard:${isSupervisor}`, async () => {
+    const alertsPromise = isSupervisor
+      ? api.getSharedAccountAlerts().catch(() => ({ data: [] as SharedAccountAlert[] }))
+      : Promise.resolve({ data: [] as SharedAccountAlert[] });
 
-      const [statsRes, alertsRes] = await Promise.all([
-        api.getDashboardStats(),
-        alertsPromise,
-      ]);
-      setStats(statsRes.data);
-      setAlerts(alertsRes.data);
-      await fetchCases();
-    } catch (err) {
-      setLoadError(errorMessage(err, 'We could not load the dashboard. Check your connection and try again.'));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [isSupervisor, fetchCases]);
+    const [statsRes, alertsRes] = await Promise.all([
+      api.getDashboardStats(),
+      alertsPromise,
+      fetchCases(),
+    ]);
+    return {
+      stats: statsRes.data,
+      alerts: alertsRes.data,
+    };
+  });
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  const stats: DashboardStats | null = data?.stats ?? null;
+  const alerts = data?.alerts ?? [];
+  const loadError = error
+    ? errorMessage(error, 'We could not load the dashboard. Check your connection and try again.')
+    : null;
 
   const totalClaimedJPY = cases.reduce((acc, c) => acc + (c.amount || 0), 0);
 
@@ -168,6 +166,7 @@ export function DashboardPage() {
           onClose={() => setIsIntakeOpen(false)}
           onCaseCreated={(created) => {
             setIsIntakeOpen(false);
+            loadData();
             openCase(created.id);
           }}
         />

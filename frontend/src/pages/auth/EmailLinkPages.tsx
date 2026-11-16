@@ -2,12 +2,13 @@
  * Pages that email links land on, plus the form that sends the reset email.
  * Each reads the one-time ?token= and removes it from the address bar.
  */
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { authApi } from '@/services/authApi';
 import { victimApi } from '@/services/victimApi';
 import { USE_MOCK, errorMessage, fieldErrors } from '@/services/http';
 import { useToastStore } from '@/store/useToastStore';
+import { useAsyncResource } from '@/lib/hooks/useAsyncResource';
 import { AuthCard, FormNotice } from '@/components/auth/AuthCard';
 import { NewPasswordFields, checkNewPassword } from '@/components/auth/NewPasswordFields';
 import { Button } from '@/components/ui/Button';
@@ -28,33 +29,18 @@ function MissingToken({ title, retry }: { title: string; retry: ReactNode }) {
   );
 }
 
-/** Calls fn once per mount, even under StrictMode's double effects (tokens are single-use). */
-function useOnMount(fn: () => void): void {
-  const hasRun = useRef(false);
-  useEffect(() => {
-    if (hasRun.current) return;
-    hasRun.current = true;
-    fn();
-    // fn is intentionally read once; the token it uses never changes after mount.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-}
-
 /* --- /verify-email ------------------------------------------------------- */
 
 export function VerifyEmailPage() {
-  const token = useUrlToken();
-  const [outcome, setOutcome] = useState<Outcome>(null);
+  const { token, clearUrlRef } = useUrlToken();
 
-  useOnMount(() => {
-    if (!token) return;
-    authApi
-      .verifyEmail(token)
-      .then((res) => setOutcome({ tone: 'success', message: res.message || 'Email verified.' }))
-      .catch((err) =>
-        setOutcome({ tone: 'error', message: errorMessage(err, 'This link has expired or was already used.') })
-      );
-  });
+  const { data, error, loading } = useAsyncResource(
+    token ? `verify-email:${token}` : null,
+    async () => {
+      if (!token) throw new Error('Token is missing');
+      return authApi.verifyEmail(token);
+    },
+  );
 
   if (!token) {
     return (
@@ -65,17 +51,25 @@ export function VerifyEmailPage() {
     );
   }
 
+  const outcome: Outcome = error
+    ? { tone: 'error', message: errorMessage(error, 'This link has expired or was already used.') }
+    : data
+      ? { tone: 'success', message: data.message || 'Email verified.' }
+      : null;
+
   return (
-    <AuthCard title="Verify your email">
-      {!outcome && <FormNotice tone="info">Checking your link…</FormNotice>}
-      {outcome && <FormNotice tone={outcome.tone}>{outcome.message}</FormNotice>}
-      {outcome?.tone === 'error' && (
-        <p className="text-sm font-medium text-[#52525B]">
-          Log in with your email and password. If your address is not verified yet, you can ask for a new link there.
-        </p>
-      )}
-      {outcome && <Link to={PATHS.login} className={linkClass}>Go to log in</Link>}
-    </AuthCard>
+    <div ref={clearUrlRef}>
+      <AuthCard title="Verify your email">
+        {loading && !outcome && <FormNotice tone="info">Checking your link…</FormNotice>}
+        {outcome && <FormNotice tone={outcome.tone}>{outcome.message}</FormNotice>}
+        {outcome?.tone === 'error' && (
+          <p className="text-sm font-medium text-[#52525B]">
+            Log in with your email and password. If your address is not verified yet, you can ask for a new link there.
+          </p>
+        )}
+        {outcome && <Link to={PATHS.login} className={linkClass}>Go to log in</Link>}
+      </AuthCard>
+    </div>
   );
 }
 
@@ -142,7 +136,7 @@ interface SetPasswordPageProps {
 }
 
 function SetPasswordPage({ title, subtitle, submitLabel, retry, submit, passwordField }: SetPasswordPageProps) {
-  const token = useUrlToken();
+  const { token, clearUrlRef, clearToken } = useUrlToken();
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [serverError, setServerError] = useState<string | undefined>();
@@ -153,15 +147,18 @@ function SetPasswordPage({ title, subtitle, submitLabel, retry, submit, password
 
   if (outcome?.tone === 'success') {
     return (
-      <AuthCard title={title}>
-        <FormNotice tone="success">{outcome.message}</FormNotice>
-        <Link to={PATHS.login} className={linkClass}>Go to log in</Link>
-      </AuthCard>
+      <div ref={clearUrlRef}>
+        <AuthCard title={title}>
+          <FormNotice tone="success">{outcome.message}</FormNotice>
+          <Link to={PATHS.login} className={linkClass}>Go to log in</Link>
+        </AuthCard>
+      </div>
     );
   }
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    clearToken();
     setServerError(undefined);
     const problem = checkNewPassword(password, confirm);
     if (problem) {
@@ -181,22 +178,24 @@ function SetPasswordPage({ title, subtitle, submitLabel, retry, submit, password
   };
 
   return (
-    <AuthCard title={title} subtitle={subtitle}>
-      <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-        <NewPasswordFields
-          password={password}
-          confirm={confirm}
-          onPasswordChange={setPassword}
-          onConfirmChange={setConfirm}
-          serverError={serverError}
-        />
-        {outcome && <FormNotice tone={outcome.tone}>{outcome.message}</FormNotice>}
-        <Button type="submit" variant="primary" size="lg" isLoading={isSubmitting} className="w-full">
-          {submitLabel}
-        </Button>
-      </form>
-      {outcome?.tone === 'error' && retry}
-    </AuthCard>
+    <div ref={clearUrlRef}>
+      <AuthCard title={title} subtitle={subtitle}>
+        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+          <NewPasswordFields
+            password={password}
+            confirm={confirm}
+            onPasswordChange={setPassword}
+            onConfirmChange={setConfirm}
+            serverError={serverError}
+          />
+          {outcome && <FormNotice tone={outcome.tone}>{outcome.message}</FormNotice>}
+          <Button type="submit" variant="primary" size="lg" isLoading={isSubmitting} className="w-full">
+            {submitLabel}
+          </Button>
+        </form>
+        {outcome?.tone === 'error' && retry}
+      </AuthCard>
+    </div>
   );
 }
 
@@ -237,38 +236,41 @@ export function AcceptInvitationPage() {
 /* --- /claim-case (victims only; the route guard handles login) ----------- */
 
 export function ClaimCasePage() {
-  const token = useUrlToken();
+  const { token, clearUrlRef } = useUrlToken();
   const navigate = useNavigate();
   const pushToast = useToastStore((s) => s.push);
-  const [error, setError] = useState<string | null>(null);
 
-  useOnMount(() => {
-    if (!token) return;
-    victimApi
-      .claimCase(token)
-      .then((res) => {
-        pushToast(`Case ${res.data.reference} is now linked to your account.`, 'success');
-        navigate(PATHS.portalCase(res.data.id), { replace: true });
-      })
-      .catch((err) => setError(errorMessage(err, 'This link has expired or was already used.')));
-  });
+  const { error } = useAsyncResource(
+    token ? `claim-case:${token}` : null,
+    async () => {
+      if (!token) throw new Error('Token is missing');
+      const res = await victimApi.claimCase(token);
+      pushToast(`Case ${res.data.reference} is now linked to your account.`, 'success');
+      navigate(PATHS.portalCase(res.data.id), { replace: true });
+      return res.data;
+    },
+  );
 
   const toPortal = <Link to={PATHS.portal} className={linkClass}>Go to my cases</Link>;
   if (!token) return <MissingToken title="Track your case online" retry={toPortal} />;
 
+  const errMessage = error ? errorMessage(error, 'This link has expired or was already used.') : null;
+
   return (
-    <AuthCard title="Track your case online">
-      {error ? (
-        <>
-          <FormNotice tone="error">{error}</FormNotice>
-          <p className="text-sm font-medium text-[#52525B]">
-            The link only works for the email address the center has on file. Call the operations center if you need a new one.
-          </p>
-          {toPortal}
-        </>
-      ) : (
-        <FormNotice tone="info">Linking the case to your account…</FormNotice>
-      )}
-    </AuthCard>
+    <div ref={clearUrlRef}>
+      <AuthCard title="Track your case online">
+        {errMessage ? (
+          <>
+            <FormNotice tone="error">{errMessage}</FormNotice>
+            <p className="text-sm font-medium text-[#52525B]">
+              The link only works for the email address the center has on file. Call the operations center if you need a new one.
+            </p>
+            {toPortal}
+          </>
+        ) : (
+          <FormNotice tone="info">Linking the case to your account…</FormNotice>
+        )}
+      </AuthCard>
+    </div>
   );
 }

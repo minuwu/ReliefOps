@@ -54,8 +54,3 @@ export const LANGUAGE_LABEL: Record<Language, string> = {
 export function stageIndex(status: CaseStatus): number {
   return STAGE_ORDER.indexOf(status);
 }
-
-export function formatYen(amount: number | null, currency = 'JPY'): string {
-  if (amount === null) return '—';
-  return new Intl.NumberFormat('ja-JP', { style: 'currency', currency }).format(amount);
-}

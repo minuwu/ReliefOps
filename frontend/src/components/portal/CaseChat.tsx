@@ -1,28 +1,16 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useRef, useState, type FormEvent } from 'react';
 import { Bot, Send, ThumbsDown, ThumbsUp, UserRound } from 'lucide-react';
 import type { ChatMessage, ChatThread, Citation } from '@/types/api';
 import { victimApi } from '@/services/victimApi';
 import { errorMessage, isApiError } from '@/services/http';
+import { useAsyncResource } from '@/lib/hooks/useAsyncResource';
+import { useInterval, useTimeout } from '@/lib/hooks/useTimers';
 import { FormNotice } from '@/components/auth/AuthCard';
 import { Button } from '@/components/ui/Button';
 import { formatDateTime } from '@/lib/utils';
 
 const MAX_QUESTION = 1000;
 const DEFAULT_WAIT_SECONDS = 30;
-
-function scrollContainerToBottom(el: HTMLElement, smooth = true) {
-  const prefersReduced =
-    typeof window !== 'undefined' &&
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (!smooth || prefersReduced) {
-    el.scrollTop = el.scrollHeight;
-  } else {
-    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
-    setTimeout(() => {
-      el.scrollTop = el.scrollHeight;
-    }, 300);
-  }
-}
 
 /** Plain-language label for each kind of assistant answer (contract AnswerType). */
 const ANSWER_NOTE: Record<NonNullable<ChatMessage['answer_type']>, string | null> = {
@@ -37,7 +25,10 @@ function Citations({ items }: { items: Citation[] }) {
   return (
     <ul className="mt-2 space-y-1.5" aria-label="Sources">
       {items.map((c) => (
-        <li key={`${c.document_id}-${c.section}-${c.page}`} className="rounded-lg border border-[#09090B]/15 bg-[#F8F4E8] p-2 text-xs">
+        <li
+          key={`${c.document_id}-${c.section ?? ''}-${c.page ?? ''}`}
+          className="rounded-lg border border-[#09090B]/15 bg-[#F8F4E8] p-2 text-xs"
+        >
           <p className="font-bold">
             {c.document_title} · v{c.version}
             {c.section && ` · ${c.section}`}
@@ -57,7 +48,11 @@ interface BubbleProps {
 
 function Bubble({ message, onRate }: BubbleProps) {
   const isVictim = message.role === 'victim';
-  const who = isVictim ? 'You' : message.role === 'staff' ? message.author?.name ?? 'Operations center' : 'Assistant';
+  const who = isVictim
+    ? 'You'
+    : message.role === 'staff'
+      ? message.author?.name ?? 'Operations center'
+      : 'Assistant';
   const note = message.answer_type ? ANSWER_NOTE[message.answer_type] : null;
   const Icon = isVictim ? UserRound : Bot;
 
@@ -65,7 +60,11 @@ function Bubble({ message, onRate }: BubbleProps) {
     <li className={`flex ${isVictim ? 'justify-end' : 'justify-start'}`}>
       <div
         className={`max-w-[90%] rounded-xl border border-[#09090B]/20 p-3 text-sm ${
-          isVictim ? 'bg-[#09090B] text-[#F8F4E8]' : message.role === 'staff' ? 'bg-[#D2E823] text-[#09090B]' : 'bg-[#EDE8D5] text-[#09090B]'
+          isVictim
+            ? 'bg-[#09090B] text-[#F8F4E8]'
+            : message.role === 'staff'
+              ? 'bg-[#D2E823] text-[#09090B]'
+              : 'bg-[#EDE8D5] text-[#09090B]'
         }`}
       >
         <p className="mb-1 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider opacity-80">
@@ -108,12 +107,16 @@ function Bubble({ message, onRate }: BubbleProps) {
 
 /** Ask the assistant about your case. The answers are general information, never a decision. */
 export function CaseChat({ caseId }: { caseId: string }) {
-  const [thread, setThread] = useState<ChatThread | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  return <CaseChatContent key={caseId} caseId={caseId} />;
+}
+
+function CaseChatContent({ caseId }: { caseId: string }) {
   const [question, setQuestion] = useState('');
   const [sendError, setSendError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
   const [waitSeconds, setWaitSeconds] = useState(0);
+  const [localMessages, setLocalMessages] = useState<ChatMessage[]>([]);
+  const [focusNonce, setFocusNonce] = useState(0);
 
   const listRef = useRef<HTMLUListElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -122,65 +125,80 @@ export function CaseChat({ caseId }: { caseId: string }) {
   const userJustSentRef = useRef(false);
   const prevCountRef = useRef(0);
 
-  const handleScroll = () => {
-    const el = listRef.current;
-    if (!el) return;
+  const {
+    data: fetchedThread,
+    error: loadErr,
+    reload,
+  } = useAsyncResource<ChatThread>(
+    caseId ? `victim-chat-${caseId}` : null,
+    useCallback(async () => {
+      const res = await victimApi.getChat(caseId);
+      return res.data;
+    }, [caseId])
+  );
+
+  const loadError = loadErr
+    ? errorMessage(loadErr, 'Could not load the conversation.')
+    : null;
+
+  useInterval(
+    () => {
+      setWaitSeconds((s) => (s > 1 ? s - 1 : 0));
+    },
+    waitSeconds > 0 ? 1000 : null
+  );
+
+  useTimeout(
+    () => {
+      inputRef.current?.focus({ preventScroll: true });
+    },
+    focusNonce > 0 ? 50 : null,
+    focusNonce
+  );
+
+  const thread = fetchedThread
+    ? {
+        ...fetchedThread,
+        messages: (() => {
+          const map = new Map<string, ChatMessage>();
+          for (const m of fetchedThread.messages) {
+            map.set(m.id, m);
+          }
+          for (const m of localMessages) {
+            map.set(m.id, m);
+          }
+          return Array.from(map.values());
+        })(),
+      }
+    : null;
+
+  const messageCount = thread?.messages.length ?? 0;
+
+  const handleScroll = (e: React.UIEvent<HTMLUListElement>) => {
+    const el = e.currentTarget;
     const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
     isNearBottomRef.current = distanceFromBottom <= 80;
   };
 
-  useEffect(() => {
-    isInitialLoadRef.current = true;
-    prevCountRef.current = 0;
-  }, [caseId]);
-
-  useEffect(() => {
-    let isActive = true;
-    victimApi
-      .getChat(caseId)
-      .then((res) => isActive && setThread(res.data))
-      .catch((err) => isActive && setLoadError(errorMessage(err, 'Could not load the conversation.')));
-    return () => {
-      isActive = false;
-    };
-  }, [caseId]);
-
-  useEffect(() => {
-    if (waitSeconds <= 0) return;
-    const timer = setTimeout(() => setWaitSeconds((s) => s - 1), 1000);
-    return () => clearTimeout(timer);
-  }, [waitSeconds]);
-
-  useEffect(() => {
-    const el = listRef.current;
-    const messagesCount = thread?.messages.length ?? 0;
-    if (!el || messagesCount === 0) return;
-
-    const frameId = requestAnimationFrame(() => {
-      const container = listRef.current;
-      if (!container) return;
-      if (isInitialLoadRef.current) {
-        isInitialLoadRef.current = false;
-        scrollContainerToBottom(container, false);
-        isNearBottomRef.current = true;
-      } else if (userJustSentRef.current) {
-        userJustSentRef.current = false;
-        scrollContainerToBottom(container, true);
-        isNearBottomRef.current = true;
-      } else if (messagesCount > prevCountRef.current && isNearBottomRef.current) {
-        scrollContainerToBottom(container, true);
-      }
-      prevCountRef.current = messagesCount;
-    });
-
-    return () => cancelAnimationFrame(frameId);
-  }, [thread?.messages.length]);
-
-  const appendMessages = (messages: ChatMessage[]) =>
-    setThread((t) => (t ? { ...t, messages: [...t.messages, ...messages] } : t));
-
-  const replaceMessage = (next: ChatMessage) =>
-    setThread((t) => (t ? { ...t, messages: t.messages.map((m) => (m.id === next.id ? next : m)) } : t));
+  const bottomAnchorRef = (node: HTMLLIElement | null) => {
+    if (!node) return;
+    const currentCount = messageCount;
+    const countChanged = currentCount !== prevCountRef.current;
+    if (
+      isInitialLoadRef.current ||
+      userJustSentRef.current ||
+      (countChanged && isNearBottomRef.current)
+    ) {
+      const prefersReduced =
+        typeof window !== 'undefined' &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const smooth = !isInitialLoadRef.current && !prefersReduced;
+      node.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'end' });
+      isInitialLoadRef.current = false;
+      userJustSentRef.current = false;
+    }
+    prevCountRef.current = currentCount;
+  };
 
   const handleSend = async (e: FormEvent) => {
     e.preventDefault();
@@ -192,8 +210,9 @@ export function CaseChat({ caseId }: { caseId: string }) {
     try {
       userJustSentRef.current = true;
       const res = await victimApi.askAssistant(caseId, text);
-      appendMessages([res.data.question, res.data.answer]);
+      setLocalMessages((prev) => [...prev, res.data.question, res.data.answer]);
       setQuestion('');
+      reload();
       success = true;
     } catch (err) {
       userJustSentRef.current = false;
@@ -205,9 +224,7 @@ export function CaseChat({ caseId }: { caseId: string }) {
     } finally {
       setIsSending(false);
       if (success) {
-        setTimeout(() => {
-          inputRef.current?.focus({ preventScroll: true });
-        }, 50);
+        setFocusNonce((n) => n + 1);
       }
     }
   };
@@ -215,7 +232,8 @@ export function CaseChat({ caseId }: { caseId: string }) {
   const handleRate = async (message: ChatMessage, feedback: 'helpful' | 'not_helpful') => {
     try {
       const res = await victimApi.rateAnswer(caseId, message.id, feedback);
-      replaceMessage(res.data);
+      setLocalMessages((prev) => [...prev.filter((m) => m.id !== res.data.id), res.data]);
+      reload();
     } catch (err) {
       setSendError(errorMessage(err, 'Could not save your feedback.'));
     }
@@ -243,6 +261,12 @@ export function CaseChat({ caseId }: { caseId: string }) {
           {thread.messages.map((m) => (
             <Bubble key={m.id} message={m} onRate={handleRate} />
           ))}
+          <li
+            key={`bottom-anchor-${thread.messages.length}`}
+            ref={bottomAnchorRef}
+            aria-hidden="true"
+            className="h-0 w-0 p-0 m-0 list-none pointer-events-none"
+          />
         </ul>
       )}
 
@@ -264,7 +288,14 @@ export function CaseChat({ caseId }: { caseId: string }) {
           <span className="text-xs font-mono text-[#52525B]">
             {question.length}/{MAX_QUESTION}
           </span>
-          <Button type="submit" variant="primary" size="sm" isLoading={isSending} disabled={!question.trim() || waitSeconds > 0} className="gap-1.5">
+          <Button
+            type="submit"
+            variant="primary"
+            size="sm"
+            isLoading={isSending}
+            disabled={!question.trim() || waitSeconds > 0}
+            className="gap-1.5"
+          >
             <Send className="w-3.5 h-3.5" /> {waitSeconds > 0 ? `WAIT ${waitSeconds}s` : 'ASK'}
           </Button>
         </div>

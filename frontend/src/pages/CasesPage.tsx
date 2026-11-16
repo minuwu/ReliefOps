@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useCaseStore } from '@/store/useCaseStore';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -11,6 +11,8 @@ import { CaseTable } from '@/components/cases/CaseTable';
 import { PATHS } from '@/routes/paths';
 import { Button } from '@/components/ui/Button';
 import { DEMO_BANKS } from '@/services/mockData';
+import { useAsyncResource } from '@/lib/hooks/useAsyncResource';
+import { useWindowEvent } from '@/lib/hooks/useEventListener';
 import {
   Search,
   PlusCircle,
@@ -44,25 +46,20 @@ export function CasesPage() {
   const [focusedIndex, setFocusedIndex] = useState(0);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    fetchCases();
-  }, [fetchCases]);
+  const { reload: reloadCases } = useAsyncResource('cases:list', () => fetchCases());
 
-  useEffect(() => {
-    if (!caseId) {
-      clearSelected();
-      return;
+  useAsyncResource(
+    caseId ? `case:${caseId}` : null,
+    async () => {
+      if (!caseId) return null;
+      const loaded = await fetchCaseById(caseId);
+      if (!loaded) {
+        toast('That case does not exist or you cannot open it.', 'error');
+        navigate(PATHS.cases, { replace: true });
+      }
+      return loaded;
     }
-    let cancelled = false;
-    void fetchCaseById(caseId).then((loaded) => {
-      if (cancelled || loaded) return;
-      toast('That case does not exist or you cannot open it.', 'error');
-      navigate(PATHS.cases, { replace: true });
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [caseId, clearSelected, fetchCaseById, navigate]);
+  );
 
   const handleSelectCase = (caseSummary: CaseSummary) => {
     navigate(PATHS.caseDetail(caseSummary.id));
@@ -91,45 +88,40 @@ export function CasesPage() {
   });
 
   // Keyboard Navigation: J/K, Enter, Slash
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (isDetailOpen || isIntakeOpen) return;
-      const target = e.target as HTMLElement;
-      const isInput =
-        target.tagName === 'INPUT' ||
-        target.tagName === 'TEXTAREA' ||
-        target.tagName === 'SELECT';
+  useWindowEvent('keydown', (e) => {
+    if (isDetailOpen || isIntakeOpen) return;
+    const target = e.target as HTMLElement;
+    const isInput =
+      target.tagName === 'INPUT' ||
+      target.tagName === 'TEXTAREA' ||
+      target.tagName === 'SELECT';
 
-      if (e.key === '/' && !isInput) {
-        e.preventDefault();
-        searchInputRef.current?.focus();
-        return;
+    if (e.key === '/' && !isInput) {
+      e.preventDefault();
+      searchInputRef.current?.focus();
+      return;
+    }
+
+    if (isInput) {
+      if (e.key === 'Escape') {
+        searchInputRef.current?.blur();
       }
+      return;
+    }
 
-      if (isInput) {
-        if (e.key === 'Escape') {
-          searchInputRef.current?.blur();
-        }
-        return;
+    if (e.key === 'j' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      setFocusedIndex((prev) => Math.min(prev + 1, Math.max(sortedCases.length - 1, 0)));
+    } else if (e.key === 'k' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      setFocusedIndex((prev) => Math.max(prev - 1, 0));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (sortedCases[focusedIndex]) {
+        handleSelectCase(sortedCases[focusedIndex]);
       }
-
-      if (e.key === 'j' || e.key === 'ArrowDown') {
-        e.preventDefault();
-        setFocusedIndex((prev) => Math.min(prev + 1, Math.max(sortedCases.length - 1, 0)));
-      } else if (e.key === 'k' || e.key === 'ArrowUp') {
-        e.preventDefault();
-        setFocusedIndex((prev) => Math.max(prev - 1, 0));
-      } else if (e.key === 'Enter') {
-        e.preventDefault();
-        if (sortedCases[focusedIndex]) {
-          handleSelectCase(sortedCases[focusedIndex]);
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [sortedCases, focusedIndex, isDetailOpen, isIntakeOpen]);
+    }
+  });
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 font-['Space_Grotesk',sans-serif]">
@@ -145,7 +137,7 @@ export function CasesPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <Button variant="outline" size="sm" onClick={() => fetchCases()} isLoading={isLoading} className="gap-1.5">
+          <Button variant="outline" size="sm" onClick={() => reloadCases()} isLoading={isLoading} className="gap-1.5">
             <RefreshCw className="w-3.5 h-3.5" /> Refresh
           </Button>
           {canCreate && (
@@ -278,14 +270,21 @@ export function CasesPage() {
       )}
 
       {/* Cases Table */}
-      <CaseTable
-        cases={sortedCases}
-        focusedIndex={focusedIndex}
-        onSelectCase={(caseItem, idx) => {
-          setFocusedIndex(idx);
-          handleSelectCase(caseItem);
-        }}
-      />
+      {isLoading && cases.length === 0 ? (
+        <div className="rounded-2xl border-2 border-[#09090B] bg-[#F8F4E8] shadow-hard p-12 text-center text-[#52525B]">
+          <p className="font-bold text-sm uppercase text-[#09090B]">Loading relief claims…</p>
+          <p className="text-xs text-[#52525B] mt-1">Fetching cases from the registry</p>
+        </div>
+      ) : (
+        <CaseTable
+          cases={sortedCases}
+          focusedIndex={focusedIndex}
+          onSelectCase={(caseItem, idx) => {
+            setFocusedIndex(idx);
+            handleSelectCase(caseItem);
+          }}
+        />
+      )}
 
       {/* Keyboard Shortcuts Status Ribbon */}
       <div className="hidden sm:flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 rounded-xl border border-[#09090B]/15 bg-[#EDE8D5]/40 text-xs text-[#52525B]">
@@ -317,9 +316,12 @@ export function CasesPage() {
         <CaseDetailModal
           caseItem={selectedCase}
           isOpen={isDetailOpen}
-          onClose={() => navigate(PATHS.cases)}
+          onClose={() => {
+            clearSelected();
+            navigate(PATHS.cases);
+          }}
           onCaseUpdated={() => {
-            fetchCases();
+            reloadCases();
             fetchCaseById(selectedCase.id);
           }}
           onOpenExtraction={(extractionId) => navigate(PATHS.reviewDetail(extractionId))}
@@ -332,7 +334,7 @@ export function CasesPage() {
           onClose={() => setIsIntakeOpen(false)}
           onCaseCreated={(created) => {
             setIsIntakeOpen(false);
-            fetchCases();
+            reloadCases();
             navigate(PATHS.caseDetail(created.id));
           }}
         />

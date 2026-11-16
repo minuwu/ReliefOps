@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -13,6 +13,7 @@ import { USE_MOCK, errorMessage } from '@/services/http';
 import { DEMO_PASSWORD, DEMO_USERS, DEMO_VICTIMS } from '@/services/mockData';
 import { PATHS, homeFor } from '@/routes/paths';
 import { cn } from '@/lib/utils';
+import { useWindowEvent } from '@/lib/hooks/useEventListener';
 
 interface NavbarProps {
   onOpenWalkthrough?: () => void;
@@ -76,21 +77,25 @@ export function Navbar({ onOpenWalkthrough }: NavbarProps) {
 
   const items = user ? NAV_ITEMS.filter((item) => item.roles.includes(user.role)) : [];
 
-  useEffect(() => {
-    if (!showUserMenu) return;
-    const onPointerDown = (e: PointerEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setShowUserMenu(false);
-    };
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setShowUserMenu(false);
-    };
-    document.addEventListener('pointerdown', onPointerDown);
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown);
-      document.removeEventListener('keydown', onKeyDown);
-    };
-  }, [showUserMenu]);
+  useWindowEvent(
+    'pointerdown',
+    (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setShowUserMenu(false);
+      }
+    },
+    showUserMenu,
+  );
+
+  useWindowEvent(
+    'keydown',
+    (e) => {
+      if (e.key === 'Escape') {
+        setShowUserMenu(false);
+      }
+    },
+    showUserMenu,
+  );
 
   const closeMenus = () => {
     setShowUserMenu(false);

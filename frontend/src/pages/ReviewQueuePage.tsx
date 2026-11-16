@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useReviewQueueStore } from '@/store/useReviewQueueStore';
 import { PATHS } from '@/routes/paths';
@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { cn, formatDate } from '@/lib/utils';
 import { ArrowRight, RefreshCw } from 'lucide-react';
+import { useAsyncResource } from '@/lib/hooks/useAsyncResource';
 
 export function ReviewQueuePage() {
   const {
@@ -24,14 +25,17 @@ export function ReviewQueuePage() {
   // The open extraction lives in the URL (/review/:extractionId), so it can be linked from a case.
   const { extractionId } = useParams<{ extractionId?: string }>();
 
-  useEffect(() => {
-    fetchQueue();
-  }, [fetchQueue]);
+  const { reload: reloadQueue } = useAsyncResource('review-queue', () => fetchQueue());
 
-  useEffect(() => {
-    if (extractionId) void fetchExtraction(extractionId);
-    else clearActive();
-  }, [extractionId, fetchExtraction, clearActive]);
+  useAsyncResource(
+    extractionId ? `extraction:${extractionId}` : null,
+    async () => {
+      if (extractionId) {
+        await fetchExtraction(extractionId);
+      }
+      return true;
+    }
+  );
 
   const closeReview = () => {
     clearActive();
@@ -62,7 +66,7 @@ export function ReviewQueuePage() {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => fetchQueue()}
+          onClick={() => reloadQueue()}
           isLoading={isLoading}
           className="gap-2 self-start sm:self-auto"
         >
@@ -146,7 +150,13 @@ export function ReviewQueuePage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#09090B]/10 font-medium">
-              {error ? (
+              {isLoading && queue.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-sm text-[#52525B]">
+                    Loading review queue…
+                  </td>
+                </tr>
+              ) : error ? (
                 <tr>
                   <td colSpan={7} className="py-12 text-center">
                     <div role="alert" className="inline-flex flex-col items-center gap-3 max-w-md mx-auto p-4 rounded-xl border border-[#FF334B]/30 bg-[#FF334B]/10">
@@ -155,7 +165,7 @@ export function ReviewQueuePage() {
                         variant="outline"
                         size="sm"
                         onClick={() => {
-                          void fetchQueue();
+                          reloadQueue();
                           if (extractionId) void fetchExtraction(extractionId);
                         }}
                       >
@@ -236,7 +246,10 @@ export function ReviewQueuePage() {
             extraction={activeExtraction}
             isOpen
             onClose={closeReview}
-            onReviewed={closeReview}
+            onReviewed={() => {
+              reloadQueue();
+              closeReview();
+            }}
           />
         )}
     </div>

@@ -115,8 +115,8 @@ function mockReport(body: VictimReport): VictimCase {
 }
 
 function changedPaths(update: VictimCaseUpdate): string[] {
-  const { expected_version: _version, victim, ...rest } = update;
-  const top = Object.keys(rest);
+  const { victim } = update;
+  const top = Object.keys(update).filter((k) => k !== 'expected_version' && k !== 'victim');
   const nested = victim ? Object.keys(victim).map((k) => `victim.${k}`) : [];
   return [...top, ...nested];
 }
@@ -138,7 +138,10 @@ function mockUpdate(caseId: string, update: VictimCaseUpdate): VictimCase {
       { locked_fields: locked }
     );
   }
-  const { expected_version: _version, victim, ...rest } = update;
+  const { victim } = update;
+  const rest: Partial<VictimCaseUpdate> = { ...update };
+  delete rest.expected_version;
+  delete rest.victim;
   const next: Case = {
     ...c,
     ...rest,
