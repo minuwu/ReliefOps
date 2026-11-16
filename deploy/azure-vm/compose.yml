@@ -1,0 +1,25 @@
+# Production stack on the Azure VM: the API (backend + AI, built from backend/Dockerfile) behind Caddy,
+# which terminates HTTPS. The database is Supabase (see docs/DEPLOY-FREE.md), so there is no db service.
+# deploy.sh copies this file to /opt/reliefops/ on the VM and runs it there.
+services:
+  api:
+    build: ./backend
+    env_file: .env.prod # secrets; uploaded by deploy.sh, chmod 600, never in git
+    restart: unless-stopped
+    expose: ["8080"] # reachable only through Caddy, which is what makes uvicorn's --forwarded-allow-ips '*' safe
+
+  caddy:
+    image: caddy:2.10.0-alpine
+    restart: unless-stopped
+    depends_on: [api]
+    ports: ["80:80", "443:443"]
+    environment:
+      DOMAIN: ${DOMAIN:?DOMAIN is written to /opt/reliefops/.env by deploy.sh}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data # certificates; keep across restarts or Caddy re-issues and can hit CA rate limits
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

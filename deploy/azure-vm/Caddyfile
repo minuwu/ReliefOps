@@ -1,0 +1,7 @@
+# HTTPS for the API. Caddy gets the certificate itself: Let's Encrypt first, ZeroSSL if that fails
+# (Let's Encrypt rate-limits the shared cloudapp.azure.com names). Caddy ignores X-Forwarded-For sent
+# by clients and sets it to the real client IP, which the per-IP login limit relies on.
+{$DOMAIN} {
+	encode zstd gzip
+	reverse_proxy api:8080
+}
