@@ -156,3 +156,8 @@ graphify-out/
 # Scratch & temporary artifacts
 scratch/
 /screenshot-*.png
+
+# Playwright / vitest output
+frontend/test-results/
+frontend/playwright-report/
+frontend/coverage/
