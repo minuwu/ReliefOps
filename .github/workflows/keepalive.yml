@@ -1,0 +1,31 @@
+# Keeps the Supabase free database from pausing (it pauses after about a week of low activity).
+# Hits two public routes that query the database. Northflank itself never sleeps, so this only
+# matters for Supabase. Set the repo variable API_URL (Settings > Secrets and variables > Actions >
+# Variables), e.g. https://<service>--<project>--<id>.code.run with no trailing slash.
+name: keepalive
+
+on:
+  schedule:
+    - cron: "17 */12 * * *" # twice a day, off the hour to dodge GitHub's top-of-hour queue
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      API_URL: ${{ vars.API_URL }}
+    steps:
+      - name: Skip until API_URL is set
+        if: env.API_URL == ''
+        run: echo "::notice::API_URL repo variable not set yet; nothing to ping."
+      - name: Ping health and banks
+        if: env.API_URL != ''
+        run: |
+          set -euo pipefail
+          health=$(curl -fsS --retry 3 --retry-delay 10 --max-time 30 "$API_URL/api/health")
+          echo "$health"
+          echo "$health" | grep -q '"db":"ok"' || { echo "::error::database not ok"; exit 1; }
+          curl -fsS --retry 3 --retry-delay 10 --max-time 30 -o /dev/null -w 'banks %{http_code}\n' "$API_URL/api/banks"
