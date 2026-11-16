@@ -54,12 +54,13 @@ export function CaseDetailHeader({
 
       {/* Operator Assignment */}
       <div className="flex items-center gap-2">
-        <label htmlFor="case-operator" className="text-xs font-bold uppercase text-[#52525B]">
+        <span id="case-operator-label" className="text-xs font-bold uppercase text-[#52525B]">
           Operator:
-        </label>
+        </span>
         {canWrite ? (
           <select
             id="case-operator"
+            aria-labelledby="case-operator-label"
             value={caseItem.assigned_operator?.id || ''}
             onChange={(e) => void onAssign(e.target.value || null)}
             className="text-xs font-bold bg-[#F8F4E8] border border-[#09090B]/20 rounded-lg px-2.5 py-1 focus:outline-none focus:border-[#09090B] cursor-pointer text-[#09090B]"

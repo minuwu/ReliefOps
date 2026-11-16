@@ -8,6 +8,7 @@ import { useAsyncResource } from '@/lib/hooks/useAsyncResource';
 import { FormNotice } from '@/components/auth/AuthCard';
 import { CLOSURE_LABEL, STAGE_LABEL, STAGE_ORDER, stageIndex } from '@/lib/caseStages';
 import { formatCurrency } from '@/lib/utils';
+import { Button } from '@/components/ui/Button';
 import { PATHS } from '@/routes/paths';
 
 const ctaClass =
@@ -69,7 +70,7 @@ function CaseCard({ item }: { item: VictimCase }) {
 
 export function PortalHomePage() {
   const name = useAuthStore((s) => s.user?.name);
-  const { data: cases, error, loading } = useAsyncResource('my-cases', async () => {
+  const { data: cases, error, loading, reload } = useAsyncResource('my-cases', async () => {
     const res = await victimApi.getMyCases();
     return res.data;
   });
@@ -91,7 +92,14 @@ export function PortalHomePage() {
         </Link>
       </header>
 
-      {error ? <FormNotice tone="error">{errorMessage(error, 'Could not load your cases.')}</FormNotice> : null}
+      {error ? (
+        <div className="space-y-2">
+          <FormNotice tone="error">{errorMessage(error, 'Could not load your cases.')}</FormNotice>
+          <Button type="button" variant="outline" size="sm" onClick={reload}>
+            Try again
+          </Button>
+        </div>
+      ) : null}
       {loading && !cases && !error ? <p className="text-sm font-medium text-[#52525B]">Loading your cases…</p> : null}
 
       {cases && cases.length === 0 && (

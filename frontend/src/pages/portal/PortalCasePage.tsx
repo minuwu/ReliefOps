@@ -10,7 +10,8 @@ import { CaseEditForm } from '@/components/portal/CaseEditForm';
 import { CaseChat } from '@/components/portal/CaseChat';
 import { CONTACT_FIELDS, FIELD_META, REPORT_FIELDS, toFormValues } from '@/components/portal/CaseFields';
 import { CLOSURE_LABEL, LANGUAGE_LABEL, SCAM_LABEL } from '@/lib/caseStages';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, formatDate } from '@/lib/utils';
+import { Button } from '@/components/ui/Button';
 import { PATHS } from '@/routes/paths';
 
 const MISSING_LABEL: Record<MissingField, string> = {
@@ -78,9 +79,14 @@ export function PortalCasePage() {
     return (
       <div className="max-w-xl mx-auto px-4 py-16 space-y-4 text-center">
         <FormNotice tone="error">{errorMessage(error, 'Could not load this case.')}</FormNotice>
-        <Link to={PATHS.portal} className="text-sm font-bold underline underline-offset-4">
-          Back to my cases
-        </Link>
+        <div className="flex items-center justify-center gap-4">
+          <Button type="button" variant="outline" size="sm" onClick={reload}>
+            Try again
+          </Button>
+          <Link to={PATHS.portal} className="text-sm font-bold underline underline-offset-4">
+            Back to my cases
+          </Link>
+        </div>
       </div>
     );
   }
@@ -100,7 +106,7 @@ export function PortalCasePage() {
             {caseItem.reference}
           </h1>
           <p className="text-xs font-mono font-bold uppercase text-[#52525B]">
-            {caseItem.bank_name} · Reported {new Date(caseItem.submitted_at).toLocaleDateString()}
+            {caseItem.bank_name} · Reported {formatDate(caseItem.submitted_at)}
           </p>
         </div>
         <p className="text-sm text-[#52525B]">

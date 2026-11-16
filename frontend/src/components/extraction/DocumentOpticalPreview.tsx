@@ -53,6 +53,7 @@ export function DocumentOpticalPreview({
             onClick={() => setZoomLevel((z) => Math.max(80, z - 10))}
             className="p-1 rounded-lg border border-[#09090B]/20 bg-[#EDE8D5] hover:bg-[#D2E823] text-[#09090B] transition-colors cursor-pointer"
             title="Zoom out"
+            aria-label="Zoom out"
           >
             <ZoomOut className="w-3.5 h-3.5" />
           </button>
@@ -62,6 +63,7 @@ export function DocumentOpticalPreview({
             onClick={() => setZoomLevel((z) => Math.min(130, z + 10))}
             className="p-1 rounded-lg border border-[#09090B]/20 bg-[#EDE8D5] hover:bg-[#D2E823] text-[#09090B] transition-colors cursor-pointer"
             title="Zoom in"
+            aria-label="Zoom in"
           >
             <ZoomIn className="w-3.5 h-3.5" />
           </button>

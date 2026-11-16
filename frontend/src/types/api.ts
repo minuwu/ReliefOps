@@ -1,5 +1,5 @@
 /**
- * API Contract Types matching docs/API_SPEC.md (v0.4.2)
+ * API Contract Types matching docs/API_SPEC.md (v0.4.3)
  * Single Source of Truth for Frontend, Backend, and AI interfaces.
  */
 

@@ -9,6 +9,7 @@ import { useToastStore } from '@/store/useToastStore';
 import { FormNotice } from '@/components/auth/AuthCard';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { formatDate } from '@/lib/utils';
 import { Input } from '@/components/ui/Input';
 
 const ROLE_LABEL: Record<StaffRole, string> = {
@@ -279,7 +280,7 @@ export function AdminUsersPage() {
                     </Badge>
                     {invite.status === 'pending' && (
                       <span className="font-mono text-xs">
-                        · expires {new Date(invite.expires_at).toLocaleDateString()}
+                        · expires {formatDate(invite.expires_at)}
                       </span>
                     )}
                   </div>

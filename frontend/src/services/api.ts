@@ -1,5 +1,5 @@
 /**
- * Staff API client (contract v0.4.2, docs/API_SPEC.md).
+ * Staff API client (contract v0.4.3, docs/API_SPEC.md).
  * Thin barrel re-exporting domain-specific API clients.
  * Accounts live in authApi.ts, the victim portal in victimApi.ts.
  */

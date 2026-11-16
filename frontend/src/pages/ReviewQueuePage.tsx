@@ -85,7 +85,6 @@ export function ReviewQueuePage() {
           </p>
           <Link
             to={PATHS.review}
-            role="button"
             onClick={closeReview}
             className="inline-flex items-center justify-center font-['Space_Grotesk',sans-serif] font-bold text-xs uppercase tracking-wider select-none cursor-pointer bg-[#F8F4E8] text-[#09090B] border-2 border-[#09090B] hover:bg-[#D2E823] transition-all h-8 px-3 py-1 gap-1.5 rounded-lg shadow-hard-sm hover:translate-x-[1px] hover:translate-y-[1px] shrink-0"
           >

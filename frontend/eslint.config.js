@@ -49,6 +49,13 @@ export default tseslint.config(
     },
   },
   {
+    files: ['src/pages/**/*.{ts,tsx}', 'src/components/**/*.{ts,tsx}', 'src/store/**/*.{ts,tsx}', 'src/routes/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-properties': ['error', { object: 'window', property: 'fetch', message: 'Network calls live in src/services only.' }],
+      'no-restricted-globals': ['error', { name: 'fetch', message: 'Network calls live in src/services only.' }, { name: 'setTimeout', message: NO_TIMER }, { name: 'setInterval', message: NO_TIMER }, { name: 'requestAnimationFrame', message: NO_TIMER }, { name: 'requestIdleCallback', message: NO_TIMER }],
+    },
+  },
+  {
     files: ['src/lib/hooks/**', 'src/services/http.ts'],
     rules: {
       'no-restricted-globals': 'off',
