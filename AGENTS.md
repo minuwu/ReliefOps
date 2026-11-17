@@ -479,7 +479,7 @@ EMAIL_MODE: console | smtp
 - **Live deploy (Asif, 2026-11-16 23:50). Northflank was replaced by an Azure for Students VM.**
   - **Why:** Northflank's signup asked for a card (A1 failed). Azure for Students needs no card and the VM never sleeps.
   - **Where:** VM `reliefops-api`, Japan East (same region as Supabase), Arm64 `Standard_B2pts_v2`, Docker Compose with the API (backend + AI + Tesseract, one instance) behind Caddy (HTTPS, Let's Encrypt). Runbook: [docs/DEPLOY-FREE.md](docs/DEPLOY-FREE.md) § "Azure VM"; files: [deploy/azure-vm/](deploy/azure-vm/).
-  - **Settings:** `EMAIL_MODE=console` (A4), `AI_MAX_CONCURRENT=2`, `AI_TIMEOUT_SECONDS=20` (Galib's A6 values). Secrets only in the gitignored `deploy/azure-vm/.env.prod` and on the VM (`chmod 600`).
+  - **Settings:** `EMAIL_MODE=smtp` through Gmail SMTP with an App Password (A4; switched from `console` on 2026-11-17 so sign-ups get their verification email), `AI_MAX_CONCURRENT=2`, `AI_TIMEOUT_SECONDS=20` (Galib's A6 values). Secrets only in the gitignored `deploy/azure-vm/.env.prod` and on the VM (`chmod 600`).
   - **Keepalive:** [.github/workflows/keepalive.yml](.github/workflows/keepalive.yml) pings `/api/health` and `/api/banks` twice a day so Supabase doesn't pause. It runs once the repo variable `API_URL` is set.
   - **Reply:**
     ```text
@@ -491,7 +491,7 @@ EMAIL_MODE: console | smtp
     /api/health db=ok ai=ok rag=ok: yes ({"db":"ok","ai":"available","rag":"available"})
     smoke.sh: 39/39
     Live extraction + KB chat checked (Galib): pending, Galib
-    EMAIL_MODE: console
+    EMAIL_MODE: smtp (Gmail; live login and test send OK 2026-11-17)
     ```
   - **A7 in the image:** done on the VM. The built Arm64 image has Tesseract 5.5 with `eng` + `jpn`, every Python dependency imports, and `/api/health` reports `ai` and `rag` available with the live keys.
   - **Next:**
