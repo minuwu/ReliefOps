@@ -69,7 +69,7 @@ This file is:
 | `XREQ-005` | `P1 (High)` | Frontend (Minhaz) | Backend (Anim / Asif) | All 48 v0.4.2 routes mounted; the 3 contract deviations closed (contract v0.4.3) | `[RESOLVED]` | 2026-11-15 22:15 (48/48 routes, v0.4.3) |
 | `XREQ-006` | `P0 (Blocker)` | Frontend (Minhaz) | Backend (Asif / Anim) / AI (Galib) | Deploy backend + database + AI to the cloud, post the public HTTPS API URL, allow the frontend origin (CORS) | `[VERIFIED_AND_CLOSED]` | 2026-11-16 23:58 (closed through XREQ-007; API on Azure VM) |
 | `XREQ-007` | `P0 (Blocker)` | Frontend (Minhaz) | Backend (Asif / Anim) / AI (Galib) | Free always-on deploy: verify, then implement [docs/DEPLOY-FREE.md](docs/DEPLOY-FREE.md) (Azure for Students VM + Supabase + Firebase), post `API_URL` | `[VERIFIED_AND_CLOSED]` | 2026-11-16 23:58 (frontend on `https://reliefops.web.app` now calls `https://reliefops-api.japaneast.cloudapp.azure.com`, mock off, login verified) |
-| `XREQ-008` | `P0 (Blocker)` | Frontend (Minhaz) | Backend (Asif / Anim) | Real email delivery on the live API: new accounts get no verification mail (`EMAIL_MODE=console`) | `[IN_PROGRESS]` | 2026-11-17 (Asif: live on Gmail SMTP, test send OK; the three inbox flows are next) |
+| `XREQ-008` | `P0 (Blocker)` | Frontend (Minhaz) | Backend (Asif / Anim) | Real email delivery on the live API: new accounts get no verification mail (`EMAIL_MODE=console`) | `[IN_PROGRESS]` | 2026-11-17 (Asif: Gmail SMTP live; sign-up and password reset proven with a real inbox; invitation waits on XREQ-010) |
 | `XREQ-009` | `P0 (Blocker)` | Frontend (Minhaz) | Everyone (Asif / Anim / Galib / Minhaz) | Human smoke test of the live site with fresh accounts and real inboxes, no seed credentials (G-53) | `[PENDING]` | 2026-11-17 |
 | `XREQ-010` | `P1 (High)` | Frontend (Minhaz) | Backend (Asif) | Master accounts for every role on the live API, shared privately; never used for testing | `[PENDING]` | 2026-11-17 |
 
@@ -528,7 +528,12 @@ EMAIL_MODE: console | smtp
   - Requirement 4: by the code, `app/email.py` `send()` catches `OSError` / `SMTPException` and logs only the recipient's domain, so sign-up still answers `202` and no token is logged.
 - **Verification Proof (so far):**
   - From inside the live container: SMTP login to Gmail OK, then a message sent through the app's own `email.send()` with `EMAIL_MODE=smtp` and 0 "sending failed" lines in the API log.
-  - **Still to do:** the three inbox flows (sign-up, password reset, invitation) with times, plus the spam-folder check. Then this card goes to `[RESOLVED]`.
+  - **(a) Sign-up, passed (2026-11-17, real Gmail inbox, `+test1` alias of the team Gmail):** `POST /api/auth/signup` → `202` at 05:43:42 UTC, 0 send errors. "Verify your email address" arrived in the **Inbox, not Spam**, with the link `https://reliefops.web.app/verify-email?token=…`. The link verified the account, and `POST /api/auth/login` → `200` (role `victim`).
+  - **(b) Password reset, passed:** `POST /api/auth/forgot-password` → `202` at 05:46:44 UTC. The reset mail arrived in the inbox, the new password was saved on the site (`POST /api/auth/reset-password` → `200`), and login on `https://reliefops.web.app` with the new password worked.
+  - **Arrival time:** both mails were already in the inbox when the person checked, a few minutes after sending. Not timed to the second.
+  - **Pitfall seen:** `name+tag@gmail.com` and `name@gmail.com` reach the same inbox but are **different accounts** here. Logging in with the address without the tag gives `401`.
+  - **(c) Staff invitation, still open:** it needs a supervisor login. It is done with the XREQ-010 master supervisor (or a fresh one), then this card goes to `[RESOLVED]`. It uses the same `email.send()` path as (a) and (b).
+  - The test account `+test1` stays in the live database as a normal victim with no case. Delete it before judging if needed.
 
 ---
 
