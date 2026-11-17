@@ -17,6 +17,8 @@ export const API_BASE_URL: string = USE_MOCK ? '' : resolveApiUrl();
 export const DEFAULT_TIMEOUT_MS = 15_000;
 /** The server waits up to 20 s for the assistant, so chat calls get more headroom. */
 export const CHAT_TIMEOUT_MS = 30_000;
+/** Uploads are capped at 10 MB and served from the database, so file downloads get the most headroom. */
+export const FILE_TIMEOUT_MS = 60_000;
 
 const MOCK_LATENCY_MS = 120;
 const TOKEN_KEY = 'reliefops_auth_token';

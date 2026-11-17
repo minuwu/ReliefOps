@@ -15,7 +15,7 @@ import type {
 import {
   API_BASE_URL,
   CHAT_TIMEOUT_MS,
-  DEFAULT_TIMEOUT_MS,
+  FILE_TIMEOUT_MS,
   USE_MOCK,
   apiError,
   getAuthToken,
@@ -312,12 +312,13 @@ async function liveDownloadDoc(docId: string): Promise<{ blob: Blob; filename: s
   const token = getAuthToken();
   const headers = new Headers();
   if (token) headers.set('Authorization', `Bearer ${token}`);
+  const signal = AbortSignal.timeout(FILE_TIMEOUT_MS);
 
   let res: Response;
   try {
     res = await fetch(`${API_BASE_URL}/api/documents/${docId}/file`, {
       headers,
-      signal: AbortSignal.timeout(DEFAULT_TIMEOUT_MS),
+      signal,
     });
   } catch (err) {
     void err;
@@ -339,7 +340,12 @@ async function liveDownloadDoc(docId: string): Promise<{ blob: Blob; filename: s
     throw err;
   }
   const filename = parseContentDisposition(res.headers.get('Content-Disposition')) || `document-${docId}`;
-  return { blob: await res.blob(), filename };
+  try {
+    return { blob: await res.blob(), filename };
+  } catch (err) {
+    void err;
+    throw apiError('NETWORK_ERROR', 'The document took too long to download. Please try again.');
+  }
 }
 
 /* --- Public API ---------------------------------------------------------- */
