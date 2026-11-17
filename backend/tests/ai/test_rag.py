@@ -71,6 +71,14 @@ def test_grounded_without_a_real_citation_becomes_no_answer(models: Models) -> N
     models.replies["m1"] = {"answer_type": "grounded", "body": "Probably 30 days.", "used_passage_ids": ["made-up"]}
     result = ask()
     assert (result["answer_type"], result["needs_staff"], result["used_passage_ids"]) == ("no_answer", True, [])
+    assert result["body"] == rag.TEXT["no_answer"]["en"]  # the uncited guess never reaches the victim
+
+
+@pytest.mark.parametrize("language", ["en", "ja", "bn"])
+def test_no_answer_always_tells_the_victim_staff_will_reply(models: Models, language: str) -> None:
+    models.replies["m1"] = {"answer_type": "no_answer", "body": "I'm sorry, I don't have information on that.",
+                            "used_passage_ids": []}
+    assert ask(language=language)["body"] == rag.TEXT["no_answer"][language]
 
 
 def test_refused_never_needs_staff_and_cites_nothing(models: Models) -> None:

@@ -330,7 +330,8 @@ def finish(raw: dict[str, Any], passages: list[dict[str, Any]], language: str, m
     if answer_type == "grounded" and not used:
         answer_type = "no_answer"  # a grounded answer with no real citation is treated as no answer (§7.2)
     if answer_type == "no_answer":
-        return _result("no_answer", body or _text("no_answer", language), [], 0.0, True, model)
+        # Fixed text: it promises a staff reply, and an uncited model guess must never reach the victim.
+        return _result("no_answer", _text("no_answer", language), [], 0.0, True, model)
     if answer_type == "refused":
         return _result("refused", body or _text("refused", language), [], 0.0, False, model)
     disclaimer = _text("disclaimer", language)

@@ -4,6 +4,22 @@ Owner: Galib (`Ga-lib`) — Role: AI / LLM — Branches: `galib/*`
 
 Update after each work session. Newest entry first. Bangladesh time (UTC+6). Link commits/PRs/XREQs.
 
+## 2026-11-17 — XREQ-009 scenario 4 (AI on real input), agent pre-check
+
+### Human smoke 2026-11-17 (agent pre-check, same AI code as the live API, run locally)
+Fresh documents in `backend/eval/smoke/` (values not in any seed or eval file).
+1. **Unreadable photo got invented values (P1, fixed).** `s03_unreadable_photo.jpg`: OCR read nothing; the model returned "TEST NAME", ¥100,000, 2020-11-12 at its own confidence 0.5. They were below the 0.75 review threshold, so Rule D3 held, but a reviewer saw made-up values pre-filled. A person expects no suggestion. Fix: a value our own reading doesn't confirm is dropped when the model's own confidence is under 0.6 (`MIN_GUESS_CONFIDENCE`). Re-run: no fields. Confident readings on hard images (0.95+) are kept, so the blurry receipt still works.
+2. **"No answer" chat reply didn't say staff will reply (P1, fixed).** Question the bluebooks don't cover: the victim saw only the model's "I'm sorry, I don't have information on that." Staff was alerted, but the victim wasn't told. Same path also showed an uncited guess when a "grounded" answer lost its citations. Fix: `no_answer` always uses the fixed text ("…A staff member will reply to you here.") in en/ja/bn.
+- Passed: blurred English receipt photo 5/5 (6.8 s); Japanese slip with era date 5/5 (4.7 s; name came back as `カ) ` with a half-width bracket, same name after normalizing).
+- Seen once: both Gemini models timed out on one try (free-tier slowness); the retry answered in 4.7 s. In the app that try would show "enter the fields manually".
+- Tests: 181 passed (5 new).
+
+### Next
+- Asif redeploys so the live API gets both fixes.
+- The human run on the live site (`backend/eval/smoke/README.md`): needs an operator account invited by a supervisor, plus a fresh victim sign-up. Then tick XREQ-009 (4) and XREQ-007 "Live extraction + KB chat".
+
+---
+
 ## 2026-11-16 — XREQ-007 AI checks (A5–A7)
 
 ### Completed

@@ -48,6 +48,9 @@ BUDGET_SECONDS: Final = 17.0  # engine gives up at 20 s
 MIN_ATTEMPT_SECONDS: Final = 3.0  # don't start a provider with less time than this
 MAX_IMAGE_SIDE: Final = 2000
 MIN_PDF_TEXT: Final = 20  # fewer characters than this = scanned PDF, use OCR
+# Below this self-confidence, a value our own reading doesn't confirm is a guess and is not suggested
+# (smoke test 2026-11-17: on an unreadable photo the model invented "TEST NAME" at 0.5).
+MIN_GUESS_CONFIDENCE: Final = 0.6
 
 FIELDS: Final = (
     "victim_name", "victim_phone", "victim_email", "amount", "currency",
@@ -305,12 +308,15 @@ def score(model_confidence: Any, found: bool | None) -> float:
     Verified evidence can reach 1.0. Unverifiable (no OCR text) is capped at 0.72,
     and contradicted evidence at 0.45: both stay below the 0.75 review threshold.
     """
-    try:
-        model = min(max(float(model_confidence), 0.0), 1.0)
-    except (TypeError, ValueError):
-        model = 0.5
     check = {True: 1.0, None: 0.3, False: 0.0}[found]
-    return round(0.45 * model + 0.55 * check, 3)
+    return round(0.45 * _model_confidence(model_confidence) + 0.55 * check, 3)
+
+
+def _model_confidence(raw: Any) -> float:
+    try:
+        return min(max(float(raw), 0.0), 1.0)
+    except (TypeError, ValueError):
+        return 0.5
 
 
 def build_fields(answer: dict[str, Any], local_text: str) -> list[dict[str, Any]]:
@@ -323,8 +329,11 @@ def build_fields(answer: dict[str, Any], local_text: str) -> list[dict[str, Any]
         if value is None:
             continue
         evidence = normalize(str(item.get("evidence") or ""))[:200]
+        found = evidence_found(name, evidence, value, local_text)
+        if found is not True and _model_confidence(item.get("confidence")) < MIN_GUESS_CONFIDENCE:
+            continue
         field = {"name": name, "value": value, "evidence": evidence or None,
-                 "confidence": score(item.get("confidence"), evidence_found(name, evidence, value, local_text))}
+                 "confidence": score(item.get("confidence"), found)}
         if name not in fields or field["confidence"] > fields[name]["confidence"]:
             fields[name] = field
     return list(fields.values())

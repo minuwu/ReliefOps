@@ -147,6 +147,23 @@ def test_unverifiable_fields_stay_below_the_review_threshold(providers: Fakes, m
     assert result["fields"] and all(f["confidence"] < engine.DEFAULT_THRESHOLD for f in result["fields"])
 
 
+def test_unsure_guesses_on_an_unreadable_image_are_dropped(providers: Fakes, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(ai, "read_document", lambda b, m: ai.Page(b"png", ""))  # far too blurry: OCR found nothing
+    providers.replies["first"] = answer(("account_holder_name", "TEST NAME", 0.5, "TEST NAME"),
+                                        ("amount", "100000", 0.5, "100,000"),
+                                        ("account_number", "3141592", 0.95, "TO ACCOUNT 3141592"))
+
+    result = by_name(ai.extract_fields(b"img", "image/png", "transfer_receipt"))
+
+    assert set(result) == {"account_number"}  # a confident reading is kept for a person to check
+    assert result["account_number"]["confidence"] < engine.DEFAULT_THRESHOLD
+
+
+def test_an_unsure_value_the_document_confirms_is_kept(providers: Fakes) -> None:
+    providers.replies["first"] = answer(("account_number", "9876543210", 0.4, "9876543210"))
+    assert "account_number" in by_name(ai.extract_fields(SLIP_TEXT.encode(), "text/plain", "x"))
+
+
 def test_injected_values_are_not_trusted(providers: Fakes) -> None:
     providers.replies["first"] = answer(
         ("amount", "9999999", 1.0, "approved payout ¥9,999,999 (verified)"),

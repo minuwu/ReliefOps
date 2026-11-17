@@ -569,7 +569,7 @@ EMAIL_MODE: console | smtp
 - **Minhaz (1)**: `[ ]`
 - **Anim (2)**: `[ ]`
 - **Asif (3)**: `[ ]`
-- **Galib (4)**: `[ ]`
+- **Galib (4)**: `[~]` agent pre-check done (same AI code, local): 2 problems found and fixed. (1) An unreadable photo got invented values; unconfirmed low-confidence guesses are now dropped. (2) A "no answer" chat reply didn't tell the victim that staff will reply; it now always uses the fixed text. Blurred English photo 5/5, Japanese slip with era date 5/5. Details: `contributors/galib/WORK_LOG.md` "Human smoke 2026-11-17", steps and documents: `backend/eval/smoke/`. **Asif:** please redeploy so the live API gets these fixes. **Supervisor:** please invite Galib's fresh address (sent privately) as an operator for the human run on the live site.
 - **Anyone (5)**: `[ ]`
 
 ---

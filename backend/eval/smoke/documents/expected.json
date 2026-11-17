@@ -1,0 +1,29 @@
+{
+  "s01_blurry_receipt_photo.jpg": {
+    "doc_type": "transfer_receipt",
+    "fields": {
+      "amount": 615000,
+      "currency": "JPY",
+      "transfer_date": "2026-11-12",
+      "account_number": "3141592",
+      "account_holder_name": "HARBOR LIGHT TRADING"
+    },
+    "note": "English ATM receipt, phone photo, blurred. Expect correct values; some may land in review."
+  },
+  "s02_japanese_receipt.jpg": {
+    "doc_type": "transfer_receipt",
+    "fields": {
+      "amount": 1280000,
+      "currency": "JPY",
+      "transfer_date": "2026-11-14",
+      "account_number": "2718281",
+      "account_holder_name": "カ）アオゾラファイナンス"
+    },
+    "note": "Japanese furikomi slip, era date 令和8年 (= 2026), phone photo."
+  },
+  "s03_unreadable_photo.jpg": {
+    "doc_type": "transfer_receipt",
+    "fields": {},
+    "note": "Far too blurry to read. Expect no invented values: empty or low-confidence fields, all in review."
+  }
+}
