@@ -103,8 +103,7 @@ function ExtractionReviewForm({
             </Badge>
           </div>
           <p className="text-xs font-mono text-[#52525B]">
-            Case ref: <span className="font-bold text-[#09090B]">{extraction.case_reference}</span> ·
-            Model: <span className="text-[#09090B]">{extraction.model || 'vision-ocr-v2'}</span>
+            Case ref: <span className="font-bold text-[#09090B]">{extraction.case_reference}</span>
           </p>
         </div>
 
@@ -131,14 +130,14 @@ function ExtractionReviewForm({
       {/* Optical Document Preview Toggle */}
       <div className="flex items-center justify-between">
         <span className="text-xs font-bold uppercase tracking-wider text-[#09090B]">
-          Voucher facsimile
+          Uploaded document
         </span>
         <button
           type="button"
           onClick={() => setShowOpticalPreview(!showOpticalPreview)}
           className="text-xs font-medium text-[#52525B] hover:text-[#09090B] underline cursor-pointer"
         >
-          {showOpticalPreview ? 'Hide voucher' : 'Show voucher'}
+          {showOpticalPreview ? 'Hide document' : 'Show document'}
         </button>
       </div>
 
@@ -147,11 +146,7 @@ function ExtractionReviewForm({
         {/* Left Column: Optical Voucher Preview */}
         {showOpticalPreview && (
           <div className="lg:col-span-5">
-            <DocumentOpticalPreview
-              extraction={extraction}
-              activeField={hoveredField}
-              onSelectField={(f) => setHoveredField(f)}
-            />
+            <DocumentOpticalPreview documentId={extraction.document_id} />
           </div>
         )}
 
