@@ -71,7 +71,7 @@ This file is:
 | `XREQ-007` | `P0 (Blocker)` | Frontend (Minhaz) | Backend (Asif / Anim) / AI (Galib) | Free always-on deploy: verify, then implement [docs/DEPLOY-FREE.md](docs/DEPLOY-FREE.md) (Azure for Students VM + Supabase + Firebase), post `API_URL` | `[VERIFIED_AND_CLOSED]` | 2026-11-16 23:58 (frontend on `https://reliefops.web.app` now calls `https://reliefops-api.japaneast.cloudapp.azure.com`, mock off, login verified) |
 | `XREQ-008` | `P0 (Blocker)` | Frontend (Minhaz) | Backend (Asif / Anim) | Real email delivery on the live API: new accounts get no verification mail (`EMAIL_MODE=console`) | `[IN_PROGRESS]` | 2026-11-17 (Asif: Gmail SMTP live; sign-up and password reset proven with a real inbox; invitation waits on XREQ-010) |
 | `XREQ-009` | `P0 (Blocker)` | Frontend (Minhaz) | Everyone (Asif / Anim / Galib / Minhaz) | Human smoke test of the live site with fresh accounts and real inboxes, no seed credentials (G-53) | `[PENDING]` | 2026-11-17 |
-| `XREQ-010` | `P1 (High)` | Frontend (Minhaz) | Backend (Asif) | Master accounts for every role on the live API, shared privately; never used for testing | `[PENDING]` | 2026-11-17 |
+| `XREQ-010` | `P1 (High)` | Frontend (Minhaz) | Backend (Asif) | Master accounts for every role on the live API, shared privately; never used for testing | `[RESOLVED]` | 2026-11-17 (Asif: 5 master accounts log in; all `.test` seed accounts disabled on prod) |
 
 *(When adding a request: append a row above AND add a detailed card in 2.2. Never insert in the middle.)*
 
@@ -532,7 +532,7 @@ EMAIL_MODE: console | smtp
   - **(b) Password reset, passed:** `POST /api/auth/forgot-password` → `202` at 05:46:44 UTC. The reset mail arrived in the inbox, the new password was saved on the site (`POST /api/auth/reset-password` → `200`), and login on `https://reliefops.web.app` with the new password worked.
   - **Arrival time:** both mails were already in the inbox when the person checked, a few minutes after sending. Not timed to the second.
   - **Pitfall seen:** `name+tag@gmail.com` and `name@gmail.com` reach the same inbox but are **different accounts** here. Logging in with the address without the tag gives `401`.
-  - **(c) Staff invitation, still open:** it needs a supervisor login. It is done with the XREQ-010 master supervisor (or a fresh one), then this card goes to `[RESOLVED]`. It uses the same `email.send()` path as (a) and (b).
+  - **(c) Staff invitation, started:** the XREQ-010 master supervisor invited a new operator at a `+staff1` alias. `POST /api/invitations` → `201 pending` at 06:07:47 UTC, 0 send errors. Still to do: the invitee accepts from the mail and logs in. Then this card goes to `[RESOLVED]`.
   - The test account `+test1` stays in the live database as a normal victim with no case. Delete it before judging if needed.
 
 ---
@@ -576,7 +576,7 @@ EMAIL_MODE: console | smtp
 - **Priority**: `P1 (High)`
 - **From**: Frontend (Minhaz)
 - **To**: Backend (Asif)
-- **Status**: `[PENDING]`
+- **Status**: `[RESOLVED]`
 - **Created**: 2026-11-17 (UTC+6)
 - **Target Interface / Endpoint**: live API `https://reliefops-api.japaneast.cloudapp.azure.com` (accounts in the production database)
 
@@ -595,9 +595,27 @@ EMAIL_MODE: console | smtp
 **Also check (security):** the seed accounts (`*@mail.test`, password `Demo@1234`) are printed on the public login page and in the docs. If they exist on the production database, anyone can sign in as a supervisor. Disable them or change their passwords on production, and confirm here.
 
 **Fulfillment & Proof (filled by recipient on completion):**
-- **Branch / Commit**: `[none needed, or commit if a seed script changed]`
-- **Status / Notes**: `[addresses + roles only; "credentials sent privately to Minhaz on <date>"]`
-- **Verification Proof**: `[each master account can log in; seed accounts on prod disabled or rotated]`
+- **Branch / Commit**: none needed. Data change on the production database only; the seed script is unchanged.
+- **Status / Notes** (Asif, 2026-11-17):
+  - **The accounts.** Every address is a `+tag` alias of the team Gmail that sends the app's mail, so password resets reach a real inbox. All are email-verified and active.
+
+    | Role | Bank | Address |
+    |---|---|---|
+    | Supervisor | | `ghaznavid2+supervisor@gmail.com` |
+    | Operator | | `ghaznavid2+operator@gmail.com` |
+    | Bank viewer | `bank_a` | `ghaznavid2+viewer-a@gmail.com` |
+    | Bank viewer | `bank_b` | `ghaznavid2+viewer-b@gmail.com` |
+    | Victim | | `ghaznavid2+victim@gmail.com` |
+
+  - **Passwords:** 24 random characters each, unique, generated on Asif's laptop into the gitignored `deploy/azure-vm/.env.masters`. They reached the server only through SSH stdin and appear nowhere else. **Credentials are sent privately to Minhaz by Asif (direct message), 2026-11-17.**
+  - **How they were made:** a one-off script in the live container, connected as `migrator` with `app.role='system'` (as `app/seed.py` does). It upserts the 5 users with Argon2 hashes from `app.security.hash_password`, so it can be re-run to rotate the passwords.
+  - **Seed accounts on prod:** all 9 `.test` accounts are now `is_active = false`: the 8 from `app/seed.py` plus 1 created by an earlier smoke run. 13 open sessions were revoked. Their cases, notes and audit rows are untouched.
+  - **Side effect, for everyone:** `backend/scripts/smoke.sh` signs in with the seed accounts, so it no longer passes against the live API. That matches G-53. Run it against a local stack, or rewrite it for fresh sign-ups (XREQ-009).
+  - **Frontend (Minhaz):** the public login page still prints the `Demo@1234` accounts. They no longer work on prod, so remove them from the page.
+- **Verification Proof** (live API, 2026-11-17):
+  - `POST /api/auth/login` → `200` for each master account, with the expected role: supervisor, operator, bank_viewer (`bank_a`), bank_viewer (`bank_b`), victim.
+  - Seed accounts still active on prod after the change: `0`. `supervisor@opscenter.test` / `Demo@1234` and `operator1@opscenter.test` / `Demo@1234` → `401 INVALID_CREDENTIALS`.
+  - The master supervisor could act: `POST /api/invitations` (a new operator at a `+staff1` alias) → `201 pending`, mail sent with 0 errors. This starts XREQ-008 check (c).
 
 ---
 
