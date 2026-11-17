@@ -69,7 +69,7 @@ This file is:
 | `XREQ-005` | `P1 (High)` | Frontend (Minhaz) | Backend (Anim / Asif) | All 48 v0.4.2 routes mounted; the 3 contract deviations closed (contract v0.4.3) | `[RESOLVED]` | 2026-11-15 22:15 (48/48 routes, v0.4.3) |
 | `XREQ-006` | `P0 (Blocker)` | Frontend (Minhaz) | Backend (Asif / Anim) / AI (Galib) | Deploy backend + database + AI to the cloud, post the public HTTPS API URL, allow the frontend origin (CORS) | `[VERIFIED_AND_CLOSED]` | 2026-11-16 23:58 (closed through XREQ-007; API on Azure VM) |
 | `XREQ-007` | `P0 (Blocker)` | Frontend (Minhaz) | Backend (Asif / Anim) / AI (Galib) | Free always-on deploy: verify, then implement [docs/DEPLOY-FREE.md](docs/DEPLOY-FREE.md) (Azure for Students VM + Supabase + Firebase), post `API_URL` | `[VERIFIED_AND_CLOSED]` | 2026-11-16 23:58 (frontend on `https://reliefops.web.app` now calls `https://reliefops-api.japaneast.cloudapp.azure.com`, mock off, login verified) |
-| `XREQ-008` | `P0 (Blocker)` | Frontend (Minhaz) | Backend (Asif / Anim) | Real email delivery on the live API: new accounts get no verification mail (`EMAIL_MODE=console`) | `[PENDING]` | 2026-11-17 |
+| `XREQ-008` | `P0 (Blocker)` | Frontend (Minhaz) | Backend (Asif / Anim) | Real email delivery on the live API: new accounts get no verification mail (`EMAIL_MODE=console`) | `[IN_PROGRESS]` | 2026-11-17 (Asif: live on Gmail SMTP, test send OK; the three inbox flows are next) |
 | `XREQ-009` | `P0 (Blocker)` | Frontend (Minhaz) | Everyone (Asif / Anim / Galib / Minhaz) | Human smoke test of the live site with fresh accounts and real inboxes, no seed credentials (G-53) | `[PENDING]` | 2026-11-17 |
 | `XREQ-010` | `P1 (High)` | Frontend (Minhaz) | Backend (Asif) | Master accounts for every role on the live API, shared privately; never used for testing | `[PENDING]` | 2026-11-17 |
 
@@ -504,7 +504,7 @@ EMAIL_MODE: console | smtp
 - **Priority**: `P0 (Blocker)`
 - **From**: Frontend (Minhaz)
 - **To**: Backend (Asif / Anim)
-- **Status**: `[PENDING]`
+- **Status**: `[IN_PROGRESS]`
 - **Created**: 2026-11-17 (UTC+6)
 - **Target Interface / Endpoint**: `POST /api/auth/signup`, `POST /api/auth/resend-verification`, `POST /api/auth/forgot-password`, `POST /api/invitations`, `POST /api/cases/{case_id}/victim-invite` (every flow that sends a link)
 
@@ -519,9 +519,16 @@ EMAIL_MODE: console | smtp
 **Done when (proof in this card):** with an inbox you own (not `*@mail.test`): (a) sign up a new victim → the mail arrives within a minute → the link verifies → login works; (b) forgot password → mail → reset → login with the new password; (c) a supervisor invites a new staff address → mail → accept → login. Post the time each mail took to arrive.
 
 **Fulfillment & Proof (filled by recipient on completion):**
-- **Branch / Commit**: `[commit]`
-- **Status / Notes**: `[provider, sender address, any limits such as mails per day]`
-- **Verification Proof**: `[the three flows above, with times]`
+- **Branch / Commit**: `3c0c46e` (`main`). The server change is config only: `EMAIL_MODE=smtp` plus the SMTP values in `deploy/azure-vm/.env.prod` on the VM; the template [deploy/azure-vm/env.prod.example](deploy/azure-vm/env.prod.example) documents the fields.
+- **Status / Notes** (Asif, 2026-11-17):
+  - **Provider:** Gmail SMTP, `smtp.gmail.com:587` with STARTTLS, using a 16-character App Password. Azure allows outbound 587.
+  - **Sender:** the team Gmail account set in `EMAIL_FROM`, which equals `SMTP_USER`, so Gmail treats it as verified.
+  - **Limit:** Gmail sends to about 500 recipients a day from a personal account. Enough for the demo; switch to Brevo if we outgrow it.
+  - Requirement 3: links use `FRONTEND_BASE_URL=https://reliefops.web.app` (seen in the log: `https://reliefops.web.app/verify-email?token=…`).
+  - Requirement 4: by the code, `app/email.py` `send()` catches `OSError` / `SMTPException` and logs only the recipient's domain, so sign-up still answers `202` and no token is logged.
+- **Verification Proof (so far):**
+  - From inside the live container: SMTP login to Gmail OK, then a message sent through the app's own `email.send()` with `EMAIL_MODE=smtp` and 0 "sending failed" lines in the API log.
+  - **Still to do:** the three inbox flows (sign-up, password reset, invitation) with times, plus the spam-folder check. Then this card goes to `[RESOLVED]`.
 
 ---
 
